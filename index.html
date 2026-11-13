@@ -230,7 +230,7 @@
     position: fixed; inset: 0; z-index: 15;
     display: flex; align-items: center; justify-content: center;
     padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
-    background: radial-gradient(ellipse at center, rgba(31, 42, 74, 0.15), rgba(31, 42, 74, 0.55));
+    background: radial-gradient(ellipse at center, rgba(31, 42, 74, 0.05), rgba(31, 42, 74, 0.3));
   }
   @media (min-aspect-ratio: 23/20) {   /* Querformat: Karte links, rechts sieht man die Insel */
     #start { justify-content: flex-start; padding-left: max(4vw, 16px, env(safe-area-inset-left, 0px)); }
@@ -2389,64 +2389,13 @@ editorScene.add(lampe);
   editorSchrift = { mesh: schrift, canvas: c };
 }
 // =====================================================================
-//  HINTERGRUND VOM STARTBILDSCHIRM: eine Insel, halb Weihnachtswelt, halb Sommerwelt,
-//  mit mehreren Figuren. Alles dreht sich langsam.
+//  HINTERGRUND VOM STARTBILDSCHIRM: Die Kamera fliegt über die echte Spielwelt.
+//  Erst Weihnachtswelt, dann Sommerwelt. Am Anfang sieht man eine Gruppe Figuren,
+//  dann fliegt die Kamera hoch, bis man die ganze Welt sieht.
 // =====================================================================
-const startScene = new THREE.Scene();
-startScene.background = new THREE.Color(0xc6d8e6);
-startScene.fog = new THREE.Fog(0xc6d8e6, 40, 90);
-const startKamera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
-startKamera.position.set(0, 8.5, 24);
-startKamera.lookAt(0, 2.4, 0);
-startScene.add(new THREE.HemisphereLight(0xffffff, 0x9aa7b8, 0.85));
+const startKamera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000);
+const startFiguren = [];
 {
-  const l = new THREE.DirectionalLight(0xfff3e0, 0.9);
-  l.position.set(6, 12, 8); l.castShadow = true;
-  l.shadow.mapSize.set(1024, 1024);
-  Object.assign(l.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
-  startScene.add(l);
-}
-const startInsel = new THREE.Group();
-startScene.add(startInsel);
-{
-  const R = 9;
-  const winter = new THREE.Mesh(new THREE.CircleGeometry(R, 48, Math.PI / 2, Math.PI), M(0xf7f9fc));
-  const sommer = new THREE.Mesh(new THREE.CircleGeometry(R, 48, -Math.PI / 2, Math.PI), M(0x5b7438, { roughness: 1 }));
-  for (const f of [winter, sommer]) { f.rotation.x = -Math.PI / 2; f.receiveShadow = true; startInsel.add(f); }
-  const erde = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.7, 2.5, 48, 1, true), M(0x8a6a4e, { side: THREE.DoubleSide }));
-  erde.position.y = -1.25; startInsel.add(erde);
-  // Winterseite: kleiner Adventsturm mit Nummer, Zuckerstange und verschneite Tannen
-  deko(startInsel, -4.2, 2.8, -2.5, 2.6, 5.6, 2.6, FARBEN.weiss);
-  for (const y of [1.4, 2.8, 4.2]) deko(startInsel, -4.2, y, -2.5, 2.7, 0.12, 2.7, FARBEN.rosa);
-  deko(startInsel, -4.2, 5.7, -2.5, 2.8, 0.25, 2.8, FARBEN.navy);
-  const schild = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: nummerTextur(24, false), transparent: true }));
-  schild.position.set(-4.2, 3.6, -1.18); startInsel.add(schild);
-  const stern = new THREE.Mesh(sternGeo, sternMat); stern.scale.setScalar(0.5); stern.position.set(-4.2, 6.5, -2.5);
-  startInsel.add(stern); drehSterne.push(stern);
-  tanne(startInsel, -6.8, 0.5, 0.45); tanne(startInsel, -2, -6, 0.5); tanne(startInsel, -6.5, -4.5, 0.38);
-  const stange = new THREE.Mesh(stangenGeo, stangenMat); stange.scale.setScalar(0.35); stange.position.set(-1.6, 0, 2.5);
-  startInsel.add(stange);
-  // Sommerseite: kleiner weißer Turm mit rosa Bögen, grüne Tannen und Blumen
-  deko(startInsel, 4.2, 3.3, -2.5, 2.6, 6.6, 2.6, FARBEN.weiss);
-  const ring = new THREE.TorusGeometry(0.28, 0.08, 6, 12, Math.PI);
-  for (let y = 0.4; y < 6.4; y += 0.6) for (const sx of [-1, 1]) {
-    const b = new THREE.Mesh(ring, M(y * 10 % 12 < 6 ? FARBEN.rosa : FARBEN.weiss));
-    b.position.set(4.2 + sx * 1.15, y, -1.17); b.rotation.z = -sx * Math.PI / 2; startInsel.add(b);
-  }
-  const bogen = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20, 0, Math.PI), M(FARBEN.navy));
-  bogen.position.set(4.2, 1.1, -1.18); startInsel.add(bogen);
-  deko(startInsel, 4.2, 0.55, -1.18, 1.4, 1.1, 0.05, FARBEN.navy);
-  tanne(startInsel, 6.8, 0.8, 0.45, false, false); tanne(startInsel, 2.2, -6, 0.5, false, false);
-  const rb = zufall(31), farben = [FARBEN.rosa, FARBEN.weiss, 0xf6e7a8, 0xc9b6e4];
-  for (let i = 0; i < 40; i++) {
-    const w = -Math.PI / 2 + rb() * Math.PI, r = 1.5 + rb() * 7;
-    const x = Math.cos(w) * r, z = -Math.sin(w) * r;
-    if (Math.abs(x - 4.2) < 1.8 && Math.abs(z + 2.5) < 1.8) continue;
-    const blume = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), M(farben[i % 4]));
-    blume.scale.y = 0.5; blume.position.set(x, 0.45, z); startInsel.add(blume);
-    deko(startInsel, x, 0.22, z, 0.04, 0.44, 0.04, 0x4f6b3a);
-  }
-  // Verschiedene Figuren
   const looks = [
     {},
     { figurTyp: 'junge', frisur: 'igel', haare: '#2b1d14', oberteilTyp: 'jacke', jacke: '#1f2a4a', pulli: '#7a8450', hoseTyp: 'kurz', haut: '#c68b5e' },
@@ -2454,17 +2403,48 @@ startScene.add(startInsel);
     { figurTyp: 'junge', frisur: 'junge', haare: '#c48a4a', pulli: '#7a8450', streifen: '#f5f3ee', hose: '#3b5b8c' },
     { frisur: 'zopf', haare: '#e6c27a', oberteilTyp: 'jacke', jacke: '#e7a3b7', hoseTyp: 'jeans', augen: 'wimpern', sommersprossen: true },
   ];
-  looks.forEach((l, i) => {
-    const w = (i / looks.length) * Math.PI * 2 + 0.3, r = 3.2;
-    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...l }, startInsel);
-    f.figur.position.set(Math.sin(w) * r, 0, Math.cos(w) * r);
-    f.figur.rotation.y = w;   // schauen nach außen
-    f.armL.rotation.z = -0.25; f.armR.rotation.z = 0.25;
-    if (i % 2) { f.armR.rotation.x = -2.6; }   // winken
-  });
+  const SOMMER_START = new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8);
+  for (const mitte of [START, SOMMER_START]) {
+    looks.forEach((l, i) => {
+      const w = (i / looks.length) * Math.PI * 2 + 0.3, r = 2.4;
+      const f = baueFigur({ ...STANDARD_AUSSEHEN, ...l }, scene);
+      f.figur.position.set(mitte.x + Math.sin(w) * r, 0, mitte.z + Math.cos(w) * r);
+      f.figur.rotation.y = w;   // schauen nach außen
+      if (i % 2) f.armR.rotation.x = -2.6;   // winken
+      startFiguren.push(f);
+    });
+  }
+}
+const START_FLUG = [
+  { sommer: false, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
+  { sommer: true, figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 8), weit: 165, hoch: 58 },
+];
+const FLUG_DAUER = 16;
+let startFlugZeit = 0, startFlugWelt = -1;
+const _blick = new THREE.Vector3();
+function startFlug(dt) {
+  startFlugZeit += dt;
+  const n = Math.floor(startFlugZeit / FLUG_DAUER) % START_FLUG.length;
+  const F = START_FLUG[n];
+  if (n !== startFlugWelt) {               // Welt wechseln: Himmel und Schnee anpassen
+    startFlugWelt = n;
+    zeigeSommer = F.sommer;
+    schneeFall.visible = !F.sommer;
+    scene.background.set(F.sommer ? 0xa9cfe8 : 0xc6d8e6); scene.fog.color.set(F.sommer ? 0xb8d6ea : 0xc6d8e6);
+  }
+  const t = (startFlugZeit % FLUG_DAUER) / FLUG_DAUER;
+  const e = t < 0.15 ? 0 : Math.min(1, (t - 0.15) / 0.6);
+  const s = e * e * (3 - 2 * e);          // weich hochfliegen
+  const winkel = startFlugZeit * 0.12 + n * 2;
+  const weit = 9 + (F.weit - 9) * s, hoch = 2.6 + (F.hoch - 2.6) * s;
+  const ziel = _blick.copy(F.figuren).lerp(F.mitte, s);
+  ziel.y = 1.2 * (1 - s) + 18 * s;
+  startKamera.position.set(ziel.x + Math.sin(winkel) * weit, hoch, ziel.z + Math.cos(winkel) * weit);
+  startKamera.lookAt(ziel);
+  for (const f of startFiguren) f.figur.visible = true;
 }
 
-// Im Querformat steht die Karte links, also schieben wir die Insel in die freie Fläche rechts
+// Im Querformat steht die Karte links, also schieben wir die Welt in die freie Fläche rechts
 function startAusrichten(w = innerWidth, h = innerHeight) {
   const karte = document.querySelector('#start .karte');
   const rechts = karte && w / h > 1.15 ? karte.getBoundingClientRect().right : 0;
@@ -2875,10 +2855,12 @@ renderer.setAnimationLoop(() => {
     renderer.render(editorScene, editorKamera);
   } else if (startOffen) {
     zeit += dt;
-    startInsel.rotation.y += dt * 0.25;
+    startFlug(dt);
     for (const st of drehSterne) st.rotation.y += dt * 1.2;
-    renderer.render(startScene, startKamera);
+    schneeUpdate(dt, startKamera.position);
+    renderer.render(scene, startKamera);
   } else {
+    if (startFiguren[0].figur.visible) for (const f of startFiguren) f.figur.visible = false;
     update(dt);
     mehrspielerUpdate(dt);
     renderer.render(scene, camera);
