@@ -988,12 +988,12 @@ try { geschafft = JSON.parse(localStorage.getItem('turmparkour-geschafft') || '[
 PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
   if (!nr) return;
   const spezial = nr === 24;
-  const anzahl = spezial ? 40 : 12 + nr;            // so viele Sprünge bis oben: jeder Turm ist länger
+  const anzahl = spezial ? 64 : Math.round(20 + nr * 1.4);   // so viele Sprünge bis oben: jeder Turm ist höher
   const T = {
     nr, spezial, anzahl,
     cx: (c - 2) * ABSTAND, cz: (2 - r) * ABSTAND,
     innen: spezial ? 11 : 9,
-    hoehe: anzahl + 6,
+    hoehe: anzahl + 9,
     gruppe: null, platten: [],
   };
   baueHuelle(T);
@@ -1059,6 +1059,10 @@ function baueHuelle(T) {
     const dach = new THREE.Mesh(new THREE.CylinderGeometry(dachR + 0.6, dachR + 3, 1.4, 4, 1, true), M(rahmenFarbe, { ...extra, side: THREE.DoubleSide }));
     dach.rotation.y = Math.PI / 4; dach.position.set(cx, hoehe + 0.7, cz); dach.castShadow = true;
     scene.add(dach);
+    // Deckel: oben ist das Dach zu. Wenn man selbst im Turm klettert, wird er ausgeblendet, damit man sieht, wohin man springt
+    T.deckel = new THREE.Mesh(new THREE.PlaneGeometry(aussen + 1.2, aussen + 1.2), M(FARBEN.weiss));
+    T.deckel.rotation.x = -Math.PI / 2; T.deckel.position.set(cx, hoehe + 1.4, cz);
+    scene.add(T.deckel);
     const sb = aussen / 2 + 0.45;   // Schnee auf dem Dachrand
     for (const s of [-1, 1]) {
       deko(scene, cx, hoehe + 1.45, cz + s * sb, aussen + 1.9, 0.25, 0.9, FARBEN.weiss);
@@ -2462,6 +2466,7 @@ function update(dt) {
 
   // 4) In welchem Turm bin ich? Beim Reingehen ist der Eingang der erste Checkpoint.
   const T = turmBei(s.pos);
+  for (const t of TUERME) if (t.deckel) t.deckel.visible = t !== T;
   if (T !== s.turm) {
     s.turm = T;
     if (T) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
