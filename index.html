@@ -2024,22 +2024,24 @@ function baueFigur(look, ziel = scene) {
   huefte.position.y = 0.84;
   figur.add(huefte);
   if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
-    const hoehe = 0.42, oben = 0.255, unten = 0.4, falten = 18;
+    const hoehe = 0.42, oben = rumpfBreite(-0.44) - 0.025, unten = 0.4, falten = 18;   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const w = Math.atan2(z, x), t = 0.5 - y / hoehe;            // t: 0 oben, 1 unten
       const zack = Math.abs(((w / (Math.PI * 2)) * falten % 1 + 1) % 1 - 0.5) * 2;   // Zickzack 0..1
-      const f = 1 + (zack - 0.5) * 0.09 * (0.3 + t);               // Falten werden nach unten tiefer
-      pos.setX(i, x * f); pos.setZ(i, z * f * 0.78);
+      const f = 1 + (zack - 0.5) * 0.11 * Math.min(1, t * 1.3);               // Falten werden nach unten tiefer
+      // oben gleiche Form wie der Körper (kissenförmig, flach), nach unten runder und weiter
+      const kissen = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), 2.8) + Math.pow(Math.abs(Math.sin(w)), 2.8), 1 / 2.8);
+      const k = kissen + (1 - kissen) * Math.min(1, t * 1.5);
+      const tief = 0.56 + (0.78 - 0.56) * Math.min(1, t * 1.5);
+      pos.setX(i, x * f * k); pos.setZ(i, z * f * k * tief);
     }
     geo.computeVertexNormals();
     const rock = teil(geo, look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
     rock.position.y = 0.9 - hoehe / 2;   // oben unter dem Oberteil versteckt, damit keine Falten durchschauen
-    const bund = teil(new THREE.CylinderGeometry(0.257, 0.257, 0.05, 32), look.hose);
-    bund.scale.z = 0.78; bund.position.y = 0.895;
-    figur.add(rock, bund);
+    figur.add(rock);
   } else if (hoseTyp === 'jogging') {     // Kordel vorne
     for (const sx of [-1, 1]) {
       const kordel = teil(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), '#f5f3ee');
@@ -2389,16 +2391,31 @@ function baueFigur(look, ziel = scene) {
       kopf.add(welle);
     }
   }
-  if (frisur === 'lang') {
-    // Viele einzelne Strähnen hinten, unterschiedlich lang
-    for (let k = 0; k < 11; k++) {
-      const a = -1.35 + (k / 10) * 2.7;
-      const lg = 0.55 + ((k * 37) % 7) * 0.035;
-      const s = H(new THREE.CapsuleGeometry(0.062, lg, 6, 10));
-      s.position.set(Math.sin(a) * 0.215, -0.08 - lg / 2, -Math.cos(a) * 0.19 - 0.02);
-      s.rotation.z = Math.sin(a) * 0.12;
-      s.rotation.x = 0.12;
-      kopf.add(s);
+  if (frisur === 'lang' || frisur === 'kurz') {
+    // Viele einzelne Strähnen hinten, unterschiedlich lang (bei „Kurz“ nur bis zum Nacken)
+    // zwei Lagen dünne Strähnen, die nach unten spitz zulaufen (sieht echter aus)
+    const zr = zufall(57);
+    const straehne = (dicke, lg) => {
+      const geo = new THREE.CapsuleGeometry(dicke, lg, 5, 8);
+      const pos = geo.attributes.position, oben = lg / 2 + dicke;
+      for (let i = 0; i < pos.count; i++) {
+        const f = 1 - 0.55 * Math.max(0, (oben - pos.getY(i)) / (oben * 2));   // unten schmaler
+        pos.setX(i, pos.getX(i) * f); pos.setZ(i, pos.getZ(i) * f * 0.6);   // flach wie eine Haarsträhne
+      }
+      geo.computeVertexNormals();
+      return H(geo);
+    };
+    for (const [anzahl, dicke, abstand, kuerzer] of [[18, 0.042, 0.0, 0.0], [15, 0.034, 0.018, 0.06]]) {
+      for (let k = 0; k < anzahl; k++) {
+        const a = -1.4 + ((k + (abstand ? 0.5 : 0)) / anzahl) * 2.8;
+        const lg = (frisur === 'kurz' ? 0.2 + zr() * 0.09 : 0.56 + zr() * 0.2) - kuerzer;
+        const s = straehne(dicke + zr() * 0.008, lg);
+        s.position.set(Math.sin(a) * (0.22 + abstand), -0.08 - lg / 2, -Math.cos(a) * (0.2 + abstand) - 0.02);
+        s.rotation.y = a;
+        s.rotation.z = Math.sin(a) * 0.12 + (zr() - 0.5) * 0.06;
+        s.rotation.x = 0.12;
+        kopf.add(s);
+      }
     }
   }
   // Pony (kann man im Editor an- und ausschalten): eine Haarschale über der Stirn mit weichen Spitzen unten
