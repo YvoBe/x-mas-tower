@@ -1733,7 +1733,8 @@ const gesichtCache = new Map();
 function gesichtTextur(look, mass) {
   const junge = look.figurTyp === 'junge';
   const augen = look.augen || 'rund', mundArt = look.mund || 'laecheln';
-  const schluessel = [look.haut, look.haare, look.augenfarbe, augen, mundArt, junge, !!look.sommersprossen].join('|');
+  const brauen = look.brauen || (junge ? 'gerade' : 'bogen');
+  const schluessel = [look.haut, look.haare, look.augenfarbe, augen, mundArt, junge, !!look.sommersprossen, brauen].join('|');
   if (gesichtCache.has(schluessel)) return gesichtCache.get(schluessel);
   const W = 2048, H = 1024;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -1768,11 +1769,27 @@ function gesichtTextur(look, mass) {
       });
     }
   }
-  // Augenbrauen: geschwungen, Mädchen feiner, Jungen dicker und gerader
+  // Augenbrauen in verschiedenen Formen. Jede Form: Punkt innen, Bogenpunkt, Punkt außen,
+  // Dicke innen und außen (die Braue wird nach außen dünner)
+  const BRAUEN_FORMEN = {
+    bogen:  { p: [[-0.045, 0.012], [0.0, -0.016], [0.048, 0.006]], d: [0.012, 0.006] },   // schön geschwungen
+    gerade: { p: [[-0.046, 0.004], [0.0, -0.004], [0.048, 0.002]], d: [0.015, 0.009] },   // fast gerade
+    hoch:   { p: [[-0.046, 0.012], [0.018, -0.03], [0.05, 0.012]], d: [0.012, 0.005] },   // hoher Bogen mit Knick
+    buschig:{ p: [[-0.048, 0.008], [0.0, -0.012], [0.05, 0.004]], d: [0.02, 0.012] },     // dick
+    fein:   { p: [[-0.042, 0.01], [0.0, -0.014], [0.046, 0.006]], d: [0.006, 0.0035] },   // ganz dünn
+  };
+  const form = BRAUEN_FORMEN[brauen] || BRAUEN_FORMEN.bogen;
   for (const s of [-1, 1]) bei(s * 0.088, 0.07, () => {
-    g.beginPath();
-    g.moveTo(-s * 0.045, 0.012); g.quadraticCurveTo(s * 0.0, junge ? -0.006 : -0.016, s * 0.048, 0.006);
-    linie(look.haare, junge ? 0.015 : 0.01);
+    const [a, b, c2] = form.p.map(([x, y]) => [s * x, y]);
+    const n = 16;
+    g.strokeStyle = look.haare; g.lineCap = 'round';
+    for (let k = 0; k < n; k++) {                 // in kleinen Stücken malen, damit die Dicke sich ändern kann
+      const t0 = k / n, t1 = (k + 1) / n;
+      const pt = (t) => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * b[0] + t * t * c2[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * b[1] + t * t * c2[1]];
+      const [x0, y0] = pt(t0), [x1, y1] = pt(t1);
+      g.lineWidth = form.d[0] + (form.d[1] - form.d[0]) * t0;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    }
   });
   // Augen
   const rx = 0.046, ry = 0.03;
@@ -2809,6 +2826,7 @@ const AUSWAHL = [
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
   { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
+  { titel: 'Augenbrauen', key: 'brauen', worte: [['bogen', 'Geschwungen'], ['gerade', 'Gerade'], ['hoch', 'Hoher Bogen'], ['buschig', 'Buschig'], ['fein', 'Fein']] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
   { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jglatt', 'Kurz glatt'], ['jlocken', 'Kurz lockig']] },
@@ -2840,7 +2858,7 @@ const passt = (g) => {
 // Bereiche in der linken Spalte: jede Auswahl gehört zu einem Bereich
 const BEREICHE = [
   { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['figurTyp', 'haut'] },
-  { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'sommersprossen', 'mund'] },
+  { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'sommersprossen', 'mund'] },
   { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'pony', 'haare'] },
   { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
 ];
@@ -2873,7 +2891,7 @@ function spalteZeichnen() {
     const box = document.createElement('section');
     const h = document.createElement('h3'); h.textContent = gruppe.titel;
     const reihe = document.createElement('div'); reihe.className = gruppe.farben ? 'farben' : 'worte';
-    const aktuell = AUSSEHEN[gruppe.key] ?? STANDARD_AUSSEHEN[gruppe.key];
+    const aktuell = AUSSEHEN[gruppe.key] ?? STANDARD_AUSSEHEN[gruppe.key] ?? (gruppe.key === 'brauen' ? (AUSSEHEN.figurTyp === 'junge' ? 'gerade' : 'bogen') : undefined);
     for (const wert of gruppe.farben || gruppe.worte) {
       const [w, text] = gruppe.farben ? [wert, ''] : wert;
       const knopf = document.createElement('button');
