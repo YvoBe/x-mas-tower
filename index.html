@@ -118,14 +118,11 @@
     display: grid; place-items: center;
     cursor: pointer;
   }
-  #weltKnopf {
-    pointer-events: auto; flex: none;
-    width: 52px; height: 52px; border-radius: 16px;
-    border: 3px solid var(--rosa); background: var(--panel);
-    font-size: 26px; cursor: pointer; display: grid; place-items: center;
-  }
-  @media (max-height: 520px) { #weltKnopf { width: 44px; height: 44px; font-size: 22px; } }
-  #weltKnopf:focus-visible, #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .welten { pointer-events: auto; display: flex; padding: 3px; gap: 3px; border-radius: 999px; background: var(--panel); border: 3px solid var(--rosa); }
+  .welten button { font: 800 14px var(--font); color: var(--ink); background: transparent; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  .welten button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  @media (max-height: 520px) { .welten button { font-size: 12px; padding: 4px 9px; } }
+  .welten button:focus-visible, #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   body.editor-offen .hud, body.editor-offen .touch, body.editor-offen .banner { display: none !important; }
 
   /* Mitspielen */
@@ -239,7 +236,6 @@
   <button type="button" id="figurKnopf" aria-label="Figur ändern">
     <svg width="28" height="30" viewBox="0 0 28 30" aria-hidden="true"><circle cx="14" cy="7" r="6" fill="currentColor"/><path d="M4 29v-9a10 10 0 0 1 20 0v9z" fill="#e7a3b7" stroke="currentColor" stroke-width="2"/><path d="M8 19h12M7 23h14" stroke="currentColor" stroke-width="2"/></svg>
   </button>
-  <button type="button" id="weltKnopf" aria-label="Welt wechseln: Adventskalender oder Dreh-Turm">🌀</button>
   <div class="tag">
     <h1>Tower Parkour</h1>
     <p class="keys-hint">WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera</p>
@@ -247,6 +243,10 @@
   </div>
   </div>
   <div class="rechts">
+    <div class="welten" role="group" aria-label="Welt aussuchen">
+      <button type="button" id="weltWinter" aria-pressed="true">🎄 Weihnachten</button>
+      <button type="button" id="weltSommer" aria-pressed="false">🌸 Sommer</button>
+    </div>
     <button type="button" class="tag zahl" id="codeKnopf" aria-label="Mit Freunden spielen">
       <span class="anzahl">👥 1</span> · Code <span class="code">-----</span>
     </button>
@@ -819,7 +819,10 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
   TUERME.push(T);
 }));
 // Die andere Seite: ein normaler Turm, den man immer spielen kann, mit drehenden Plattformen
-const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: 0, cz: -215, innen: 10, hoehe: 56, gruppe: null, platten: [] };
+// Die Sommerwelt liegt weit weg von der Weihnachtswelt, damit man sie nicht sieht
+const SOMMER = { x: 0, z: 2400 };
+klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x5b7438, { dicke: 1 });   // grüne Wiese
+const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: SOMMER.x, cz: SOMMER.z, innen: 10, hoehe: 56, gruppe: null, platten: [] };
 baueHuelle(DREH_TURM);
 TUERME.push(DREH_TURM);
 
@@ -842,6 +845,7 @@ function baueHuelle(T) {
   for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) deko(scene, cx + x, hoehe / 2, cz + z, 0.8, hoehe, 0.8, rahmenFarbe, extra);
   for (let y = 8; y <= hoehe; y += 8) {
     const oben = y + 8 > hoehe;
+    if (T.normal && !oben) continue;   // der Dreh-Turm hat keine rosa Streifen außen
     const yy = oben ? hoehe : y, dick = oben ? 0.5 : 0.2, farbe = oben ? rahmenFarbe : FARBEN.rosa;
     deko(scene, cx, yy, cz + r, aussen, dick, 0.7, farbe, oben ? extra : {});
     deko(scene, cx, yy, cz - r, aussen, dick, 0.7, farbe, oben ? extra : {});
@@ -861,6 +865,7 @@ function baueHuelle(T) {
   // Große Nummer vorne
   T.schild = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), new THREE.MeshBasicMaterial({ map: nummerTextur(T.nr, geschafft.includes(T.nr)), transparent: true }));
   T.schild.position.set(cx, TUER_HOCH + 4, cz - r - 0.45);
+  if (T.normal) { fassade(T, r); T.schild.visible = false; }
   T.schild.rotation.y = Math.PI;
   scene.add(T.schild);
 
@@ -879,6 +884,74 @@ function baueHuelle(T) {
     drehSterne.push(stern);
   }
   if (!T.normal) lichter(scene, punkte);
+}
+
+// Vorderseite vom Dreh-Turm wie in der Zeichnung: Bogenkante rundherum, zwei Sterne,
+// das Wort TOWER mit Strich drunter und ein Bogen-Eingang
+function towerTextur() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 300;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1f2a4a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '800 210px "Baloo 2", "Trebuchet MS", sans-serif';
+  g.fillText('TOWER', 512, 140);
+  g.fillStyle = '#e7a3b7'; g.fillRect(70, 262, 884, 18);
+  return new THREE.CanvasTexture(c);
+}
+function fassade(T, r) {
+  const { cx, cz, hoehe } = T;
+  const z = cz - r - WAND / 2 - 0.12, halb = r + WAND / 2;
+  // Kleine Bögen (halbe Ringe) als ein Bauteil
+  const boegen = [];   // [x, y, drehung, groesse, farbe]
+  const rosa = new THREE.Color(FARBEN.rosa), weiss = new THREE.Color(FARBEN.weiss), navy = new THREE.Color(FARBEN.navy);
+  let k = 0;
+  for (let y = 0.9; y < hoehe - 3.5; y += 1.75, k++) {           // links und rechts die Kante hoch
+    boegen.push([cx - halb + 0.5, y, -Math.PI / 2, 0.85, k % 2 ? weiss : rosa]);
+    boegen.push([cx + halb - 0.5, y, Math.PI / 2, 0.85, k % 2 ? weiss : rosa]);
+  }
+  for (let x = -halb + 4.2, i = 0; x < halb - 4; x += 1.75, i++) {   // oben eine Reihe Bögen
+    boegen.push([cx + x, hoehe - 1, Math.PI, 0.85, i % 2 ? weiss : rosa]);
+  }
+  // Bogen-Eingang: an der Tür hoch und oben im Halbkreis herum
+  const tb = TUER_BREIT / 2 + 0.75;
+  for (let y = 0.5; y < TUER_HOCH; y += 0.75, k++) {
+    boegen.push([cx - tb, y, Math.PI / 2, 0.36, k % 2 ? weiss : rosa]);
+    boegen.push([cx + tb, y, -Math.PI / 2, 0.36, k % 2 ? weiss : rosa]);
+  }
+  for (let i = 0; i <= 10; i++) {
+    const a = (i / 10) * Math.PI;
+    boegen.push([cx + Math.cos(a) * tb, TUER_HOCH + Math.sin(a) * tb, a - Math.PI / 2, 0.36, i % 2 ? weiss : rosa]);
+  }
+  const ring = new THREE.TorusGeometry(1, 0.22, 6, 14, Math.PI);
+  const im = new THREE.InstancedMesh(ring, M(0xffffff, { roughness: 0.6 }), boegen.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+  boegen.forEach(([x, y, d, g, f], i) => {
+    m.compose(ps.set(x, y, z - 0.05), q.setFromEuler(e.set(0, 0, d)), sc.set(g, g, g));
+    im.setMatrixAt(i, m); im.setColorAt(i, f);
+  });
+  scene.add(im);
+  // Die Ecken oben hängen wie ein Vorhang (große Bögen)
+  for (const s of [-1, 1]) {
+    const vorhang = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.22, 6, 24, Math.PI / 2), M(FARBEN.rosa));
+    vorhang.position.set(cx + s * (halb - 0.2), hoehe - 0.4, z - 0.1);
+    vorhang.rotation.z = s < 0 ? Math.PI : -Math.PI / 2;
+    scene.add(vorhang);
+  }
+  // Halbrunder dunkler Bogen über der Tür, damit der Eingang rund aussieht
+  const bogenFlaeche = new THREE.Mesh(new THREE.CircleGeometry(tb - 0.4, 24, 0, Math.PI), M(FARBEN.navy));
+  bogenFlaeche.position.set(cx, TUER_HOCH, z - 0.02);
+  bogenFlaeche.rotation.y = Math.PI;
+  scene.add(bogenFlaeche);
+  // Zwei große Sterne
+  for (const [x, y, g, d] of [[-4.2, hoehe * 0.66, 3.4, 0.2], [4.6, hoehe * 0.5, 2.7, -0.25]]) {
+    const stern = new THREE.Mesh(sternGeo, sternMat);
+    stern.scale.setScalar(g); stern.position.set(cx + x, y, z - 0.25); stern.rotation.z = d;
+    scene.add(stern);
+  }
+  // Das Wort TOWER
+  T.towerSchild = new THREE.Mesh(new THREE.PlaneGeometry(17, 5), new THREE.MeshBasicMaterial({ map: towerTextur(), transparent: true }));
+  T.towerSchild.position.set(cx, hoehe * 0.31, z - 0.08);
+  T.towerSchild.rotation.y = Math.PI;
+  scene.add(T.towerSchild);
 }
 
 // Das Innere eines Turms wird erst gebaut, wenn man in die Nähe kommt (damit es auf dem Handy flüssig bleibt)
@@ -1035,9 +1108,44 @@ let gepflanzt = 0;
 while (gepflanzt < 80) {
   const winkel = Math.random() * Math.PI * 2, abstand = 140 + Math.random() * 110;
   const x = Math.cos(winkel) * abstand, z = Math.sin(winkel) * abstand;
-  if (Math.hypot(x - DREH_TURM.cx, z - DREH_TURM.cz) < 30) continue;   // Platz um den Dreh-Turm
+  if (Math.hypot(x - DREH_TURM.cx, z - DREH_TURM.cz) < 46) continue;   // Platz um den Dreh-Turm
   tanne(scene, x, z, 0.8 + Math.random() * 1.1);
   gepflanzt++;
+}
+
+// ---------- Sommerwelt: Blumenwiese um den Dreh-Turm ----------
+{
+  const { cx, cz } = DREH_TURM, R = 75;
+  const rw = zufall(4242);
+  const ort = (min) => { for (;;) { const w = rw() * Math.PI * 2, r = Math.sqrt(rw()) * (R - 1);
+    const x = Math.cos(w) * r, z = Math.sin(w) * r;
+    if (Math.abs(x) > 11.5 || Math.abs(z) > 11.5 + min) return [cx + x, cz + z]; } };
+  // Grashalme
+  const halmGeo = new THREE.ConeGeometry(0.07, 0.5, 3); halmGeo.translate(0, 0.25, 0);
+  const halme = new THREE.InstancedMesh(halmGeo, M(0xffffff, { roughness: 1 }), 7000);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < halme.count; i++) {
+    const [x, z] = ort(0), g = 0.6 + rw() * 0.9;
+    m.compose(ps.set(x, 0, z), q.setFromEuler(e.set((rw() - 0.5) * 0.5, rw() * 6.3, (rw() - 0.5) * 0.5)), sc.set(1, g, 1));
+    halme.setMatrixAt(i, m); halme.setColorAt(i, c.setHSL(0.22 + rw() * 0.05, 0.4, 0.38 + rw() * 0.14));
+  }
+  scene.add(halme);
+  // Blumen: Stiel und runde Blüte mit Mitte
+  const N = 450;
+  const stielGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 5); stielGeo.translate(0, 0.4, 0);
+  const bluetenGeo = new THREE.SphereGeometry(0.3, 12, 6); bluetenGeo.scale(1, 0.45, 1); bluetenGeo.translate(0, 0.82, 0);
+  const mitteGeo = new THREE.SphereGeometry(0.11, 8, 6); mitteGeo.translate(0, 0.92, 0);
+  const stiele = new THREE.InstancedMesh(stielGeo, M(0x4f6b3a), N);
+  const blueten = new THREE.InstancedMesh(bluetenGeo, M(0xffffff, { roughness: 0.7 }), N);
+  const mitten = new THREE.InstancedMesh(mitteGeo, M(FARBEN.gold), N);
+  const bluetenFarben = [FARBEN.rosa, FARBEN.weiss, 0xf2b8c6, 0xf6e7a8, 0xc9b6e4];
+  for (let i = 0; i < N; i++) {
+    const [x, z] = ort(2), g = 0.8 + rw() * 0.6;
+    m.compose(ps.set(x, 0, z), q.setFromEuler(e.set(0, rw() * 6.3, 0)), sc.set(g, g, g));
+    stiele.setMatrixAt(i, m); blueten.setMatrixAt(i, m); mitten.setMatrixAt(i, m);
+    blueten.setColorAt(i, c.set(bluetenFarben[i % bluetenFarben.length]));
+  }
+  scene.add(stiele, blueten, mitten);
 }
 
 // ---------- Berge in der Ferne ----------
@@ -1056,7 +1164,7 @@ function rauschen(seed) {
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   };
 }
-{
+function baueGebirge(mx, mz, sommer) {
   const n1 = rauschen(11), n2 = rauschen(23);
   const grate = (x, z) => {   // gezackte Bergrücken
     let summe = 0, amp = 1, freq = 1, gewicht = 1;
@@ -1074,7 +1182,7 @@ function rauschen(seed) {
   const pos = geo.attributes.position;
   const hoehen = new Float32Array(pos.count);
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
+    const x = pos.getX(i) + mx, z = pos.getZ(i) + mz, r = Math.hypot(x - mx, z - mz);
     const t = Math.min(1, Math.max(0, (r - 280) / 140));
     const rand = t * t * (3 - 2 * t);
     const h = rand * (grate(x / 210, z / 210) * 150 + n2(x / 40, z / 40) * 14 + 10);
@@ -1085,31 +1193,33 @@ function rauschen(seed) {
   const nrm = geo.attributes.normal;
   const farben = new Float32Array(pos.count * 3);
   const fels = new THREE.Color(0x707b88), felsDunkel = new THREE.Color(0x4f5763), schnee = new THREE.Color(0xf4f7fb);
-  const wald = new THREE.Color(0x2c4a35), c = new THREE.Color();
+  const wald = new THREE.Color(0x2c4a35), wiese = new THREE.Color(0x5b7438), c = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
-    const h = hoehen[i], steil = 1 - nrm.getY(i), x = pos.getX(i), z = pos.getZ(i);
+    const h = hoehen[i], steil = 1 - nrm.getY(i), x = pos.getX(i) + mx, z = pos.getZ(i) + mz;
     const fleck = n2(x / 12, z / 12);
     c.copy(fels).lerp(felsDunkel, fleck * 0.8);
-    const schneeGrenze = 55 + n2(x / 60, z / 60) * 35;
+    const schneeGrenze = (sommer ? 95 : 55) + n2(x / 60, z / 60) * 35;
     if (h > schneeGrenze && steil < 0.55) c.copy(schnee);
     else if (h > schneeGrenze - 15 && steil < 0.35) c.lerp(schnee, 0.7);
     else if (h < 30 && steil < 0.45 && fleck > 0.35) c.copy(wald).lerp(felsDunkel, fleck * 0.3);
-    else if (h < 6) c.copy(schnee);   // verschneiter Fuß der Berge
+    else if (h < 6) c.copy(sommer ? wiese : schnee);   // Fuß der Berge: Schnee oder Wiese
+    else if (sommer && h < 40 && steil < 0.5) c.copy(wiese).lerp(wald, fleck * 0.6);
     farben[i * 3] = c.r; farben[i * 3 + 1] = c.g; farben[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(farben, 3));
   const gebirge = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
+  gebirge.position.set(mx, 0, mz);
   scene.add(gebirge);
 
   // Viele kleine Tannen auf den unteren Hängen (als ein Bauteil, damit es auf dem Handy flüssig läuft)
   const hoeheBei = (x, z) => {
-    const t = Math.min(1, Math.max(0, (Math.hypot(x, z) - 280) / 140));
+    const t = Math.min(1, Math.max(0, (Math.hypot(x - mx, z - mz) - 280) / 140));
     return t * t * (3 - 2 * t) * (grate(x / 210, z / 210) * 150 + n2(x / 40, z / 40) * 14 + 10);
   };
-  const rw = zufall(99), orte = [];
+  const rw = zufall(sommer ? 77 : 99), orte = [];
   for (let v = 0; v < 9000 && orte.length < 900; v++) {
     const w = rw() * Math.PI * 2, r = 300 + rw() * 330;
-    const x = Math.cos(w) * r, z = Math.sin(w) * r, h = hoeheBei(x, z);
+    const x = mx + Math.cos(w) * r, z = mz + Math.sin(w) * r, h = hoeheBei(x, z);
     if (h < 4 || h > 48) continue;
     const steigung = Math.abs(hoeheBei(x + 2, z) - h) + Math.abs(hoeheBei(x, z + 2) - h);
     if (steigung > 2.6 || n2(x / 25, z / 25) < 0.35) continue;   // nur flachere Stellen, in Gruppen
@@ -1118,7 +1228,7 @@ function rauschen(seed) {
   const nadelGeo = new THREE.ConeGeometry(1, 2.6, 7); nadelGeo.translate(0, 1.6, 0);
   const kappeGeo = new THREE.ConeGeometry(0.55, 1.1, 7); kappeGeo.translate(0, 2.55, 0);
   const nadeln = new THREE.InstancedMesh(nadelGeo, new THREE.MeshStandardMaterial({ color: 0x2f4f3a, roughness: 0.9, flatShading: true }), orte.length);
-  const kappen = new THREE.InstancedMesh(kappeGeo, new THREE.MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.9, flatShading: true }), orte.length);
+  const kappen = new THREE.InstancedMesh(kappeGeo, new THREE.MeshStandardMaterial({ color: sommer ? 0x3b5e3f : 0xf4f7fb, roughness: 0.9, flatShading: true }), orte.length);
   const mt = new THREE.Matrix4(), qt = new THREE.Quaternion(), st = new THREE.Vector3(), pt = new THREE.Vector3();
   orte.forEach(([x, y, z, g], i) => {
     mt.compose(pt.set(x, y, z), qt, st.set(g * 0.8, g, g * 0.8));
@@ -1126,10 +1236,12 @@ function rauschen(seed) {
   });
   scene.add(nadeln, kappen);
 }
+baueGebirge(0, 0, false);
+baueGebirge(SOMMER.x, SOMMER.z, true);
 
 // ---------- Weiche Wolken ----------
 const wolken = [];
-for (let i = 0; i < 22; i++) {
+for (let i = 0; i < 34; i++) {
   const wolke = new THREE.Group();
   const anzahl = 10 + Math.floor(Math.random() * 10);
   const laenge = 14 + Math.random() * 18;
@@ -1146,7 +1258,7 @@ for (let i = 0; i < 22; i++) {
     wolke.add(s);
   }
   const winkel = Math.random() * Math.PI * 2, abstand = 80 + Math.random() * 160;
-  wolke.position.set(Math.cos(winkel) * abstand, 70 + Math.random() * 40, Math.sin(winkel) * abstand);
+  wolke.position.set(Math.cos(winkel) * abstand, 70 + Math.random() * 40, Math.sin(winkel) * abstand + (i % 2 ? SOMMER.z : 0));   // halb Weihnachts-, halb Sommerwelt
   wolke.userData.tempo = 0.3 + Math.random() * 0.4;
   scene.add(wolke);
   wolken.push(wolke);
@@ -1707,10 +1819,11 @@ document.fonts?.ready.then(() => TUERME.forEach((T) => {
   T.schild.material.map.dispose();
   T.schild.material.map = nummerTextur(T.nr, geschafft.includes(T.nr));
   T.schild.material.needsUpdate = true;
+  if (T.towerSchild) { T.towerSchild.material.map.dispose(); T.towerSchild.material.map = towerTextur(); T.towerSchild.material.needsUpdate = true; }
 }));
 
 // ---------- Ein Spiel-Schritt (wie "wiederhole fortlaufend" in Scratch) ----------
-let nachladenUhr = 0, zeit = 0;
+let nachladenUhr = 0, zeit = 0, zeigeSommer = false;
 tuermeNachladen(spieler.pos);
 
 function update(dt) {
@@ -1765,7 +1878,12 @@ function update(dt) {
   }
   // Runtergefallen? Zurück zum Checkpoint
   if (s.pos.y < -15 || (T && s.amBoden && s.pos.y < 0.1 && s.checkpoint.y > 1)) {
-    s.pos.copy(s.checkpoint); s.vel.set(0, 0, 0);
+    // Sicherheitsnetz: Wer kurz nach dem Zurücksetzen gleich wieder fällt, kommt an den Eingang
+    // (so gibt es nie eine Endlosschleife)
+    if (T && zeit - (s.letzterNeustart || -9) < 1.5) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
+    s.letzterNeustart = zeit;
+    s.pos.copy(s.checkpoint); s.pos.y += 0.02; s.vel.set(0, 0, 0); s.boden = null;
+    s.respawns = (s.respawns || 0) + 1;
   }
   nachladenUhr -= dt;
   if (nachladenUhr < 0) { nachladenUhr = 0.4; tuermeNachladen(s.pos); }
@@ -1829,8 +1947,14 @@ function update(dt) {
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
-  hoehe.textContent = T ? `${T.normal ? 'Dreh-Turm' : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : 'Draußen';
-  weltKnopf.textContent = s.pos.z < -165 ? '🎄' : '🌀';
+  hoehe.textContent = T ? `${T.normal ? 'Dreh-Turm' : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : 'Draußen';
+  const sommer = imSommer(s.pos);
+  if (sommer !== zeigeSommer) {
+    zeigeSommer = sommer;
+    weltWinter.setAttribute('aria-pressed', String(!sommer)); weltSommer.setAttribute('aria-pressed', String(sommer));
+    schneeFall.visible = !sommer;
+    scene.background.set(sommer ? 0xa9cfe8 : 0xc6d8e6); scene.fog.color.set(sommer ? 0xb8d6ea : 0xc6d8e6);
+  }
 }
 
 // =====================================================================
@@ -2231,15 +2355,19 @@ codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
 
 document.getElementById('hochkantKnopf').addEventListener('click', () => document.body.classList.add('hochkant-ok'));
 
-// Welt wechseln: Adventskalender <-> Dreh-Turm
-const weltKnopf = document.getElementById('weltKnopf');
-weltKnopf.addEventListener('click', () => {
-  const imDrehTurm = spieler.pos.z < -165;
-  if (imDrehTurm) { spieler.pos.copy(START); zeigeBanner('Adventskalender 🎄', 2000); }
-  else { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 6); zeigeBanner('Dreh-Turm 🌀', 2000); }
+// Welt aussuchen (oben rechts): Weihnachtswelt oder Sommerwelt
+const weltWinter = document.getElementById('weltWinter'), weltSommer = document.getElementById('weltSommer');
+const imSommer = (pos) => pos.z > SOMMER.z - 700;
+function weltWechseln(sommer) {
+  if (sommer === imSommer(spieler.pos)) return;
+  if (sommer) { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8); zeigeBanner('Sommerwelt 🌸', 2000); }
+  else { spieler.pos.copy(START); zeigeBanner('Weihnachtswelt 🎄', 2000); }
+  spieler.checkpoint.copy(spieler.pos);
   spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;
   tuermeNachladen(spieler.pos);
-});
+}
+weltWinter.addEventListener('click', () => weltWechseln(false));
+weltSommer.addEventListener('click', () => weltWechseln(true));
 
 // ---------- Hauptschleife ----------
 const uhr = new THREE.Clock();
