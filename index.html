@@ -436,6 +436,12 @@ const M = (farbe, extra = {}) => {
 // Feste Wände (nicht durchsichtig)
 const glasNormal = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 0.9 });
 const glasGold = new THREE.MeshStandardMaterial({ color: 0xf3e3b0, roughness: 0.6, metalness: 0.2 });
+// Weihnachtstürme in Weihnachtsfarben: abwechselnd Dunkelrot, Tannengrün und Creme
+const WEIHNACHTS_WAENDE = [
+  { wand: new THREE.MeshStandardMaterial({ color: 0x9e2b36, roughness: 0.85 }), rahmen: 0xd4a53c, streifen: 0xf5f3ee, dach: 0x2c4a35 },
+  { wand: new THREE.MeshStandardMaterial({ color: 0x2f5a3e, roughness: 0.85 }), rahmen: 0xd4a53c, streifen: 0xc8323c, dach: 0x9e2b36 },
+  { wand: new THREE.MeshStandardMaterial({ color: 0xf3ead8, roughness: 0.85 }), rahmen: 0x9e2b36, streifen: 0x2f5a3e, dach: 0x9e2b36 },
+];
 // Sommertürme: helles, sonniges Gelb, als ob die Sonne drauf scheint
 const glasSommer = new THREE.MeshStandardMaterial({ color: 0xfff7dc, roughness: 0.8, emissive: 0xffe9a8, emissiveIntensity: 0.22 });
 
@@ -1013,7 +1019,8 @@ for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
 
 function baueHuelle(T) {
   const { cx, cz, innen, hoehe, spezial } = T;
-  const glas = T.sommerArt ? glasSommer : spezial ? glasGold : glasNormal;
+  const xmas = !T.normal && !spezial ? WEIHNACHTS_WAENDE[T.nr % 3] : null;
+  const glas = T.sommerArt ? glasSommer : spezial ? glasGold : xmas ? xmas.wand : glasNormal;
   const aussen = 2 * innen + 2 * WAND, r = innen + WAND / 2;
   const wand = { dicke: hoehe, wand: true, mat: glas };
   klotz(statisch, scene, cx, hoehe, cz + r, aussen, WAND, 0, wand);
@@ -1025,13 +1032,13 @@ function baueHuelle(T) {
   klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, THEMA_BODEN[themaVon(T)], { dicke: 0.08 });   // Boden passend zum Thema
 
   // Rahmen
-  const rahmenFarbe = spezial ? FARBEN.gold : T.sommerArt ? 0x8f9b52 : FARBEN.navy;   // Sommer: hellgrüner Rahmen
+  const rahmenFarbe = spezial ? FARBEN.gold : T.sommerArt ? 0x8f9b52 : xmas ? xmas.rahmen : FARBEN.navy;   // Sommer: hellgrüner Rahmen
   const extra = spezial ? { metalness: 0.6, roughness: 0.3 } : {};
   for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) deko(scene, cx + x, hoehe / 2, cz + z, 0.8, hoehe, 0.8, rahmenFarbe, extra);
   for (let y = 8; y <= hoehe; y += 8) {
     const oben = y + 8 > hoehe;
     if (T.normal && !oben) continue;   // der Dreh-Turm hat keine rosa Streifen außen
-    const yy = oben ? hoehe : y, dick = oben ? 0.5 : 0.2, farbe = oben ? rahmenFarbe : FARBEN.rosa;
+    const yy = oben ? hoehe : y, dick = oben ? 0.5 : 0.25, farbe = oben ? rahmenFarbe : xmas ? xmas.streifen : FARBEN.rosa;
     deko(scene, cx, yy, cz + r, aussen, dick, 0.7, farbe, oben ? extra : {});
     deko(scene, cx, yy, cz - r, aussen, dick, 0.7, farbe, oben ? extra : {});
     deko(scene, cx + r, yy, cz, 0.7, dick, aussen, farbe, oben ? extra : {});
@@ -1050,13 +1057,40 @@ function baueHuelle(T) {
     const links = new THREE.Vector3(cx - r, hoehe - 1.5, vorn), rechts = new THREE.Vector3(cx + r, hoehe - Math.min(14, hoehe * 0.3), vorn);
     extraLichter.push(...kette(links, rechts, 0.9, 1.6));
     lichter(scene, extraLichter, 1.5);
+    // Geschmückter Eingang: Tannengirlande um die Tür, rote Schleifen, Kugeln und zwei kleine Tannenbäume
+    const gp = [];
+    for (let y = 0.3; y <= TUER_HOCH + 0.6; y += 0.42) gp.push([cx - tb + 0.2, y], [cx + tb - 0.2, y]);
+    for (let x = -tb + 0.2; x <= tb - 0.2; x += 0.42) gp.push([cx + x, TUER_HOCH + 0.75 + Math.sin(((x + tb) / (2 * tb)) * Math.PI) * 0.35]);
+    const girlande = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.42, 0), new THREE.MeshStandardMaterial({ color: 0x2c4a35, roughness: 0.9, flatShading: true }), gp.length);
+    const gm = new THREE.Matrix4(), gq = new THREE.Quaternion(), ge = new THREE.Euler(), gs = new THREE.Vector3(), gv = new THREE.Vector3();
+    gp.forEach(([x, y], i) => {
+      gm.compose(gv.set(x, y, vorn + 0.05), gq.setFromEuler(ge.set(i, i * 2, i * 3)), gs.setScalar(0.8 + ((i * 37) % 5) * 0.08));
+      girlande.setMatrixAt(i, gm);
+    });
+    scene.add(girlande);
+    const kugelFarben = [FARBEN.rot, FARBEN.gold, FARBEN.weiss];
+    gp.forEach(([x, y], i) => {
+      if (i % 4) return;
+      const kugel = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), M(kugelFarben[i % 3], { metalness: 0.4, roughness: 0.3 }));
+      kugel.position.set(x, y - 0.25, vorn - 0.3); scene.add(kugel);
+    });
+    for (const sx of [-1, 1]) {   // rote Schleifen oben an den Ecken
+      for (const sl of [-1, 1]) {
+        const fluegel = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 8), M(FARBEN.rot));
+        fluegel.rotation.z = sl * Math.PI / 2; fluegel.position.set(cx + sx * (tb - 0.2) + sl * 0.3, TUER_HOCH + 0.8, vorn - 0.35);
+        scene.add(fluegel);
+      }
+      const knoten = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), M(FARBEN.rot));
+      knoten.position.set(cx + sx * (tb - 0.2), TUER_HOCH + 0.8, vorn - 0.4); scene.add(knoten);
+      tanne(scene, cx + sx * (tb + 1.6), cz - r - 1.6, 0.55, true);   // kleine geschmückte Tanne neben der Tür
+    }
     // Kabel der schrägen Kette
     const kabel = new THREE.Line(new THREE.BufferGeometry().setFromPoints(kette(links, rechts, 0.5, 1.6)), new THREE.LineBasicMaterial({ color: 0x2c4a35 }));
     scene.add(kabel);
     // Flaches Dach, das über den Rand ragt, mit schrägen Kanten
     const dachR = (aussen / 2) * Math.SQRT2;
     // Oben offen, damit man beim Klettern oben aus dem Turm schauen kann
-    const dach = new THREE.Mesh(new THREE.CylinderGeometry(dachR + 0.6, dachR + 3, 1.4, 4, 1, true), M(rahmenFarbe, { ...extra, side: THREE.DoubleSide }));
+    const dach = new THREE.Mesh(new THREE.CylinderGeometry(dachR + 0.6, dachR + 3, 1.4, 4, 1, true), M(xmas ? xmas.dach : rahmenFarbe, { ...extra, side: THREE.DoubleSide }));
     dach.rotation.y = Math.PI / 4; dach.position.set(cx, hoehe + 0.7, cz); dach.castShadow = true;
     scene.add(dach);
     // Deckel: oben ist das Dach zu. Wenn man selbst im Turm klettert, wird er ausgeblendet, damit man sieht, wohin man springt
