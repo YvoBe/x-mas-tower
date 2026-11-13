@@ -104,6 +104,15 @@
     padding-top: 4px;
   }
   #jump:active { transform: scale(0.94); }
+  #sprint {
+    position: fixed;
+    right: calc(max(16px, env(safe-area-inset-right, 0px)) + 118px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid var(--pad-edge); background: var(--panel); color: var(--ink);
+    font: 800 13px var(--font);
+  }
+  #sprint[aria-pressed="true"] { background: var(--rosa); color: #fff; }
 
   /* Figur-Knopf oben links */
   .links { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
@@ -211,6 +220,7 @@
     #figurKnopf { width: 44px; height: 44px; }
     #stick { width: 112px; height: 112px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
     #jump { width: 80px; height: 80px; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+    #sprint { width: 56px; height: 56px; right: calc(max(16px, env(safe-area-inset-right, 0px)) + 104px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
     .banner { font-size: 26px; }
     #codePanel { max-height: calc(100vh - 80px); overflow-y: auto; }
     .spalte h2 { font-size: 20px; padding-top: 10px; }
@@ -238,8 +248,8 @@
   </button>
   <div class="tag">
     <h1>Tower Parkour</h1>
-    <p class="keys-hint">WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera</p>
-    <p class="touch-hint">Joystick laufen · Knopf springen · Wischen dreht die Kamera</p>
+    <p class="keys-hint">WASD laufen · Shift sprinten · Leertaste springen · Maus ziehen dreht die Kamera</p>
+    <p class="touch-hint">Joystick laufen · RENN sprinten · Knopf springen · Wischen dreht die Kamera</p>
   </div>
   </div>
   <div class="rechts">
@@ -287,6 +297,7 @@
 </div>
 <div class="touch" id="stick"><div id="knob"></div></div>
 <button class="touch" id="jump" aria-label="Springen">SPRING</button>
+<button class="touch" id="sprint" aria-pressed="false" aria-label="Sprinten an oder aus">RENN</button>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
@@ -297,6 +308,7 @@
 
 // ---------- EINSTELLUNGEN (wie Variablen in Scratch) ----------
 const LAUF_TEMPO   = 6;    // wie schnell die Figur läuft
+const SPRINT_TEMPO = 9.5;  // so schnell beim Sprinten
 const SPRUNG_KRAFT = 9.5;  // wie hoch sie springt
 const SCHWERKRAFT  = 25;   // wie stark sie nach unten fällt
 
@@ -314,9 +326,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'igel'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -1349,12 +1361,48 @@ const haarTextur = (() => {
   return t;
 })();
 
+// Stoff-Muster: Strick, Jeans, Rippen, weicher Stoff (machen die Kleidung echter)
+const STOFF = {};
+function stoff(art, rx, ry) {
+  const key = `${art}-${rx}-${ry}`;
+  if (STOFF[key]) return STOFF[key];
+  if (!STOFF[art]) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), r = zufall(art.length * 31);
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 64, 64);
+    if (art === 'strick') {          // kleine V-Maschen
+      for (let x = 0; x < 64; x += 8) for (let y = 0; y < 64; y += 8) {
+        g.strokeStyle = 'rgba(150,150,150,0.55)'; g.lineWidth = 1.6;
+        g.beginPath(); g.moveTo(x + 0.5, y + 1); g.lineTo(x + 4, y + 7); g.lineTo(x + 7.5, y + 1); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x + 2, y + 1); g.lineTo(x + 4, y + 5); g.stroke();
+      }
+    } else if (art === 'jeans') {    // schräge Webstruktur mit hellen Fasern
+      for (let i = -64; i < 64; i += 3) { g.strokeStyle = `rgba(120,120,135,${0.25 + r() * 0.25})`; g.lineWidth = 1.2; g.beginPath(); g.moveTo(i, 64); g.lineTo(i + 64, 0); g.stroke(); }
+      for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(255,255,255,${0.4 + r() * 0.5})`; g.fillRect(r() * 64, r() * 64, 1 + r() * 3, 1); }
+    } else if (art === 'rippe') {    // senkrechte Rippen (Bündchen)
+      for (let x = 0; x < 64; x += 6) { g.fillStyle = 'rgba(140,140,140,0.5)'; g.fillRect(x, 0, 2, 64); }
+    } else {                         // weicher Stoff (Jogginghose, T-Shirt)
+      for (let i = 0; i < 500; i++) { const h = 200 + Math.floor(r() * 55); g.fillStyle = `rgb(${h},${h},${h})`; g.fillRect(r() * 64, r() * 64, 1, 1); }
+    }
+    STOFF[art] = c;
+  }
+  const t = new THREE.CanvasTexture(STOFF[art]);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+  STOFF[key] = t;
+  return t;
+}
+
 function baueFigur(look, ziel = scene) {
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
   const figur = new THREE.Group();
+  const junge = look.figurTyp === 'junge';
 
   const hoseTyp = look.hoseTyp || 'jeans';
+  const hosenStoff = hoseTyp === 'jeans' ? 'jeans' : 'weich';
+  const hoseM = (rx, ry) => ({ map: stoff(hosenStoff, rx, ry) });
+  const naht = '#c9a25a';   // goldene Jeans-Naht
   const oberteilTyp = look.oberteilTyp || 'pulli';
 
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
@@ -1365,19 +1413,21 @@ function baueFigur(look, ziel = scene) {
     knie.position.y = -0.42;
     gelenk.add(knie);
     if (hoseTyp === 'jeans') {          // weite Jeans mit Umschlag
-      const o = teil(new THREE.CylinderGeometry(0.15, 0.16, 0.44, 18), look.hose); o.position.y = -0.21;
-      const u = teil(new THREE.CylinderGeometry(0.16, 0.175, 0.36, 18), look.hose); u.position.y = -0.17;
-      const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag); umschlag.position.y = -0.28;
-      gelenk.add(o); knie.add(u, umschlag);
+      const o = teil(new THREE.CylinderGeometry(0.15, 0.16, 0.44, 18), look.hose, hoseM(10, 4)); o.position.y = -0.21;
+      const u = teil(new THREE.CylinderGeometry(0.16, 0.175, 0.36, 18), look.hose, hoseM(10, 3)); u.position.y = -0.17;
+      const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag, hoseM(10, 1)); umschlag.position.y = -0.28;
+      const n1 = teil(new THREE.BoxGeometry(0.012, 0.44, 0.012), naht); n1.position.set(seite * 0.155, -0.21, 0);
+      const n2 = teil(new THREE.BoxGeometry(0.012, 0.26, 0.012), naht); n2.position.set(seite * 0.168, -0.1, 0);
+      gelenk.add(o, n1); knie.add(u, umschlag, n2);
     } else if (hoseTyp === 'jogging') { // Jogginghose: schmal, Bündchen am Knöchel, Streifen an der Seite
-      const o = teil(new THREE.CylinderGeometry(0.15, 0.145, 0.44, 18), look.hose); o.position.y = -0.21;
-      const u = teil(new THREE.CylinderGeometry(0.145, 0.12, 0.34, 18), look.hose); u.position.y = -0.16;
-      const bund = teil(new THREE.CylinderGeometry(0.125, 0.125, 0.07, 18), look.umschlag); bund.position.y = -0.33;
+      const o = teil(new THREE.CylinderGeometry(0.15, 0.145, 0.44, 18), look.hose, hoseM(10, 4)); o.position.y = -0.21;
+      const u = teil(new THREE.CylinderGeometry(0.145, 0.12, 0.34, 18), look.hose, hoseM(10, 3)); u.position.y = -0.16;
+      const bund = teil(new THREE.CylinderGeometry(0.125, 0.125, 0.07, 18), look.umschlag, { map: stoff('rippe', 12, 1) }); bund.position.y = -0.33;
       const s1 = teil(new THREE.BoxGeometry(0.02, 0.44, 0.05), look.umschlag); s1.position.set(seite * 0.15, -0.21, 0);
       const s2 = teil(new THREE.BoxGeometry(0.02, 0.32, 0.05), look.umschlag); s2.position.set(seite * 0.135, -0.16, 0);
       gelenk.add(o, s1); knie.add(u, bund, s2);
     } else {                             // kurze Hose, darunter Beine
-      const o = teil(new THREE.CylinderGeometry(0.155, 0.17, 0.26, 18), look.hose); o.position.y = -0.12;
+      const o = teil(new THREE.CylinderGeometry(0.155, 0.17, 0.26, 18), look.hose, hoseM(10, 2)); o.position.y = -0.12;
       const saum = teil(new THREE.CylinderGeometry(0.175, 0.175, 0.04, 18), look.umschlag); saum.position.y = -0.25;
       const haut1 = teil(new THREE.CylinderGeometry(0.1, 0.095, 0.22, 14), look.haut); haut1.position.y = -0.33;
       const haut2 = teil(new THREE.CylinderGeometry(0.095, 0.08, 0.36, 14), look.haut); haut2.position.y = -0.17;
@@ -1386,7 +1436,14 @@ function baueFigur(look, ziel = scene) {
     }
     const schuh = teil(rundKlotz(0.26, 0.11, 0.38, 0.05), look.schuhe);
     schuh.position.set(0, -0.36, 0.06);
-    knie.add(schuh);
+    const sohle = teil(rundKlotz(0.275, 0.04, 0.395, 0.018), look.schuhe === '#f5f3ee' ? '#d9d4cb' : '#f5f3ee');
+    sohle.position.set(0, -0.415, 0.06);
+    knie.add(schuh, sohle);
+    for (let k = 0; k < 3; k++) {   // Schnürsenkel
+      const band = teil(new THREE.BoxGeometry(0.1, 0.012, 0.018), look.schuhe === '#f5f3ee' ? '#e7a3b7' : '#f5f3ee');
+      band.position.set(0, -0.3, 0.12 + k * 0.045); band.rotation.x = -0.35;
+      knie.add(band);
+    }
     figur.add(gelenk);
     return { gelenk, knie };
   };
@@ -1400,25 +1457,39 @@ function baueFigur(look, ziel = scene) {
   }
 
   // Hüfte
-  const huefte = teil(prisma(0.6, 0.24, 0.34, 0.1), look.hose);
+  const huefte = teil(prisma(junge ? 0.58 : 0.6, 0.24, 0.34, 0.1), look.hose, hoseM(14, 14));
   huefte.position.y = 0.87;
   figur.add(huefte);
+  if (hoseTyp === 'jogging') {     // Kordel vorne
+    for (const sx of [-1, 1]) {
+      const kordel = teil(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), '#f5f3ee');
+      kordel.position.set(sx * 0.025, 0.86, 0.178); kordel.rotation.z = sx * 0.12;
+      figur.add(kordel);
+    }
+  } else {                          // Taschen hinten mit Naht
+    for (const sx of [-1, 1]) {
+      const tasche = teil(new THREE.BoxGeometry(0.13, 0.12, 0.01), look.hose, hoseM(2, 2)); tasche.position.set(sx * 0.13, 0.85, -0.176);
+      const tn = teil(new THREE.BoxGeometry(0.135, 0.008, 0.012), naht); tn.position.set(sx * 0.13, 0.91, -0.178);
+      figur.add(tasche, tn);
+    }
+  }
 
   // Oberkörper: Pulli, Top oder Jacke mit T-Shirt
   const koerper = new THREE.Group();
   koerper.position.y = 1.29;
   if (oberteilTyp === 'pulli') {         // Ringelpulli mit dunklem Kragen und Bund
-    const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli);
+    const strick = { map: stoff('strick', 9, 9) };
+    const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli, strick);
     pulli.position.y = -0.07;
     koerper.add(pulli);
     for (const y of [0.2, 0.08, -0.04, -0.16, -0.28]) {
-      const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen);
+      const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen, strick);
       streifen.position.y = y;
       koerper.add(streifen);
     }
-    const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen);
+    const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen, { map: stoff('rippe', 14, 1) });
     bund.position.y = -0.42;
-    const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen);
+    const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen, { map: stoff('rippe', 1, 12) });
     kragen.rotation.x = Math.PI / 2;
     kragen.position.y = 0.3;
     koerper.add(bund, kragen);
@@ -1434,9 +1505,12 @@ function baueFigur(look, ziel = scene) {
       const traeger = teil(new THREE.BoxGeometry(0.06, 0.22, 0.34), look.pulli);
       traeger.position.set(seite * 0.17, 0.22, 0);
       koerper.add(traeger);
+      const schleife = teil(new THREE.ConeGeometry(0.03, 0.06, 8), look.streifen);   // kleine Schleife vorne
+      schleife.rotation.z = seite * Math.PI / 2; schleife.position.set(seite * 0.03, 0.1, 0.185);
+      koerper.add(schleife);
     }
   } else {                               // T-Shirt mit offener Jacke drüber
-    const shirt = teil(prisma(0.62, 0.74, 0.34, 0.11), look.pulli);
+    const shirt = teil(prisma(0.62, 0.74, 0.34, 0.11), look.pulli, { map: stoff('weich', 8, 8) });
     shirt.position.y = -0.07;
     koerper.add(shirt);
     const j = (b, h, t, x, y, z) => { const m = teil(new THREE.BoxGeometry(b, h, t), look.jacke); m.position.set(x, y, z); koerper.add(m); return m; };
@@ -1455,6 +1529,11 @@ function baueFigur(look, ziel = scene) {
       z.position.set(x * 1.05, -0.08, 0.21);
       koerper.add(z);
     }
+    const zipper = teil(new THREE.BoxGeometry(0.025, 0.05, 0.012), '#c9c9c9', { metalness: 0.7, roughness: 0.3 });
+    zipper.position.set(0.137, -0.05, 0.225);
+    const kapuze = teil(new THREE.TorusGeometry(0.17, 0.06, 10, 20, Math.PI), look.jacke);   // Kapuze hinten
+    kapuze.rotation.set(-0.5, 0, Math.PI); kapuze.position.set(0, 0.3, -0.16);
+    koerper.add(zipper, kapuze);
   }
   figur.add(koerper);
 
@@ -1473,7 +1552,7 @@ function baueFigur(look, ziel = scene) {
       gelenk.add(a);
     } else {
       const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
-      const aermel = teil(new THREE.CapsuleGeometry(0.1, 0.5, 8, 16), farbe);
+      const aermel = teil(new THREE.CapsuleGeometry(0.1, 0.5, 8, 16), farbe, { map: stoff(oberteilTyp === 'pulli' ? 'strick' : 'weich', 6, 6) });
       aermel.position.y = -0.3;
       gelenk.add(aermel);
       if (oberteilTyp === 'pulli') {
@@ -1483,7 +1562,7 @@ function baueFigur(look, ziel = scene) {
           gelenk.add(s);
         }
       }
-      const buendchen = teil(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 16), look.buendchen);
+      const buendchen = teil(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 16), look.buendchen, { map: stoff('rippe', 10, 1) });
       buendchen.position.y = -0.56;
       gelenk.add(buendchen);
     }
@@ -1500,8 +1579,13 @@ function baueFigur(look, ziel = scene) {
   const kopf = new THREE.Group();
   kopf.position.y = 1.92;
   const schaedel = teil(new THREE.SphereGeometry(0.25, 32, 24), look.haut);
-  schaedel.scale.set(0.95, 1.08, 0.98);
+  schaedel.scale.set(junge ? 0.97 : 0.95, 1.08, 0.98);
   kopf.add(schaedel);
+  // Ein weiches Kinn gibt dem Gesicht Form
+  const kinn = teil(new THREE.SphereGeometry(0.075, 16, 12), look.haut);
+  kinn.scale.set(junge ? 1.25 : 1.1, 0.8, 0.8); kinn.position.set(0, -0.185, 0.122);
+  kopf.add(kinn);
+
   const augen = look.augen || 'rund';
   const ag = augen === 'gross' ? 1.3 : 1;
   for (const seite of [-1, 1]) {
@@ -1516,10 +1600,19 @@ function baueFigur(look, ziel = scene) {
     pupille.position.set(seite * 0.085, 0.015, 0.247);
     const glanz = teil(new THREE.SphereGeometry(0.008 * ag, 8, 6), '#ffffff');
     glanz.position.set(seite * 0.085 + 0.01 * ag, 0.028, 0.252);
-    const braue = teil(rundKlotz(0.08, 0.018, 0.02, 0.008), look.haare);
-    braue.position.set(seite * 0.085, 0.085 + (ag - 1) * 0.06, 0.228);
-    braue.rotation.z = seite * -0.12;
-    const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: 0.45 }));
+    // Augenbraue als geschwungener Bogen (beim Jungen etwas dicker und gerader)
+    const braue = teil(new THREE.TorusGeometry(0.075, junge ? 0.011 : 0.008, 6, 14, junge ? 0.9 : 1.15), look.haare);
+    braue.scale.set(1, junge ? 0.45 : 0.6, 0.5);
+    braue.rotation.z = Math.PI / 2 - (junge ? 0.45 : 0.575) + seite * -0.12;
+    braue.position.set(seite * 0.085, 0.085 + (ag - 1) * 0.06 - 0.045 * (junge ? 0.45 : 0.6), 0.226);
+    const ring = teil(new THREE.TorusGeometry(0.027 * ag, 0.0035, 6, 18), '#2a1d16');   // dunkler Rand um die Iris
+    ring.position.set(seite * 0.085, 0.015, 0.2455);
+    const falte = teil(new THREE.TorusGeometry(0.05 * ag, 0.0035, 6, 14, Math.PI * 0.8), '#c99a82');   // Lidfalte
+    falte.rotation.z = Math.PI * 0.1; falte.position.set(seite * 0.085, 0.03, 0.226);
+    const unterlid = teil(new THREE.TorusGeometry(0.043 * ag, 0.0035, 6, 14, Math.PI * 0.7), '#d4a58f');
+    unterlid.rotation.z = Math.PI + Math.PI * 0.15; unterlid.position.set(seite * 0.085, 0.02, 0.229);
+    kopf.add(ring, falte, unterlid);
+    const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: junge ? 0.2 : 0.45 }));
     backe.scale.set(1, 0.7, 0.3);
     backe.position.set(seite * 0.13, -0.06, 0.2);
     kopf.add(weiss, iris, pupille, glanz, braue, backe);
@@ -1538,7 +1631,7 @@ function baueFigur(look, ziel = scene) {
       }
     }
     if (augen === 'zu') {   // fröhlich zugekniffen: Bogen statt Augen
-      kopf.remove(weiss, iris, pupille, glanz);
+      kopf.remove(weiss, iris, pupille, glanz, ring, unterlid);
       const bogen = teil(new THREE.TorusGeometry(0.035, 0.009, 6, 14, Math.PI), '#1d2236');
       bogen.position.set(seite * 0.085, 0.01, 0.235);
       kopf.add(bogen);
@@ -1563,12 +1656,28 @@ function baueFigur(look, ziel = scene) {
     loch.position.set(seite * 0.012, -0.055, 0.258);
     kopf.add(loch);
   }
+  // Sommersprossen
+  if (look.sommersprossen) {
+    const r = zufall(17);
+    for (let i = 0; i < 22; i++) {
+      const seite = i % 2 ? 1 : -1, x = seite * (0.05 + r() * 0.1), y = -0.02 - r() * 0.06;
+      const punkt = teil(new THREE.CircleGeometry(0.0035 + r() * 0.0025, 6), '#b98266');
+      punkt.position.set(x, y, Math.sqrt(Math.max(0, 0.06 - x * x)) * 0.98 + 0.016);
+      punkt.lookAt(punkt.position.clone().multiplyScalar(3));
+      kopf.add(punkt);
+    }
+  }
   // Mund mit Lippen
-  const lippe = '#c9606f';
+  const lippe = junge ? '#c98078' : '#c9606f';
   const mundArt = look.mund || 'laecheln';
   if (mundArt === 'laecheln' || mundArt === 'frech') {
     const oben = teil(new THREE.TorusGeometry(0.045, 0.011, 8, 18, Math.PI), lippe);
     oben.position.set(0, -0.098, 0.226); oben.rotation.z = Math.PI; oben.scale.set(1, 0.55, 1);
+    for (const sx of [-1, 1]) {   // Amorbogen: zwei kleine Wölbungen der Oberlippe
+      const bogen = teil(new THREE.SphereGeometry(0.01, 10, 8), lippe);
+      bogen.scale.set(1.3, 0.55, 0.5); bogen.position.set(sx * 0.012, -0.093, 0.233);
+      kopf.add(bogen);
+    }
     const unten = teil(new THREE.SphereGeometry(0.03, 14, 10), lippe);
     unten.scale.set(1.15, 0.42, 0.55); unten.position.set(0, -0.128, 0.226);
     kopf.add(oben, unten);
@@ -1602,31 +1711,69 @@ function baueFigur(look, ziel = scene) {
   const haarMat = { roughness: 0.75, map: haarTextur };
   const frisur = look.frisur || 'lang';
   const H = (geo) => teil(geo, look.haare, haarMat);
+  const kurzHaar = frisur === 'junge' || frisur === 'igel';
   if (frisur === 'locken') {
-    // Viele kleine Locken als ein Bauteil (schnell genug fürs Handy)
+    // Weiche, echte Locken: Haube oben und viele gedrehte Korkenzieher-Strähnen, die bis zu den Schultern fallen
     const r = zufall(7);
-    const punkte = [];
-    for (let i = 0; i < 70; i++) {        // auf dem Kopf
-      const th = r() * Math.PI * 0.55, ph = r() * Math.PI * 2;
-      const x = Math.sin(th) * Math.sin(ph), y = Math.cos(th), z = Math.sin(th) * Math.cos(ph);
-      if (z > 0.55 && y < 0.75) continue;  // Stirn und Gesicht frei lassen
-      punkte.push([x * 0.27, y * 0.29 + 0.01, z * 0.27]);
+    const haube = H(new THREE.SphereGeometry(0.275, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.42));
+    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.28;   // Stirn bleibt frei
+    const hinten = H(new THREE.SphereGeometry(0.272, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.82));
+    hinten.scale.set(1.05, 1.08, 1.06);
+    kopf.add(haube, hinten);
+    // Lockere Wellen vorne am Scheitel
+    for (const seite of [-1, 1]) {
+      const welle = H(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2));
+      welle.scale.set(1.05, 0.55, 1.08); welle.position.set(seite * 0.11, 0.17, 0.08); welle.rotation.z = seite * -0.45;
+      kopf.add(welle);
     }
-    for (let i = 0; i < 90; i++) {        // nach unten bis zu den Schultern
-      const ph = (r() - 0.5) * Math.PI * 1.55 + Math.PI;
-      const y = 0.05 - r() * 0.48;
-      const rr = 0.25 + r() * 0.05 + (0.05 - y) * 0.12;
-      punkte.push([Math.sin(ph) * rr, y, Math.cos(ph) * rr * 0.95]);
+    // Eine Locke: ein Schlauch, der sich wie eine Feder nach unten dreht
+    const locke = (laenge, weite, dicke, windungen, phase) => {
+      const punkte = [];
+      for (let i = 0; i <= 40; i++) {
+        const t = i / 40, w = phase + t * windungen * Math.PI * 2, rr = weite * (0.6 + t * 0.6);
+        punkte.push(new THREE.Vector3(Math.cos(w) * rr, -t * laenge, Math.sin(w) * rr));
+      }
+      return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 48, dicke, 6, false);
+    };
+    const lockenGeos = [locke(0.62, 0.035, 0.034, 3, 0), locke(0.52, 0.03, 0.032, 2.6, 1.3), locke(0.7, 0.038, 0.035, 3.3, 2.1)];
+    const anzahl = 22;
+    for (let k = 0; k < anzahl; k++) {
+      const a = -2.2 + (k / (anzahl - 1)) * 4.4;            // von der einen Gesichtsseite hinten herum zur anderen
+      const vorne = Math.abs(a) > 1.75;
+      const s = H(lockenGeos[k % 3]);
+      const rr = 0.24 + r() * 0.02;
+      s.position.set(Math.sin(a) * rr, vorne ? 0.02 : 0.05 + r() * 0.04, -Math.cos(a) * rr * 0.95 + (vorne ? 0.03 : 0));
+      s.rotation.set((r() - 0.5) * 0.15 + (vorne ? 0 : 0.1), r() * 6.3, Math.sin(a) * 0.1);
+      s.scale.y = vorne ? 0.75 : 1;
+      kopf.add(s);
     }
-    const locken = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), mat(look.haare, haarMat), punkte.length);
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
-    punkte.forEach(([x, y, z], i) => {
-      const g = 0.06 + r() * 0.035;
-      m.compose(pos.set(x, y, z), q, sc.set(g, g, g));
-      locken.setMatrixAt(i, m);
-    });
-    locken.castShadow = true;
-    kopf.add(locken);
+  } else if (kurzHaar) {
+    // Kurze Jungen-Frisur: eng anliegende Haube, hinten bis zum Nacken
+    const oben = H(new THREE.SphereGeometry(0.265, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.45));
+    oben.scale.set(1.0, 1.08, 1.02); oben.rotation.x = -0.12;
+    const hinten = H(new THREE.SphereGeometry(0.262, 28, 16, Math.PI * 0.8, Math.PI * 1.4, 0, Math.PI * 0.72));
+    hinten.scale.set(1.0, 1.06, 1.03);
+    kopf.add(oben, hinten);
+    for (const seite of [-1, 1]) {   // kurze Koteletten
+      const kot = H(new THREE.BoxGeometry(0.03, 0.08, 0.05));
+      kot.position.set(seite * 0.235, 0.04, 0.07);
+      kopf.add(kot);
+    }
+    if (frisur === 'junge') {         // Pony zur Seite gekämmt
+      const pony = H(new THREE.SphereGeometry(0.17, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2));
+      pony.scale.set(1.25, 0.42, 0.75); pony.position.set(-0.02, 0.165, 0.12); pony.rotation.set(0.35, 0, 0.18);
+      kopf.add(pony);
+    } else {                          // Stachelig: viele kleine Spitzen nach oben
+      const r = zufall(5);
+      for (let k = 0; k < 26; k++) {
+        const th = r() * Math.PI * 0.32, ph = r() * Math.PI * 2;
+        const dir = new THREE.Vector3(Math.sin(th) * Math.sin(ph), Math.cos(th), Math.sin(th) * Math.cos(ph) * 0.9 + 0.08).normalize();
+        const spitze = H(new THREE.ConeGeometry(0.05, 0.13 + r() * 0.05, 7));
+        spitze.position.copy(dir).multiplyScalar(0.27);
+        spitze.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        kopf.add(spitze);
+      }
+    }
   } else {
     const oben = H(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47));
     oben.scale.set(1.0, 1.1, 1.02);
@@ -1677,7 +1824,7 @@ function baueFigur(look, ziel = scene) {
     mitte.position.set(0, 0.3, -0.1);
     kopf.add(dutt, mitte);
   }
-  if (frisur !== 'locken') {
+  if (frisur !== 'locken' && !kurzHaar) {
     for (const seite of [-1, 1]) {
       // Strähnen links und rechts vom Gesicht
       const lg = frisur === 'lang' ? 0.7 : frisur === 'kurz' ? 0.36 : 0.26;
@@ -1744,6 +1891,10 @@ stick.addEventListener('pointerup', stickLos);
 stick.addEventListener('pointercancel', stickLos);
 
 document.getElementById('jump').addEventListener('pointerdown', (e) => { e.preventDefault(); spieler.sprungPuffer = 0.15; });
+// Sprint-Knopf: einmal tippen = an, nochmal tippen = aus
+const sprintKnopf = document.getElementById('sprint');
+let sprintAn = false;
+sprintKnopf.addEventListener('pointerdown', (e) => { e.preventDefault(); sprintAn = !sprintAn; sprintKnopf.setAttribute('aria-pressed', String(sprintAn)); });
 
 // ---------- Kamera drehen (Maus ziehen / wischen) ----------
 const kam = { yaw: Math.PI, pitch: 0.35, abstand: 7.5, id: null, lx: 0, ly: 0 };
@@ -1840,8 +1991,9 @@ function update(dt) {
   if (s.feiert) { ix = iy = 0; }
   const vorX = -Math.sin(kam.yaw), vorZ = -Math.cos(kam.yaw);
   const rechtsX = Math.cos(kam.yaw), rechtsZ = -Math.sin(kam.yaw);
-  s.vel.x = (rechtsX * ix + vorX * iy) * LAUF_TEMPO;
-  s.vel.z = (rechtsZ * ix + vorZ * iy) * LAUF_TEMPO;
+  const tempoJetzt = sprintAn || tasten.ShiftLeft || tasten.ShiftRight ? SPRINT_TEMPO : LAUF_TEMPO;
+  s.vel.x = (rechtsX * ix + vorX * iy) * tempoJetzt;
+  s.vel.z = (rechtsZ * ix + vorZ * iy) * tempoJetzt;
 
   // 2) Springen und Schwerkraft
   s.coyote -= dt; s.sprungPuffer -= dt;
@@ -2017,11 +2169,13 @@ function editorFigurNeu() {
 
 // Auswahl-Spalte rechts
 const AUSWAHL = [
+  { titel: 'Figur', key: 'figurTyp', worte: [['maedchen', 'Mädchen'], ['junge', 'Junge']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
   { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['gross', 'Groß'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
+  { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
-  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz']] },
+  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz mit Pony'], ['igel', 'Stachelig']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
@@ -2067,6 +2221,9 @@ function spalteZeichnen() {
       if (w === aktuell) knopf.classList.add('an');
       knopf.addEventListener('click', () => {
         AUSSEHEN[gruppe.key] = w;
+        // Beim Wechsel Mädchen/Junge passende Frisur vorschlagen
+        if (gruppe.key === 'figurTyp' && w === 'junge' && ['lang', 'zopf', 'dutt'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'junge';
+        if (gruppe.key === 'figurTyp' && w === 'maedchen' && ['junge', 'igel'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'lang';
         try { localStorage.setItem('turmparkour-figur', JSON.stringify(AUSSEHEN)); } catch (e) {}
         editorFigurNeu();
         spalteZeichnen();
@@ -2150,7 +2307,7 @@ function sichererLook(l) {
   for (const k of Object.keys(STANDARD_AUSSEHEN)) {
     const v = l[k];
     if (WAHL_WORTE[k]) { if (WAHL_WORTE[k].includes(v)) out[k] = v; }
-    else if (k === 'sternAn') { if (typeof v === 'boolean') out.sternAn = v; }
+    else if (k === 'sternAn' || k === 'sommersprossen') { if (typeof v === 'boolean') out[k] = v; }
     else if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) out[k] = v;
   }
   return out;
