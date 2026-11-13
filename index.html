@@ -118,7 +118,14 @@
     display: grid; place-items: center;
     cursor: pointer;
   }
-  #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  #weltKnopf {
+    pointer-events: auto; flex: none;
+    width: 52px; height: 52px; border-radius: 16px;
+    border: 3px solid var(--rosa); background: var(--panel);
+    font-size: 26px; cursor: pointer; display: grid; place-items: center;
+  }
+  @media (max-height: 520px) { #weltKnopf { width: 44px; height: 44px; font-size: 22px; } }
+  #weltKnopf:focus-visible, #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   body.editor-offen .hud, body.editor-offen .touch, body.editor-offen .banner { display: none !important; }
 
   /* Mitspielen */
@@ -232,6 +239,7 @@
   <button type="button" id="figurKnopf" aria-label="Figur ändern">
     <svg width="28" height="30" viewBox="0 0 28 30" aria-hidden="true"><circle cx="14" cy="7" r="6" fill="currentColor"/><path d="M4 29v-9a10 10 0 0 1 20 0v9z" fill="#e7a3b7" stroke="currentColor" stroke-width="2"/><path d="M8 19h12M7 23h14" stroke="currentColor" stroke-width="2"/></svg>
   </button>
+  <button type="button" id="weltKnopf" aria-label="Welt wechseln: Adventskalender oder Dreh-Turm">🌀</button>
   <div class="tag">
     <h1>Tower Parkour</h1>
     <p class="keys-hint">WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera</p>
@@ -308,7 +316,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { frisur: ['lang', 'zopf', 'dutt', 'kurz'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -537,7 +545,7 @@ klotz(statisch, scene, 0, 0, 0, 1200, 1200, FARBEN.schnee, { dicke: 1 });
 // ---------- Jeder Turm hat ein eigenes Thema ----------
 const THEMEN = ['baum', 'schneemann', 'geschenke', 'lebkuchen', 'schlitten', 'kugeln'];
 const THEMA_BODEN = { baum: FARBEN.holz, schneemann: 0xe3edf5, geschenke: 0xead1d8, lebkuchen: 0xc89b6d, schlitten: 0xd6c7b0, kugeln: 0x48537a };
-const themaVon = (T) => (T.spezial ? 'baum' : THEMEN[(T.nr - 1) % THEMEN.length]);
+const themaVon = (T) => (T.spezial || T.normal ? 'baum' : THEMEN[(T.nr - 1) % THEMEN.length]);
 
 // Fester Zufall: gleiche Zahl rein, gleiche Würfe raus
 function zufall(seed) {
@@ -765,7 +773,7 @@ function nummerTextur(nr, fertig) {
   g.fillStyle = '#1f2a4a';
   g.font = '800 140px "Baloo 2", "Trebuchet MS", sans-serif';
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(String(nr), 128, 142);
+  g.fillText(nr === 25 ? '★' : String(nr), 128, 142);
   if (fertig) { g.font = '800 54px sans-serif'; g.fillText('✓', 196, 60); }
   return new THREE.CanvasTexture(c);
 }
@@ -799,6 +807,10 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
   baueHuelle(T);
   TUERME.push(T);
 }));
+// Die andere Seite: ein normaler Turm, den man immer spielen kann, mit drehenden Plattformen
+const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: 0, cz: -215, innen: 10, hoehe: 56, gruppe: null, platten: [] };
+baueHuelle(DREH_TURM);
+TUERME.push(DREH_TURM);
 
 function baueHuelle(T) {
   const { cx, cz, innen, hoehe, spezial } = T;
@@ -862,8 +874,8 @@ function baueInnen(T) {
   const g = new THREE.Group();
   const platten = [];
   const o = innen - 2, L = 8 * o;
-  const schritt = spezial ? 4.5 : 4.2 + nr * 0.02;
-  const groesse = spezial ? 2.6 : Math.max(2.4, 3 - nr * 0.025);
+  const schritt = T.normal ? 4.3 : spezial ? 4.5 : 4.2 + nr * 0.02;
+  const groesse = T.normal ? 2.8 : spezial ? 2.6 : Math.max(2.4, 3 - nr * 0.025);
   const reihe = spezial ? [FARBEN.gold, FARBEN.weiss, FARBEN.rot, FARBEN.weiss] : [FARBEN.weiss, FARBEN.oliv, FARBEN.rosa, FARBEN.navy];
   // Punkt auf dem Weg rundherum an den Wänden: links nach hinten, hinten nach rechts, rechts nach vorne, vorne nach links
   const weg = (s) => {
@@ -883,7 +895,10 @@ function baueInnen(T) {
     const cp = (i + 1) % 6 === 0;
     const farbe = cp ? FARBEN.gold : reihe[i % reihe.length];
     let art = 'eckig';
-    if (!cp && i > 0) {
+    if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
+      const w = rnd();
+      art = w < 0.7 ? 'dreh' : w < 0.85 ? 'rund' : 'hoch';
+    } else if (!cp && i > 0) {
       if (!vorherBesonders && rnd() < anteil) {
         const w = rnd();
         art = w < 0.3 ? 'dreh' : w < 0.6 ? 'hoch' : w < 0.85 ? 'schieben' : 'klein';
@@ -993,7 +1008,9 @@ zuckerstange(7, PLATZ.z - 12, 0);
 let gepflanzt = 0;
 while (gepflanzt < 80) {
   const winkel = Math.random() * Math.PI * 2, abstand = 140 + Math.random() * 110;
-  tanne(scene, Math.cos(winkel) * abstand, Math.sin(winkel) * abstand, 0.8 + Math.random() * 1.1);
+  const x = Math.cos(winkel) * abstand, z = Math.sin(winkel) * abstand;
+  if (Math.hypot(x - DREH_TURM.cx, z - DREH_TURM.cz) < 30) continue;   // Platz um den Dreh-Turm
+  tanne(scene, x, z, 0.8 + Math.random() * 1.1);
   gepflanzt++;
 }
 
@@ -1112,6 +1129,26 @@ function sternForm(aussen, innen) {
   }
   return new THREE.ExtrudeGeometry(f, { depth: 0.015, bevelEnabled: false });
 }
+
+// Feine Haar-Strähnen als Muster (macht die Haare echter)
+const haarTextur = (() => {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 128, 256);
+  const r = zufall(3);
+  for (let i = 0; i < 220; i++) {
+    const x = r() * 128, hell = 150 + Math.floor(r() * 105);
+    g.strokeStyle = `rgba(${hell},${hell},${hell},${0.35 + r() * 0.5})`;
+    g.lineWidth = 0.6 + r() * 1.6;
+    g.beginPath(); g.moveTo(x, 0);
+    g.bezierCurveTo(x + (r() - 0.5) * 10, 85, x + (r() - 0.5) * 10, 170, x + (r() - 0.5) * 6, 256);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 1);
+  return t;
+})();
 
 function baueFigur(look, ziel = scene) {
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
@@ -1287,6 +1324,12 @@ function baueFigur(look, ziel = scene) {
     backe.scale.set(1, 0.7, 0.3);
     backe.position.set(seite * 0.13, -0.06, 0.2);
     kopf.add(weiss, iris, pupille, glanz, braue, backe);
+    if (augen !== 'zu') {   // Augenlid als feine Linie
+      const lid = teil(new THREE.TorusGeometry(0.046 * ag, 0.006, 6, 16, Math.PI), '#6b4a3a');
+      lid.scale.set(1, 1.05, 1);
+      lid.position.set(seite * 0.085, 0.022, 0.229);
+      kopf.add(lid);
+    }
     if (augen === 'wimpern') {
       for (let k = -1; k <= 1; k++) {
         const w = teil(new THREE.BoxGeometry(0.008, 0.035, 0.008), '#1d2236');
@@ -1302,70 +1345,150 @@ function baueFigur(look, ziel = scene) {
       kopf.add(bogen);
     }
   }
-  const nase = teil(new THREE.SphereGeometry(0.026, 12, 10), '#e8b994');
-  nase.position.set(0, -0.035, 0.245);
-  kopf.add(nase);
+  // Ohren
+  for (const seite of [-1, 1]) {
+    const ohr = teil(new THREE.SphereGeometry(0.05, 14, 10), look.haut);
+    ohr.scale.set(0.45, 1, 0.75);
+    ohr.position.set(seite * 0.238, 0.0, 0.0);
+    kopf.add(ohr);
+  }
+  // Nase: Nasenrücken und Nasenspitze
+  const nasenRuecken = teil(new THREE.CapsuleGeometry(0.016, 0.06, 6, 10), look.haut);
+  nasenRuecken.position.set(0, -0.005, 0.24); nasenRuecken.rotation.x = 0.35;
+  const nase = teil(new THREE.SphereGeometry(0.027, 14, 10), look.haut);
+  nase.scale.set(1.15, 0.85, 0.9);
+  nase.position.set(0, -0.042, 0.248);
+  kopf.add(nasenRuecken, nase);
+  for (const seite of [-1, 1]) {
+    const loch = teil(new THREE.SphereGeometry(0.007, 8, 6), '#8a5a48');
+    loch.position.set(seite * 0.012, -0.055, 0.258);
+    kopf.add(loch);
+  }
+  // Mund mit Lippen
+  const lippe = '#c9606f';
   const mundArt = look.mund || 'laecheln';
-  if (mundArt === 'laecheln') {
-    const mund = teil(new THREE.TorusGeometry(0.05, 0.012, 6, 16, Math.PI), '#b4475f');
-    mund.position.set(0, -0.1, 0.224); mund.rotation.z = Math.PI;
-    kopf.add(mund);
+  if (mundArt === 'laecheln' || mundArt === 'frech') {
+    const oben = teil(new THREE.TorusGeometry(0.045, 0.011, 8, 18, Math.PI), lippe);
+    oben.position.set(0, -0.098, 0.226); oben.rotation.z = Math.PI; oben.scale.set(1, 0.55, 1);
+    const unten = teil(new THREE.SphereGeometry(0.03, 14, 10), lippe);
+    unten.scale.set(1.15, 0.42, 0.55); unten.position.set(0, -0.128, 0.226);
+    kopf.add(oben, unten);
+    for (const seite of [-1, 1]) {   // Grübchen in den Mundwinkeln
+      const w = teil(new THREE.SphereGeometry(0.008, 8, 6), '#b4475f');
+      w.position.set(seite * 0.046, -0.1, 0.222);
+      kopf.add(w);
+    }
+    if (mundArt === 'frech') {
+      const zunge = teil(new THREE.SphereGeometry(0.024, 12, 10), '#e0707f');
+      zunge.scale.set(1, 1.25, 0.5); zunge.position.set(0.012, -0.145, 0.232);
+      kopf.add(zunge);
+    }
   } else if (mundArt === 'grinsen') {
-    const mund = teil(new THREE.SphereGeometry(0.06, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#7a2236');
-    mund.scale.set(1.1, 0.8, 0.35); mund.position.set(0, -0.085, 0.222);
-    const zaehne = teil(new THREE.BoxGeometry(0.09, 0.018, 0.01), '#ffffff');
-    zaehne.position.set(0, -0.093, 0.243);
-    kopf.add(mund, zaehne);
-  } else if (mundArt === 'staunen') {
-    const mund = teil(new THREE.TorusGeometry(0.025, 0.012, 8, 18), '#b4475f');
-    mund.position.set(0, -0.11, 0.226);
-    kopf.add(mund);
-  } else {   // frech: Zunge raus
-    const mund = teil(new THREE.TorusGeometry(0.045, 0.011, 6, 16, Math.PI), '#b4475f');
-    mund.position.set(0, -0.1, 0.224); mund.rotation.z = Math.PI;
-    const zunge = teil(new THREE.SphereGeometry(0.025, 12, 10), '#e0707f');
-    zunge.scale.set(1, 1.2, 0.5); zunge.position.set(0.015, -0.14, 0.228);
-    kopf.add(mund, zunge);
+    const innen = teil(new THREE.SphereGeometry(0.058, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#6e1f30');
+    innen.scale.set(1.1, 0.75, 0.35); innen.position.set(0, -0.09, 0.224);
+    const zaehne = teil(new THREE.BoxGeometry(0.085, 0.017, 0.01), '#ffffff');
+    zaehne.position.set(0, -0.097, 0.244);
+    const oben = teil(new THREE.TorusGeometry(0.062, 0.009, 8, 20, Math.PI), lippe);
+    oben.position.set(0, -0.09, 0.228); oben.rotation.z = Math.PI; oben.scale.set(1.05, 0.75, 1);
+    kopf.add(innen, zaehne, oben);
+  } else {   // staunen
+    const mund = teil(new THREE.TorusGeometry(0.024, 0.012, 10, 20), lippe);
+    mund.scale.set(1, 1.25, 1); mund.position.set(0, -0.112, 0.228);
+    const innen = teil(new THREE.CircleGeometry(0.022, 16), '#6e1f30');
+    innen.position.set(0, -0.112, 0.226); innen.scale.set(1, 1.25, 1);
+    kopf.add(mund, innen);
   }
 
-  // Lange, offene braune Haare mit Mittelscheitel
-  const haarMat = { roughness: 0.85 };
-  const oben = teil(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47), look.haare, haarMat);
-  oben.scale.set(1.0, 1.1, 1.02);
-  oben.rotation.x = -0.1;
-  const hinten = teil(new THREE.SphereGeometry(0.268, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.8), look.haare, haarMat);
-  hinten.scale.set(1.0, 1.08, 1.04);
-  kopf.add(oben, hinten);
+  // Haare mit feinen Strähnen
+  const haarMat = { roughness: 0.75, map: haarTextur };
   const frisur = look.frisur || 'lang';
+  const H = (geo) => teil(geo, look.haare, haarMat);
+  if (frisur === 'locken') {
+    // Viele kleine Locken als ein Bauteil (schnell genug fürs Handy)
+    const r = zufall(7);
+    const punkte = [];
+    for (let i = 0; i < 70; i++) {        // auf dem Kopf
+      const th = r() * Math.PI * 0.55, ph = r() * Math.PI * 2;
+      const x = Math.sin(th) * Math.sin(ph), y = Math.cos(th), z = Math.sin(th) * Math.cos(ph);
+      if (z > 0.55 && y < 0.75) continue;  // Stirn und Gesicht frei lassen
+      punkte.push([x * 0.27, y * 0.29 + 0.01, z * 0.27]);
+    }
+    for (let i = 0; i < 90; i++) {        // nach unten bis zu den Schultern
+      const ph = (r() - 0.5) * Math.PI * 1.55 + Math.PI;
+      const y = 0.05 - r() * 0.48;
+      const rr = 0.25 + r() * 0.05 + (0.05 - y) * 0.12;
+      punkte.push([Math.sin(ph) * rr, y, Math.cos(ph) * rr * 0.95]);
+    }
+    const locken = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), mat(look.haare, haarMat), punkte.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+    punkte.forEach(([x, y, z], i) => {
+      const g = 0.06 + r() * 0.035;
+      m.compose(pos.set(x, y, z), q, sc.set(g, g, g));
+      locken.setMatrixAt(i, m);
+    });
+    locken.castShadow = true;
+    kopf.add(locken);
+  } else {
+    const oben = H(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47));
+    oben.scale.set(1.0, 1.1, 1.02);
+    oben.rotation.x = -0.1;
+    const hinten = H(new THREE.SphereGeometry(0.268, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.8));
+    hinten.scale.set(1.0, 1.08, 1.04);
+    kopf.add(oben, hinten);
+    // Mittelscheitel mit zwei Haarwellen vorne
+    for (const seite of [-1, 1]) {
+      const welle = H(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2));
+      welle.scale.set(1, 0.5, 1.05);
+      welle.position.set(seite * 0.11, 0.17, 0.08);
+      welle.rotation.z = seite * -0.45;
+      kopf.add(welle);
+    }
+  }
   if (frisur === 'lang') {
-    const lang = teil(rundKlotz(0.54, 0.8, 0.12, 0.05), look.haare, haarMat);   // hinten bis zum Rücken
-    lang.position.set(0, -0.4, -0.18);
-    kopf.add(lang);
+    // Viele einzelne Strähnen hinten, unterschiedlich lang
+    for (let k = 0; k < 11; k++) {
+      const a = -1.35 + (k / 10) * 2.7;
+      const lg = 0.55 + ((k * 37) % 7) * 0.035;
+      const s = H(new THREE.CapsuleGeometry(0.062, lg, 6, 10));
+      s.position.set(Math.sin(a) * 0.215, -0.08 - lg / 2, -Math.cos(a) * 0.19 - 0.02);
+      s.rotation.z = Math.sin(a) * 0.12;
+      s.rotation.x = 0.12;
+      kopf.add(s);
+    }
   }
   if (frisur === 'zopf') {
     const gummi = teil(new THREE.TorusGeometry(0.055, 0.02, 8, 16), look.streifen);
     gummi.position.set(0, 0.06, -0.27);
-    const zopf = teil(new THREE.CapsuleGeometry(0.08, 0.42, 8, 12), look.haare, haarMat);
-    zopf.position.set(0, -0.18, -0.34);
-    zopf.rotation.x = 0.3;
-    kopf.add(gummi, zopf);
+    kopf.add(gummi);
+    for (let k = 0; k < 4; k++) {          // geflochtener Zopf aus Gliedern
+      const glied = H(new THREE.SphereGeometry(0.075 - k * 0.008, 14, 10));
+      glied.scale.set(1, 1.35, 0.9);
+      glied.position.set((k % 2 ? 0.015 : -0.015), -0.04 - k * 0.12, -0.31 - k * 0.025);
+      kopf.add(glied);
+    }
+    const ende = H(new THREE.ConeGeometry(0.05, 0.14, 10));
+    ende.rotation.x = Math.PI; ende.position.set(0, -0.56, -0.4);
+    kopf.add(ende);
   }
   if (frisur === 'dutt') {
-    const dutt = teil(new THREE.SphereGeometry(0.13, 18, 14), look.haare, haarMat);
-    dutt.position.set(0, 0.27, -0.12);
-    kopf.add(dutt);
+    const dutt = H(new THREE.TorusGeometry(0.08, 0.055, 12, 20));
+    dutt.rotation.x = Math.PI / 2 - 0.4;
+    dutt.position.set(0, 0.28, -0.1);
+    const mitte = H(new THREE.SphereGeometry(0.07, 14, 10));
+    mitte.position.set(0, 0.3, -0.1);
+    kopf.add(dutt, mitte);
   }
-  for (const seite of [-1, 1]) {
-    // Strähnen links und rechts vom Gesicht bis über die Schultern
-    const lg = frisur === 'lang' ? 0.8 : frisur === 'kurz' ? 0.42 : 0.3;
-    const straehne = teil(rundKlotz(0.12, lg, 0.2, 0.05), look.haare, haarMat);
-    straehne.position.set(seite * 0.235, 0.11 - lg / 2, -0.02);
-    straehne.rotation.z = seite * 0.06;
-    const scheitel = teil(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), look.haare, haarMat);
-    scheitel.scale.set(1, 0.5, 1.05);
-    scheitel.position.set(seite * 0.11, 0.17, 0.08);
-    scheitel.rotation.z = seite * -0.45;
-    kopf.add(straehne, scheitel);
+  if (frisur !== 'locken') {
+    for (const seite of [-1, 1]) {
+      // Strähnen links und rechts vom Gesicht
+      const lg = frisur === 'lang' ? 0.7 : frisur === 'kurz' ? 0.36 : 0.26;
+      for (let k = 0; k < 2; k++) {
+        const s = H(new THREE.CapsuleGeometry(0.05, lg - k * 0.08, 6, 10));
+        s.position.set(seite * (0.228 + k * 0.012), 0.08 - (lg - k * 0.08) / 2, 0.04 - k * 0.07);
+        s.rotation.z = seite * 0.06;
+        kopf.add(s);
+      }
+    }
   }
   figur.add(kopf);
 
@@ -1475,7 +1598,7 @@ zeigeBanner('Lauf in einen Turm! 🎄', 3500);
 function turmGeschafft(T) {
   if (spieler.feiert) return;
   spieler.feiert = true;
-  if (!geschafft.includes(T.nr)) {
+  if (!T.normal && !geschafft.includes(T.nr)) {
     geschafft.push(T.nr);
     try { localStorage.setItem('turmparkour-geschafft', JSON.stringify(geschafft)); } catch (e) {}
     T.schild.material.map.dispose();
@@ -1483,7 +1606,7 @@ function turmGeschafft(T) {
     T.schild.material.needsUpdate = true;
     zeigeTuerchen();
   }
-  zeigeBanner(T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
+  zeigeBanner(T.normal ? 'Dreh-Turm geschafft! 🌀' : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
   // Nach dem Feiern stehst du wieder vor dem Turm
   setTimeout(() => {
     spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
@@ -1619,7 +1742,8 @@ function update(dt) {
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
-  hoehe.textContent = T ? `Turm ${T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : 'Draußen';
+  hoehe.textContent = T ? `${T.normal ? 'Dreh-Turm' : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : 'Draußen';
+  weltKnopf.textContent = s.pos.z < -165 ? '🎄' : '🌀';
 }
 
 // =====================================================================
@@ -1686,7 +1810,7 @@ const AUSWAHL = [
   { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['gross', 'Groß'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
-  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz']] },
+  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
@@ -1950,6 +2074,16 @@ codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
 })();
 
 document.getElementById('hochkantKnopf').addEventListener('click', () => document.body.classList.add('hochkant-ok'));
+
+// Welt wechseln: Adventskalender <-> Dreh-Turm
+const weltKnopf = document.getElementById('weltKnopf');
+weltKnopf.addEventListener('click', () => {
+  const imDrehTurm = spieler.pos.z < -165;
+  if (imDrehTurm) { spieler.pos.copy(START); zeigeBanner('Adventskalender 🎄', 2000); }
+  else { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 6); zeigeBanner('Dreh-Turm 🌀', 2000); }
+  spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;
+  tuermeNachladen(spieler.pos);
+});
 
 // ---------- Hauptschleife ----------
 const uhr = new THREE.Clock();
