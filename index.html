@@ -1884,10 +1884,13 @@ function baueFigur(look, ziel = scene) {
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const bein = (seite) => {
     const gelenk = new THREE.Group();
-    gelenk.position.set(seite * (junge ? 0.15 : 0.135), 0.84, 0);
+    // Wie auf der Zeichnung: oben eng zusammen, nach unten leicht auseinander
+    gelenk.position.set(seite * (junge ? 0.13 : 0.115), 0.84, 0);
+    gelenk.rotation.z = seite * 0.13;
     gelenk.scale.x = junge ? 0.9 : 0.84;   // schlankere Beine, passend zum dünneren Oberkörper
     const knie = new THREE.Group();
     knie.position.y = -0.42;
+    knie.rotation.z = -seite * 0.1;   // am Knie ein bisschen abgeknickt: Unterschenkel fast gerade, Fuß steht flach
     gelenk.add(knie);
     if (hoseTyp === 'jeans') {          // weite Jeans mit Umschlag
       const o = teil(new THREE.CylinderGeometry(0.15, 0.16, 0.44, 18), look.hose, hoseM(10, 4)); o.position.y = -0.21;
@@ -1960,7 +1963,7 @@ function baueFigur(look, ziel = scene) {
     geo.computeVertexNormals();
     const rock = teil(geo, look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
     rock.position.y = 0.9 - hoehe / 2;   // oben unter dem Oberteil versteckt, damit keine Falten durchschauen
-    const bund = teil(new THREE.CylinderGeometry(0.257, 0.257, 0.05, 32), look.umschlag);
+    const bund = teil(new THREE.CylinderGeometry(0.257, 0.257, 0.05, 32), look.hose);
     bund.scale.z = 0.78; bund.position.y = 0.895;
     figur.add(rock, bund);
   } else if (hoseTyp === 'jogging') {     // Kordel vorne
