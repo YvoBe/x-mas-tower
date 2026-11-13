@@ -2811,9 +2811,141 @@ editorScene.add(lampe);
   g.fillText('Umstyling', 512, 120);
   g.fillStyle = '#e7a3b7'; g.fillRect(220, 214, 584, 14);
   const schrift = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  schrift.position.set(0, 3.62, -3.95);
+  schrift.position.set(0, 3.42, -2.24); schrift.scale.setScalar(0.5);   // oben an der Kabinenwand
   editorScene.add(schrift);
   editorSchrift = { mesh: schrift, canvas: c };
+}
+// Umkleide-Kabine hinter der Figur: Wände, Vorhang, großer Spiegel mit Lichterkette und Kerzen
+const kerzenFlammen = [];
+function baueKabine() {
+  const K = new THREE.Group();
+  const wandMat = M(0xf8f1ec, { roughness: 0.95 });
+  const leiste = M(FARBEN.rosa, { roughness: 0.7 });
+  // Rückwand und zwei Seitenwände
+  const hinten = new THREE.Mesh(new THREE.BoxGeometry(4.6, 4.4, 0.1), wandMat);
+  hinten.position.set(0, 2.2, -2.3); hinten.receiveShadow = true;
+  K.add(hinten);
+  for (const sx of [-1, 1]) {
+    const seite = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4.4, 2.6), wandMat);
+    seite.position.set(sx * 2.3, 2.2, -1.05); seite.receiveShadow = true;
+    const kante = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.4, 0.16), leiste);
+    kante.position.set(sx * 2.3, 2.2, 0.25);
+    K.add(seite, kante);
+  }
+  // Sockelleiste unten an der Rückwand
+  const sockel = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.18, 0.06), leiste);
+  sockel.position.set(0, 0.09, -2.24); K.add(sockel);
+  // Vorhangstange oben und Vorhang (zur Seite geschoben, mit weichen Falten)
+  const stange = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 4.8, 12), M(0xc9a85a, { metalness: 0.5, roughness: 0.4 }));
+  stange.rotation.z = Math.PI / 2; stange.position.set(0, 4.25, 0.25); K.add(stange);
+  for (const sx of [-1, 1]) {
+    const breite = 0.75, hoch = 4.2;
+    const geo = new THREE.PlaneGeometry(breite, hoch, 40, 20);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      const t = (hoch / 2 - y) / hoch;                       // 0 oben, 1 unten
+      pos.setZ(i, Math.sin((x / breite) * Math.PI * 7) * 0.07);
+      pos.setX(i, x * (1 - 0.25 * Math.sin(t * Math.PI)));   // in der Mitte etwas zusammengerafft
+    }
+    geo.computeVertexNormals();
+    const vorhang = new THREE.Mesh(geo, M(0xe7a3b7, { side: THREE.DoubleSide, roughness: 0.9, map: stoff('weich', 3, 8) }));
+    vorhang.position.set(sx * (2.3 - breite / 2 + 0.05), hoch / 2 + 0.03, 0.15);
+    vorhang.castShadow = true;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 8, 24), M(0xc9a85a, { metalness: 0.4 }));
+    band.rotation.x = Math.PI / 2; band.scale.set(1, 0.4, 1); band.position.set(vorhang.position.x, 1.6, 0.15);   // Raffband
+    K.add(vorhang, band);
+  }
+  // Großer Spiegel mit runder Oberkante und goldenem Rahmen
+  const sb = 1.8, sh = 2.45, sy = 0.3;
+  const form = new THREE.Shape();
+  form.moveTo(-sb / 2, 0); form.lineTo(sb / 2, 0); form.lineTo(sb / 2, sh - sb / 2);
+  form.absarc(0, sh - sb / 2, sb / 2, 0, Math.PI, false); form.lineTo(-sb / 2, 0);
+  const sc = document.createElement('canvas'); sc.width = 256; sc.height = 512;
+  const sg = sc.getContext('2d');
+  const verlauf = sg.createLinearGradient(0, 0, 256, 512);
+  verlauf.addColorStop(0, '#eef4f8'); verlauf.addColorStop(0.5, '#cfdde8'); verlauf.addColorStop(1, '#e6eef4');
+  sg.fillStyle = verlauf; sg.fillRect(0, 0, 256, 512);
+  sg.fillStyle = 'rgba(255,255,255,0.55)';                  // Glanzstreifen
+  for (const [x0, w] of [[40, 50], [110, 18]]) { sg.beginPath(); sg.moveTo(x0, 512); sg.lineTo(x0 + w, 512); sg.lineTo(x0 + w + 200, 0); sg.lineTo(x0 + 200, 0); sg.fill(); }
+  const glasGeo = new THREE.ShapeGeometry(form, 24);
+  const uv = glasGeo.attributes.uv, gp = glasGeo.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, gp.getX(i) / sb + 0.5, gp.getY(i) / sh);
+  const glas = new THREE.Mesh(glasGeo, new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(sc), roughness: 0.15, metalness: 0.3 }));
+  glas.position.set(0, sy, -2.18);
+  const rahmenGeo = new THREE.ExtrudeGeometry(form, { depth: 0.04, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.1, bevelSegments: 3, curveSegments: 24 });
+  const rahmen = new THREE.Mesh(rahmenGeo, M(0xd4b26a, { metalness: 0.45, roughness: 0.35 }));
+  rahmen.position.set(0, sy, -2.28);
+  K.add(rahmen, glas);
+  // Lichterkette rund um den Spiegel: hängt in kleinen Bögen, warme Lämpchen
+  const punkte = [];
+  const rand = (u) => {                                      // Punkt auf dem Spiegelrand, u von 0 bis 1
+    const gerade = sh - sb / 2, bogen = Math.PI * (sb / 2 + 0.16), ges = 2 * gerade + bogen;
+    let d = u * ges; const r = sb / 2 + 0.16;
+    if (d < gerade) return new THREE.Vector3(-r, d, 0);
+    d -= gerade;
+    if (d < bogen) { const w = Math.PI - d / r; return new THREE.Vector3(Math.cos(w) * r, gerade + Math.sin(w) * r, 0); }
+    d -= bogen; return new THREE.Vector3(r, gerade - d, 0);
+  };
+  const N = 120;
+  for (let i = 0; i <= N; i++) {
+    const p = rand(i / N);
+    const durch = (i % 12) / 12;                             // kleine Durchhänger zwischen den Haken
+    p.multiplyScalar(1 + Math.sin(durch * Math.PI) * 0.03);
+    p.y += sy; p.z = -2.15;
+    punkte.push(p);
+  }
+  const draht = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 200, 0.008, 5), M(0x5a6b3a));
+  K.add(draht);
+  const birneGeo = new THREE.SphereGeometry(0.045, 10, 8);
+  const birneMat = new THREE.MeshBasicMaterial({ color: 0xffe6a8 });
+  const scheinTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); const v = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    v.addColorStop(0, 'rgba(255,225,150,0.9)'); v.addColorStop(0.35, 'rgba(255,200,110,0.35)'); v.addColorStop(1, 'rgba(255,200,110,0)');
+    g.fillStyle = v; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+  })();
+  const scheinMat = new THREE.SpriteMaterial({ map: scheinTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  for (let i = 3; i < N; i += 6) {
+    const birne = new THREE.Mesh(birneGeo, birneMat);
+    birne.position.copy(punkte[i]); birne.position.z += 0.03; birne.scale.y = 1.3;
+    const schein = new THREE.Sprite(scheinMat); schein.scale.setScalar(0.32); schein.position.copy(birne.position);
+    K.add(birne, schein);
+  }
+  // Kerzen: links auf einem kleinen Tischchen, rechts auf dem Boden
+  const kerze = (x, y, z, hoch, dick) => {
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(dick, dick, hoch, 16), M(0xfbf5ea, { roughness: 0.6 }));
+    k.position.set(x, y + hoch / 2, z); k.castShadow = true;
+    const docht = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.04, 5), M(0x2b1d14));
+    docht.position.set(x, y + hoch + 0.02, z);
+    const flamme = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffc860 }));
+    flamme.scale.set(0.8, 1.9, 0.8); flamme.position.set(x, y + hoch + 0.075, z);
+    const kern = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
+    kern.scale.y = 1.8; kern.position.set(x, y + hoch + 0.06, z + 0.012);
+    const schein = new THREE.Sprite(scheinMat.clone()); schein.scale.setScalar(0.45); schein.position.copy(flamme.position);
+    K.add(k, docht, flamme, kern, schein);
+    kerzenFlammen.push({ flamme, schein, phase: Math.random() * 10 });
+  };
+  const tisch = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.06, 24), M(0xd4b26a, { metalness: 0.3, roughness: 0.5 }));
+  tisch.position.set(-1.65, 0.8, -1.7);
+  const bein = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.78, 10), M(0xd4b26a, { metalness: 0.3, roughness: 0.5 }));
+  bein.position.set(-1.65, 0.39, -1.7);
+  const fuss = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.03, 20), M(0xd4b26a, { metalness: 0.3, roughness: 0.5 }));
+  fuss.position.set(-1.65, 0.015, -1.7);
+  K.add(tisch, bein, fuss);
+  kerze(-1.75, 0.83, -1.75, 0.3, 0.05); kerze(-1.55, 0.83, -1.62, 0.2, 0.045); kerze(-1.6, 0.83, -1.85, 0.14, 0.04);
+  kerze(1.6, 0, -1.6, 0.42, 0.07); kerze(1.82, 0, -1.4, 0.28, 0.06); kerze(1.75, 0, -1.85, 0.2, 0.055);
+  // warmes Licht von den Kerzen
+  for (const x of [-1.65, 1.7]) { const l = new THREE.PointLight(0xffc98a, 0.35, 3.5); l.position.set(x, 1.1, -1.4); K.add(l); }
+  editorScene.add(K);
+}
+baueKabine();
+function kerzenFlackern(t) {
+  for (const k of kerzenFlammen) {
+    const f = 1 + Math.sin(t * 9 + k.phase) * 0.08 + Math.sin(t * 23 + k.phase * 2) * 0.05;
+    k.flamme.scale.set(0.8 / f, 1.9 * f, 0.8 / f);
+    k.schein.material.opacity = 0.85 + (f - 1) * 1.5;
+  }
 }
 // =====================================================================
 //  HINTERGRUND VOM STARTBILDSCHIRM: Die Kamera fliegt über die echte Spielwelt.
@@ -3307,6 +3439,7 @@ renderer.setAnimationLoop(() => {
     lichtMatA.opacity = 0.6 + 0.4 * Math.sin(zeit * 2.5);
     lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
     for (const st of drehSterne) st.rotation.y += dt * 1.2;
+    kerzenFlackern(zeit);
     renderer.render(editorScene, editorKamera);
   } else if (startOffen) {
     zeit += dt;
