@@ -272,7 +272,8 @@
     border: 3px solid var(--ink); background: #fff; color: var(--ink);
   }
   #start button.haupt { background: var(--ink); color: #fff; font-size: 24px; }
-  #start .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #start .zwei { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #start .zwei button { font-size: 16px; padding-left: 6px; padding-right: 6px; }
   #start button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   #start .tipp { margin: 14px 0 0; font-size: 13px; font-weight: 600; opacity: 0.8; }
   body.start-offen .hud, body.start-offen .touch, body.start-offen .banner { display: none !important; }
@@ -319,6 +320,7 @@
       <div class="zwei">
         <button type="button" id="startWinter">🎄 Weihnachten</button>
         <button type="button" id="startSommer">🌸 Sommer</button>
+        <button type="button" id="startAesthetic">☁️ Aesthetic ASMR</button>
       </div>
       <button type="button" id="startFigur">👤 Figur ändern</button>
     </div>
@@ -341,6 +343,7 @@
     <div class="welten" role="group" aria-label="Welt aussuchen">
       <button type="button" id="weltWinter" aria-pressed="true">🎄 Weihnachten</button>
       <button type="button" id="weltSommer" aria-pressed="false">🌸 Sommer</button>
+      <button type="button" id="weltAesthetic" aria-pressed="false">☁️ Aesthetic ASMR</button>
     </div>
     <button type="button" class="tag zahl" id="codeKnopf" aria-label="Mit Freunden spielen">
       <span class="anzahl">👥 1</span> · Code <span class="code">-----</span>
@@ -465,6 +468,7 @@ const WEIHNACHTS_WAENDE = [
   { wand: new THREE.MeshStandardMaterial({ color: 0xf3ead8, roughness: 0.85 }), rahmen: 0x9e2b36, streifen: 0x2f5a3e, dach: 0x9e2b36 },
 ];
 // Sommertürme: helles, sonniges Gelb, als ob die Sonne drauf scheint
+const glasWolke = new THREE.MeshStandardMaterial({ color: 0xfff4fa, roughness: 0.2, transparent: true, opacity: 0.16, depthWrite: false });   // durchsichtige Wände
 const glasSommer = new THREE.MeshStandardMaterial({ color: 0xfff7dc, roughness: 0.8, emissive: 0xffe9a8, emissiveIntensity: 0.22 });
 
 // Weicher runder Fleck: für Wolken, Schneeflocken und Lichter
@@ -603,6 +607,8 @@ const drehSterne = [];
 
 // Birken: weißer Stamm mit schwarzen Flecken und hellgrüne, lockere Blätterbüschel.
 // orte = [[x, y, z, groesse], ...]. Alles als InstancedMesh, damit es auf dem Handy flüssig läuft.
+// Große Teile jeder Welt: werden ausgeblendet, wenn man in einer anderen Welt ist (damit es flüssig läuft)
+const WELT_TEILE = { winter: [], sommer: [], aesthetic: [] };
 const birkenRinde = (() => {
   const c = document.createElement('canvas'); c.width = 64; c.height = 256;
   const g = c.getContext('2d');
@@ -644,7 +650,7 @@ function birken(gruppe, orte, BUESCHEL = 9, fein = 1) {
       blaetter.setColorAt(i * BUESCHEL + k, c.setHSL(0.22 + r() * 0.05, 0.5, 0.42 + r() * 0.14));
     }
   });
-  for (const im of [staemme, aeste, blaetter]) { im.castShadow = true; gruppe.add(im); }
+  for (const im of [staemme, aeste, blaetter]) { im.castShadow = true; gruppe.add(im); WELT_TEILE.sommer.push(im); }
 }
 function tanne(gruppe, x, z, s, geschmueckt = false, schnee = true) {
   const baum = new THREE.Group();
@@ -731,8 +737,8 @@ klotz(statisch, scene, 0, 0, 0, 1200, 1200, FARBEN.schnee, { dicke: 1 });
 
 // ---------- Jeder Turm hat ein eigenes Thema ----------
 const THEMEN = ['baum', 'schneemann', 'geschenke', 'lebkuchen', 'schlitten', 'kugeln'];
-const THEMA_BODEN = { normal: 0xe6e3ea, baum: FARBEN.holz, schneemann: 0xe3edf5, geschenke: 0xead1d8, lebkuchen: 0xc89b6d, schlitten: 0xd6c7b0, kugeln: 0x48537a };
-const themaVon = (T) => (T.normal ? 'normal' : T.spezial ? 'baum' : THEMEN[(T.nr - 1) % THEMEN.length]);
+const THEMA_BODEN = { wolke: 0xfde8ef, normal: 0xe6e3ea, baum: FARBEN.holz, schneemann: 0xe3edf5, geschenke: 0xead1d8, lebkuchen: 0xc89b6d, schlitten: 0xd6c7b0, kugeln: 0x48537a };
+const themaVon = (T) => (T.welt === 'aesthetic' ? 'wolke' : T.normal ? 'normal' : T.spezial ? 'baum' : THEMEN[(T.nr - 1) % THEMEN.length]);
 
 // Fester Zufall: gleiche Zahl rein, gleiche Würfe raus
 function zufall(seed) {
@@ -778,6 +784,16 @@ function bewegePlatten(dt) {
         }
         continue;
       }
+      if (b.art === 'squishy') {     // einsinken, wenn man draufsteht, sonst langsam wieder hoch
+        const ziel = steht ? 0.45 : 0;
+        b.s += (ziel - b.s) * Math.min(1, dt * (steht ? 9 : 3));
+        const dy = (b.oben0 - b.s) - p.oben;
+        p.oben += dy; p.unten += dy;
+        if (steht) spieler.pos.y += dy;
+        const H = b.vis.userData.hoehe;
+        b.vis.scale.set(1 + b.s * 0.35, (H - b.s) / H, 1 + b.s * 0.35);
+        continue;
+      }
       if (b.art === 'weg') {
         if (steht && !b.uhr) b.uhr = 0.001;
         if (b.uhr) {
@@ -802,6 +818,44 @@ function bewegePlatten(dt) {
       if (steht) { spieler.pos.x += ddx; spieler.pos.y += ddy; spieler.pos.z += ddz; }
     }
   }
+}
+
+// --- Squishies: Butter (Stück mit Papier) und Käse (Ecke mit Löchern) ---
+function squishy(g, art, x, oben, z, groesse, rnd) {
+  const vis = new THREE.Group();
+  const H = 1.1;
+  vis.userData.hoehe = H;
+  vis.position.set(x, oben - H, z);   // unten fest, oben sinkt ein
+  const weich = { roughness: 0.55 };
+  if (art === 'butter') {
+    const papier = new THREE.Mesh(rundKlotz(groesse * 1.02, 0.35, groesse * 0.82, 0.08), M(0xf7f3ea, weich));
+    papier.position.y = 0.175;
+    const butter = new THREE.Mesh(rundKlotz(groesse * 0.92, H - 0.2, groesse * 0.74, 0.18), M(0xfbe7a1, weich));
+    butter.position.y = 0.2 + (H - 0.2) / 2;
+    const streifen = new THREE.Mesh(rundKlotz(groesse * 1.03, 0.06, groesse * 0.83, 0.03), M(0xf2b8c6, weich));
+    streifen.position.y = 0.3;
+    vis.add(papier, butter, streifen);
+  } else {
+    // Käse-Stück mit Löchern oben und an den Seiten
+    const kaese = new THREE.Group();
+    const kb = groesse * 0.95, kt = groesse * 0.95;
+    const block = new THREE.Mesh(rundKlotz(kb, H, kt, 0.14), M(0xf6d36b, weich));
+    block.position.y = H / 2;
+    kaese.add(block);
+    const lochMat = M(0xd9a93a);
+    for (let i = 0; i < 9; i++) {
+      const loch = new THREE.Mesh(new THREE.SphereGeometry(0.09 + rnd() * 0.08, 10, 8), lochMat);
+      const seite = i % 3;   // 0 = oben, 1 = vorne, 2 = rechts
+      if (seite === 0) { loch.scale.y = 0.3; loch.position.set((rnd() - 0.5) * kb * 0.7, H, (rnd() - 0.5) * kt * 0.7); }
+      else if (seite === 1) { loch.scale.z = 0.3; loch.position.set((rnd() - 0.5) * kb * 0.7, 0.2 + rnd() * (H - 0.4), -kt / 2); }
+      else { loch.scale.x = 0.3; loch.position.set(kb / 2, 0.2 + rnd() * (H - 0.4), (rnd() - 0.5) * kt * 0.7); }
+      kaese.add(loch);
+    }
+    vis.add(kaese);
+  }
+  vis.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  g.add(vis);
+  return vis;
 }
 
 // --- Deko-Bausteine ---
@@ -864,9 +918,10 @@ function themaDeko(T, g, platten) {
   const thema = themaVon(T);
   const rnd = zufall(nr * 31 + 7);
   // In der Mitte steht immer etwas Großes (man kann nicht durchlaufen)
-  if (thema === 'normal') {
-    // Ganz normal: eine gestreifte Säule in der Mitte bis nach oben, sonst schlicht
-    const farben = [FARBEN.weiss, FARBEN.rosa, FARBEN.weiss, FARBEN.oliv, FARBEN.weiss, FARBEN.navy];
+  if (thema === 'normal' || thema === 'wolke') {
+    // Ganz normal: eine gestreifte Säule in der Mitte bis nach oben, sonst schlicht (Wolken-Turm: in Pastellfarben)
+    const farben = thema === 'wolke' ? [0xffffff, 0xf7c6d4, 0xffffff, 0xe6d6f2, 0xffffff, 0xd3eee2]
+      : [FARBEN.weiss, FARBEN.rosa, FARBEN.weiss, FARBEN.oliv, FARBEN.weiss, FARBEN.navy];
     for (let y = 0, k = 0; y < T.hoehe; y += 2, k++) {
       const ring = new THREE.Mesh(zylGeo, M(farben[k % farben.length]));
       ring.scale.set(2.4, 2, 2.4); ring.position.set(cx, y + 1, cz);
@@ -1038,11 +1093,15 @@ const HUEPF_TURM = { nr: 26, name: 'Hüpf-Turm', sommerArt: 'huepf', normal: tru
 const WEG_TURM = { nr: 27, name: 'Wackel-Turm', sommerArt: 'weg', normal: true, spezial: false, anzahl: 44, cx: SOMMER.x + 115, cz: SOMMER.z + 40, innen: 10, hoehe: 50, gruppe: null, platten: [] };
 const SOMMER_TUERME = [DREH_TURM, HUEPF_TURM, WEG_TURM];
 for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
+// Dritte Welt "Aesthetic": ein super langer, durchsichtiger Turm auf einer riesigen Wolke im Sonnenuntergang
+const AESTHETIC = { x: 0, z: -2600 };
+const WOLKEN_TURM = { nr: 28, name: 'Wolken-Turm', welt: 'aesthetic', normal: true, spezial: false, anzahl: 110, cx: AESTHETIC.x, cz: AESTHETIC.z, innen: 10, hoehe: 120, gruppe: null, platten: [] };
+baueHuelle(WOLKEN_TURM); TUERME.push(WOLKEN_TURM);
 
 function baueHuelle(T) {
   const { cx, cz, innen, hoehe, spezial } = T;
   const xmas = !T.normal && !spezial ? WEIHNACHTS_WAENDE[T.nr % 3] : null;
-  const glas = T.sommerArt ? glasSommer : spezial ? glasGold : xmas ? xmas.wand : glasNormal;
+  const glas = T.welt === 'aesthetic' ? glasWolke : T.sommerArt ? glasSommer : spezial ? glasGold : xmas ? xmas.wand : glasNormal;
   const aussen = 2 * innen + 2 * WAND, r = innen + WAND / 2;
   const wand = { dicke: hoehe, wand: true, mat: glas };
   klotz(statisch, scene, cx, hoehe, cz + r, aussen, WAND, 0, wand);
@@ -1054,7 +1113,7 @@ function baueHuelle(T) {
   klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, THEMA_BODEN[themaVon(T)], { dicke: 0.08 });   // Boden passend zum Thema
 
   // Rahmen
-  const rahmenFarbe = spezial ? FARBEN.gold : T.sommerArt ? 0x8f9b52 : xmas ? xmas.rahmen : FARBEN.navy;   // Sommer: hellgrüner Rahmen
+  const rahmenFarbe = spezial ? FARBEN.gold : T.welt === 'aesthetic' ? 0xf4c6d6 : T.sommerArt ? 0x8f9b52 : xmas ? xmas.rahmen : FARBEN.navy;   // Sommer: hellgrüner Rahmen
   const extra = spezial ? { metalness: 0.6, roughness: 0.3 } : {};
   for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) deko(scene, cx + x, hoehe / 2, cz + z, 0.8, hoehe, 0.8, rahmenFarbe, extra);
   for (let y = 8; y <= hoehe; y += 8) {
@@ -1129,7 +1188,7 @@ function baueHuelle(T) {
   // Große Nummer vorne
   T.schild = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6), new THREE.MeshBasicMaterial({ map: nummerTextur(T.nr, geschafft.includes(T.nr)), transparent: true }));
   T.schild.position.set(cx, Math.max(TUER_HOCH + 4.5, hoehe * 0.48), cz - r - 0.45);
-  if (T.normal) { fassade(T, r); T.schild.visible = false; }
+  if (T.normal) { if (!T.welt) fassade(T, r); T.schild.visible = false; }
   T.schild.rotation.y = Math.PI;
   scene.add(T.schild);
 
@@ -1226,7 +1285,9 @@ function baueInnen(T) {
   const o = innen - 2, L = 8 * o;
   const schritt = T.normal ? 4.3 : spezial ? 4.5 : 4.2 + nr * 0.02;
   const groesse = T.normal ? 2.8 : spezial ? 2.6 : Math.max(2.4, 3 - nr * 0.025);
-  const reihe = spezial ? [FARBEN.gold, FARBEN.weiss, FARBEN.rot, FARBEN.weiss] : [FARBEN.weiss, FARBEN.oliv, FARBEN.rosa, FARBEN.navy];
+  const reihe = spezial ? [FARBEN.gold, FARBEN.weiss, FARBEN.rot, FARBEN.weiss]
+    : T.welt === 'aesthetic' ? [0xffffff, 0xf7c6d4, 0xe6d6f2, 0xd3eee2, 0xfbe3c8]   // Pastellfarben
+    : [FARBEN.weiss, FARBEN.oliv, FARBEN.rosa, FARBEN.navy];
   // Punkt auf dem Weg rundherum an den Wänden: links nach hinten, hinten nach rechts, rechts nach vorne, vorne nach links
   const weg = (s) => {
     s = ((s % L) + L) % L;
@@ -1252,6 +1313,9 @@ function baueInnen(T) {
     } else if (T.sommerArt === 'weg' && !cp && i > 0) {   // Wackel-Turm: Blöcke wackeln und verschwinden kurz
       const w = rnd();
       art = w < 0.5 ? 'weg' : w < 0.68 ? 'schieben' : w < 0.84 ? 'dreh' : 'rund';
+    } else if (T.welt === 'aesthetic' && !cp && i > 0) {   // Wolken-Turm: Squishies (Butter und Käse), die einsinken
+      const w = rnd();
+      art = w < 0.4 ? 'butter' : w < 0.8 ? 'kaese' : w < 0.9 ? 'rund' : 'dreh';
     } else if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
       const w = rnd();
       art = w < 0.7 ? 'dreh' : w < 0.85 ? 'rund' : 'hoch';
@@ -1265,7 +1329,7 @@ function baueInnen(T) {
     vorherTrampolin = art === 'trampolin';
     const x = cx + px, z = cz + pz, h = hBasis;
     if (cp) {
-      klotz(platten, g, x, h, z, 3.6, 3.6, T.normal ? FARBEN.rosa : farbe, { checkpoint: true, turm: T });
+      klotz(platten, g, x, h, z, 3.6, 3.6, T.welt === 'aesthetic' ? 0xffffff : T.normal ? FARBEN.rosa : farbe, { checkpoint: true, turm: T });
       if (T.normal) {   // Fahne statt Stern
         deko(g, x + 1.3, h + 1.1, z + 1.3, 0.08, 2.2, 0.08, FARBEN.navy);
         deko(g, x + 1.62, h + 1.9, z + 1.3, 0.6, 0.4, 0.04, FARBEN.weiss);
@@ -1286,6 +1350,9 @@ function baueInnen(T) {
       balken.scale.set(groesse * 1.1, 0.04, 0.25); balken.position.y = 0.52;
       k.mesh.add(balken);
       k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
+    } else if (art === 'butter' || art === 'kaese') {   // Squishy: sinkt weich ein, wenn man draufsteht
+      const k = klotz(platten, g, x, h, z, groesse, groesse, 0, { turm: T, unsichtbar: true });
+      k.bew = { art: 'squishy', vis: squishy(g, art, x, h, z, groesse, rnd), oben0: h, s: 0 };
     } else if (art === 'trampolin') {   // Trampolin: wer drauf landet, fliegt hoch
       const k = rundPlatte(platten, g, x, h, z, groesse * 1.1, FARBEN.navy, { turm: T });
       k.trampolin = true;
@@ -1317,7 +1384,7 @@ function baueInnen(T) {
   zx = Math.max(-innen + 2.1, Math.min(innen - 2.1, zx));
   zz = Math.max(-innen + 2.1, Math.min(innen - 2.1, zz));
   const zh = hBasis + 1;
-  klotz(platten, g, cx + zx, zh, cz + zz, 4, 4, spezial ? FARBEN.gold : FARBEN.rosa, { ziel: true, turm: T });
+  klotz(platten, g, cx + zx, zh, cz + zz, 4, 4, spezial ? FARBEN.gold : T.welt === 'aesthetic' ? 0xf7c6d4 : FARBEN.rosa, { ziel: true, turm: T });
   if (T.normal) {   // Pokal auf dem Ziel
     const gold = { metalness: 0.7, roughness: 0.25 };
     deko(g, cx + zx + 1, zh + 0.1, cz + zz + 1, 0.7, 0.2, 0.7, FARBEN.navy);
@@ -1410,7 +1477,7 @@ while (gepflanzt < 80) {
   const halmGeo = (() => {
     const teile = [], rb = zufall(9);
     for (let k = 0; k < 6; k++) {
-      const h = 0.5 + rb() * 0.6, g = new THREE.ConeGeometry(0.07, h, 3).toNonIndexed();
+      const h = 0.5 + rb() * 0.6, g = new THREE.ConeGeometry(0.07, h, 3, 1, true).toNonIndexed();
       g.translate(0, h / 2, 0); g.rotateX((rb() - 0.5) * 0.6); g.rotateZ((rb() - 0.5) * 0.6);
       g.translate((rb() - 0.5) * 0.5, 0, (rb() - 0.5) * 0.5);
       teile.push(g);
@@ -1429,12 +1496,12 @@ while (gepflanzt < 80) {
     m.compose(ps.set(x, 0, z), q.setFromEuler(e.set((rw() - 0.5) * 0.5, rw() * 6.3, (rw() - 0.5) * 0.5)), sc.set(1, g, 1));
     halme.setMatrixAt(i, m); halme.setColorAt(i, c.setHSL(0.22 + rw() * 0.06, 0.5, 0.36 + rw() * 0.18));
   }
-  scene.add(halme);
+  scene.add(halme); WELT_TEILE.sommer.push(halme);
   // Blumen: Stiel und runde Blüte mit Mitte
   const N = 2600;
-  const stielGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 5); stielGeo.translate(0, 0.4, 0);
-  const bluetenGeo = new THREE.SphereGeometry(0.3, 12, 6); bluetenGeo.scale(1, 0.45, 1); bluetenGeo.translate(0, 0.82, 0);
-  const mitteGeo = new THREE.SphereGeometry(0.11, 8, 6); mitteGeo.translate(0, 0.92, 0);
+  const stielGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 3, 1, true); stielGeo.translate(0, 0.4, 0);
+  const bluetenGeo = new THREE.SphereGeometry(0.3, 8, 4); bluetenGeo.scale(1, 0.45, 1); bluetenGeo.translate(0, 0.82, 0);
+  const mitteGeo = new THREE.SphereGeometry(0.11, 5, 3); mitteGeo.translate(0, 0.92, 0);
   const stiele = new THREE.InstancedMesh(stielGeo, M(0x4f6b3a), N);
   const blueten = new THREE.InstancedMesh(bluetenGeo, M(0xffffff, { roughness: 0.7 }), N);
   const mitten = new THREE.InstancedMesh(mitteGeo, M(FARBEN.gold), N);
@@ -1445,7 +1512,7 @@ while (gepflanzt < 80) {
     stiele.setMatrixAt(i, m); blueten.setMatrixAt(i, m); mitten.setMatrixAt(i, m);
     blueten.setColorAt(i, c.set(bluetenFarben[i % bluetenFarben.length]));
   }
-  scene.add(stiele, blueten, mitten);
+  scene.add(stiele, blueten, mitten); WELT_TEILE.sommer.push(stiele, blueten, mitten);
   // Birken: in kleinen Gruppen auf der Wiese und dichter am Rand
   const birkenOrte = [];
   for (let gruppe = 0; gruppe < 34; gruppe++) {
@@ -1521,7 +1588,7 @@ function baueGebirge(mx, mz, sommer) {
   geo.setAttribute('color', new THREE.BufferAttribute(farben, 3));
   const gebirge = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
   gebirge.position.set(mx, 0, mz);
-  scene.add(gebirge);
+  scene.add(gebirge); WELT_TEILE[sommer ? 'sommer' : 'winter'].push(gebirge);
 
   // Viele kleine Tannen auf den unteren Hängen (als ein Bauteil, damit es auf dem Handy flüssig läuft)
   const hoeheBei = (x, z) => {
@@ -1547,10 +1614,73 @@ function baueGebirge(mx, mz, sommer) {
     mt.compose(pt.set(x, y, z), qt, st.set(g * 0.8, g, g * 0.8));
     nadeln.setMatrixAt(i, mt); kappen.setMatrixAt(i, mt);
   });
-  scene.add(nadeln, kappen);
+  scene.add(nadeln, kappen); WELT_TEILE.winter.push(nadeln, kappen);
 }
 baueGebirge(0, 0, false);
 baueGebirge(SOMMER.x, SOMMER.z, true);
+
+// ---------- Aesthetic-ASMR-Welt: riesige Wolke im Sonnenuntergang ----------
+const aestheticHimmel = new THREE.Group();   // nur sichtbar, wenn man in dieser Welt ist
+{
+  const { x: ax, z: az } = AESTHETIC;
+  klotz(statisch, scene, ax, 0, az, 116, 116, 0, { dicke: 1, unsichtbar: true });   // Boden auf der Wolke
+  const rw = zufall(555);
+  const kugelGeo = new THREE.IcosahedronGeometry(1, 2);
+  const wolkenMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+  const puffs = [];   // [x, y, z, r, farbe]
+  const weiss = new THREE.Color(0xfffafc), rosa = new THREE.Color(0xffd9e4), pfirsich = new THREE.Color(0xffe2cc);
+  const farbe = () => weiss.clone().lerp(rw() < 0.5 ? rosa : pfirsich, rw() * 0.6);
+  // Rand der großen Wolke
+  for (let i = 0; i < 90; i++) { const w = (i / 90) * Math.PI * 2 + rw() * 0.05, r = 74 + rw() * 10; puffs.push([ax + Math.cos(w) * r, -2 + rw() * 3, az + Math.sin(w) * r, 6 + rw() * 5, farbe()]); }
+  // Unterseite: dick und bauschig
+  for (let i = 0; i < 120; i++) { const w = rw() * Math.PI * 2, r = Math.sqrt(rw()) * 78, g = 8 + rw() * 9; puffs.push([ax + Math.cos(w) * r, -0.6 - g * 0.7 - rw() * 6, az + Math.sin(w) * r, g, farbe()]); }   // bleibt unter dem Boden
+  // Kleine Wölkchen ganz unten am Boden, beim Eingang
+  for (let i = 0; i < 70; i++) {
+    const w = rw() * Math.PI * 2, r = 13 + rw() * 50;
+    const x = ax + Math.cos(w) * r, z = az + Math.sin(w) * r;
+    if (Math.abs(x - ax) < 13 && Math.abs(z - az) < 13) continue;
+    if (Math.abs(x - ax) < 9 && z < az) continue;   // Weg zum Eingang frei lassen
+    for (let k = 0; k < 4; k++) puffs.push([x + (rw() - 0.5) * 1.6, 0.1 + rw() * 0.3, z + (rw() - 0.5) * 1.6, 0.4 + rw() * 0.6, farbe()]);
+  }
+  // Wolken, die unten im Himmel schweben
+  for (let i = 0; i < 40; i++) {
+    const w = rw() * Math.PI * 2, r = 140 + rw() * 380, y = -60 + rw() * 50;
+    const x = ax + Math.cos(w) * r, z = az + Math.sin(w) * r;
+    for (let k = 0; k < 7; k++) puffs.push([x + (rw() - 0.5) * 30, y + rw() * 6, z + (rw() - 0.5) * 18, 6 + rw() * 8, farbe()]);
+  }
+  const im = new THREE.InstancedMesh(kugelGeo, wolkenMat, puffs.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+  puffs.forEach(([x, y, z, r, c], i) => { m.compose(ps.set(x, y, z), q, sc.set(r, r * 0.7, r)); im.setMatrixAt(i, m); im.setColorAt(i, c); });
+  im.receiveShadow = true;
+  scene.add(im);
+  // Oberseite der Wolke: weiche, flache Fläche
+  const decke = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: 0xfff6f8, roughness: 1 }));
+  decke.rotation.x = -Math.PI / 2; decke.position.set(ax, 0, az); decke.receiveShadow = true;
+  scene.add(decke); WELT_TEILE.aesthetic.push(im, decke);
+  // Sonnenuntergang: Himmelskugel mit Farbverlauf
+  const himmelGeo = new THREE.SphereGeometry(850, 32, 24);
+  const farben = [], pos = himmelGeo.attributes.position;
+  const oben = new THREE.Color(0x7a6aa8), mitte = new THREE.Color(0xf497b6), horizont = new THREE.Color(0xffb27c), unten = new THREE.Color(0xffd9b8), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const h = pos.getY(i) / 850;
+    if (h > 0.35) c.copy(mitte).lerp(oben, Math.min(1, (h - 0.35) / 0.5));
+    else if (h > 0.02) c.copy(horizont).lerp(mitte, (h - 0.02) / 0.33);
+    else c.copy(horizont).lerp(unten, Math.min(1, -h / 0.3));
+    farben.push(c.r, c.g, c.b);
+  }
+  himmelGeo.setAttribute('color', new THREE.Float32BufferAttribute(farben, 3));
+  const himmel = new THREE.Mesh(himmelGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+  himmel.position.set(ax, 0, az); himmel.renderOrder = -1;
+  aestheticHimmel.add(himmel);
+  // Die Sonne, halb hinter dem Horizont
+  const sonneScheibe = new THREE.Mesh(new THREE.CircleGeometry(70, 48), new THREE.MeshBasicMaterial({ color: 0xffe08a, fog: false }));
+  sonneScheibe.position.set(ax + 120, 20, az - 780); sonneScheibe.lookAt(ax, 20, az);
+  const schein = new THREE.Sprite(new THREE.SpriteMaterial({ map: flecken, color: 0xffc08a, transparent: true, opacity: 0.8, fog: false, depthWrite: false }));
+  schein.scale.set(420, 420, 1); schein.position.set(ax + 120, 20, az - 770);
+  aestheticHimmel.add(sonneScheibe, schein);
+  aestheticHimmel.visible = false;
+  scene.add(aestheticHimmel);
+}
 
 // ---------- Weiche Wolken ----------
 const wolken = [];
@@ -2640,7 +2770,7 @@ document.fonts?.ready.then(() => TUERME.forEach((T) => {
 }));
 
 // ---------- Ein Spiel-Schritt (wie "wiederhole fortlaufend" in Scratch) ----------
-let nachladenUhr = 0, zeit = 0, zeigeSommer = false;
+let nachladenUhr = 0, zeit = 0, zeigeWelt = 'winter';
 tuermeNachladen(spieler.pos);
 
 function update(dt) {
@@ -2768,14 +2898,9 @@ function update(dt) {
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
-  hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : 'Draußen';
-  const sommer = imSommer(s.pos);
-  if (sommer !== zeigeSommer) {
-    zeigeSommer = sommer;
-    weltWinter.setAttribute('aria-pressed', String(!sommer)); weltSommer.setAttribute('aria-pressed', String(sommer));
-    schneeFall.visible = !sommer;
-    scene.background.set(sommer ? 0xa9cfe8 : 0xc6d8e6); scene.fog.color.set(sommer ? 0xb8d6ea : 0xc6d8e6);
-  }
+  hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : weltVon(s.pos) === 'aesthetic' ? 'Auf der Wolke' : 'Draußen';
+  const welt = weltVon(s.pos);
+  if (welt !== zeigeWelt) weltZeigen(welt);
 }
 
 // =====================================================================
@@ -2967,7 +3092,7 @@ const startFiguren = [];
     { frisur: 'zopf', haare: '#e6c27a', oberteilTyp: 'jacke', jacke: '#e7a3b7', hoseTyp: 'jeans', augen: 'wimpern', sommersprossen: true },
   ];
   const SOMMER_START = new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8);
-  for (const mitte of [START, SOMMER_START]) {
+  for (const mitte of [START, SOMMER_START, new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20)]) {
     looks.forEach((l, i) => {
       const w = (i / looks.length) * Math.PI * 2 + 0.3, r = 2.4;
       const f = baueFigur({ ...STANDARD_AUSSEHEN, ...l }, scene);
@@ -2979,8 +3104,9 @@ const startFiguren = [];
   }
 }
 const START_FLUG = [
-  { sommer: false, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
-  { sommer: true, figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
+  { welt: 'winter', figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
+  { welt: 'sommer', figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
+  { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
 ];
 const FLUG_DAUER = 16;
 let startFlugZeit = 0, startFlugWelt = -1;
@@ -2991,9 +3117,7 @@ function startFlug(dt) {
   const F = START_FLUG[n];
   if (n !== startFlugWelt) {               // Welt wechseln: Himmel und Schnee anpassen
     startFlugWelt = n;
-    zeigeSommer = F.sommer;
-    schneeFall.visible = !F.sommer;
-    scene.background.set(F.sommer ? 0xa9cfe8 : 0xc6d8e6); scene.fog.color.set(F.sommer ? 0xb8d6ea : 0xc6d8e6);
+    weltZeigen(F.welt);
   }
   const t = (startFlugZeit % FLUG_DAUER) / FLUG_DAUER;
   const e = t < 0.15 ? 0 : Math.min(1, (t - 0.15) / 0.6);
@@ -3001,7 +3125,7 @@ function startFlug(dt) {
   const winkel = startFlugZeit * 0.12 + n * 2;
   const weit = 9 + (F.weit - 9) * s, hoch = 2.6 + (F.hoch - 2.6) * s;
   const ziel = _blick.copy(F.figuren).lerp(F.mitte, s);
-  ziel.y = 1.2 * (1 - s) + 18 * s;
+  ziel.y = 1.2 * (1 - s) + (F.blick || 18) * s;
   startKamera.position.set(ziel.x + Math.sin(winkel) * weit, hoch, ziel.z + Math.cos(winkel) * weit);
   startKamera.lookAt(ziel);
   for (const f of startFiguren) f.figur.visible = true;
@@ -3413,16 +3537,32 @@ function startSchliessen(sommer) {
 document.getElementById('startLos').addEventListener('click', () => startSchliessen());
 document.getElementById('startWinter').addEventListener('click', () => startSchliessen(false));
 document.getElementById('startSommer').addEventListener('click', () => startSchliessen(true));
+document.getElementById('startAesthetic').addEventListener('click', () => startSchliessen('aesthetic'));
 document.getElementById('startFigur').addEventListener('click', () => { startSchliessen(); editorOeffnen(); });
 addEventListener('keydown', (e) => { if (startOffen && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); startSchliessen(); } });
 document.getElementById('startLos').focus();
 
 // Welt aussuchen (oben rechts): Weihnachtswelt oder Sommerwelt
 const weltWinter = document.getElementById('weltWinter'), weltSommer = document.getElementById('weltSommer');
+const weltAesthetic = document.getElementById('weltAesthetic');
 const imSommer = (pos) => pos.z > SOMMER.z - 700;
-function weltWechseln(sommer) {
-  if (sommer === imSommer(spieler.pos)) return;
-  if (sommer) { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8); zeigeBanner('Sommerwelt 🌸', 2000); }
+function weltVon(pos) { return imSommer(pos) ? 'sommer' : pos.z < AESTHETIC.z + 700 ? 'aesthetic' : 'winter'; }
+const WELT_FARBEN = { winter: [0xc6d8e6, 0xc6d8e6], sommer: [0xa9cfe8, 0xb8d6ea], aesthetic: [0xf6b7b0, 0xf7c3b4] };
+function weltZeigen(welt) {
+  zeigeWelt = welt;
+  weltWinter.setAttribute('aria-pressed', String(welt === 'winter'));
+  weltSommer.setAttribute('aria-pressed', String(welt === 'sommer'));
+  weltAesthetic.setAttribute('aria-pressed', String(welt === 'aesthetic'));
+  schneeFall.visible = welt === 'winter';
+  aestheticHimmel.visible = welt === 'aesthetic';
+  for (const w in WELT_TEILE) for (const m of WELT_TEILE[w]) m.visible = w === welt;
+  scene.background.set(WELT_FARBEN[welt][0]); scene.fog.color.set(WELT_FARBEN[welt][1]);
+}
+function weltWechseln(welt) {
+  if (welt === true) welt = 'sommer'; else if (welt === false) welt = 'winter';
+  if (welt === weltVon(spieler.pos)) return;
+  if (welt === 'sommer') { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8); zeigeBanner('Sommerwelt 🌸', 2000); }
+  else if (welt === 'aesthetic') { spieler.pos.set(WOLKEN_TURM.cx, 0, WOLKEN_TURM.cz - WOLKEN_TURM.innen - 10); zeigeBanner('Aesthetic ASMR ☁️', 2000); }
   else { spieler.pos.copy(START); zeigeBanner('Weihnachtswelt 🎄', 2000); }
   spieler.checkpoint.copy(spieler.pos);
   spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;
@@ -3430,6 +3570,8 @@ function weltWechseln(sommer) {
 }
 weltWinter.addEventListener('click', () => weltWechseln(false));
 weltSommer.addEventListener('click', () => weltWechseln(true));
+weltAesthetic.addEventListener('click', () => weltWechseln('aesthetic'));
+weltZeigen('winter');
 
 // ---------- Hauptschleife ----------
 const uhr = new THREE.Clock();
