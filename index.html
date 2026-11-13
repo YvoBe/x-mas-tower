@@ -394,7 +394,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'igel'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'igel'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -1464,8 +1464,8 @@ function rundKlotz(w, h, d, r) {
 // yVon/yBis in Körper-Koordinaten (-0.44 = Saum, 0.3 = Hals), plus = etwas dicker (für Streifen)
 // Mädchen (Skizze): schmaler, Schultern fallen vom Hals schräg ab, deutlichere Taille
 // Jungen (Skizze): gerader Oberkörper ohne Taille, breite, fast waagerechte Schultern
-const RUMPF_JUNGE = [[-0.46, 0.322], [-0.3, 0.318], [-0.12, 0.316], [0.05, 0.322], [0.17, 0.334], [0.25, 0.33], [0.285, 0.28], [0.305, 0.2], [0.315, 0.1]];
-const RUMPF_MAEDCHEN = [[-0.46, 0.305], [-0.3, 0.29], [-0.12, 0.262], [0.05, 0.28], [0.16, 0.295], [0.23, 0.27], [0.28, 0.19], [0.31, 0.1]];
+const RUMPF_JUNGE = [[-0.46, 0.31], [-0.3, 0.298], [-0.12, 0.276], [0.05, 0.292], [0.17, 0.31], [0.25, 0.306], [0.285, 0.262], [0.305, 0.19], [0.315, 0.1]];
+const RUMPF_MAEDCHEN = [[-0.46, 0.3], [-0.32, 0.278], [-0.14, 0.228], [0.04, 0.252], [0.15, 0.27], [0.22, 0.252], [0.275, 0.182], [0.31, 0.095]];
 let rumpfProfil = RUMPF_JUNGE;
 function rumpfBreite(y) {
   const p = rumpfProfil;
@@ -1476,7 +1476,7 @@ function rumpfBreite(y) {
   }
   return p[p.length - 1][1];
 }
-function rumpf(yVon, yBis, plus = 0, tiefe = 0.57) {
+function rumpf(yVon, yBis, plus = 0, tiefe = 0.56) {
   const pts = [new THREE.Vector2(0.001, yVon)];
   const n = Math.max(2, Math.round((yBis - yVon) / 0.03));
   for (let i = 0; i <= n; i++) { const y = yVon + (yBis - yVon) * i / n; pts.push(new THREE.Vector2(rumpfBreite(y) + plus, y)); }
@@ -1486,7 +1486,7 @@ function rumpf(yVon, yBis, plus = 0, tiefe = 0.57) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i), w = Math.atan2(z, x);
-    const f = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), 4) + Math.pow(Math.abs(Math.sin(w)), 4), 0.25);
+    const f = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), 2.8) + Math.pow(Math.abs(Math.sin(w)), 2.8), 1 / 2.8);   // runder, nicht so eckig
     pos.setX(i, x * f); pos.setZ(i, z * f * (tiefe + plus * 0.6));
   }
   geo.computeVertexNormals();
@@ -1583,7 +1583,8 @@ function baueFigur(look, ziel = scene) {
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const bein = (seite) => {
     const gelenk = new THREE.Group();
-    gelenk.position.set(seite * 0.16, 0.84, 0);
+    gelenk.position.set(seite * (junge ? 0.15 : 0.135), 0.84, 0);
+    gelenk.scale.x = junge ? 0.9 : 0.84;   // schlankere Beine, passend zum dünneren Oberkörper
     const knie = new THREE.Group();
     knie.position.y = -0.42;
     gelenk.add(knie);
@@ -1601,6 +1602,11 @@ function baueFigur(look, ziel = scene) {
       const s1 = teil(new THREE.BoxGeometry(0.02, 0.44, 0.05), look.umschlag); s1.position.set(seite * 0.15, -0.21, 0);
       const s2 = teil(new THREE.BoxGeometry(0.02, 0.32, 0.05), look.umschlag); s2.position.set(seite * 0.135, -0.16, 0);
       gelenk.add(o, s1); knie.add(u, bund, s2);
+    } else if (hoseTyp === 'rock') {     // Rock: nur Beine mit Söckchen, der Rock selbst hängt an der Hüfte
+      const haut1 = teil(new THREE.CylinderGeometry(0.1, 0.095, 0.44, 14), look.haut); haut1.position.y = -0.21;
+      const haut2 = teil(new THREE.CylinderGeometry(0.095, 0.08, 0.36, 14), look.haut); haut2.position.y = -0.17;
+      const socke = teil(new THREE.CylinderGeometry(0.085, 0.085, 0.08, 14), '#f5f3ee'); socke.position.y = -0.31;
+      gelenk.add(haut1); knie.add(haut2, socke);
     } else {                             // kurze Hose, darunter Beine
       const o = teil(new THREE.CylinderGeometry(0.155, 0.17, 0.26, 18), look.hose, hoseM(10, 2)); o.position.y = -0.12;
       const saum = teil(new THREE.CylinderGeometry(0.175, 0.175, 0.04, 18), look.umschlag); saum.position.y = -0.25;
@@ -1625,17 +1631,34 @@ function baueFigur(look, ziel = scene) {
   const bL = bein(-1), bR = bein(1);
   const beinL = bL.gelenk, beinR = bR.gelenk, knieL = bL.knie, knieR = bR.knie;
   // Stern auf dem rechten Hosenbein
-  if (look.sternAn !== false) {
+  if (look.sternAn !== false && hoseTyp !== 'rock') {
     const stern = teil(sternForm(0.075, 0.034), look.stern, { metalness: 0.5, roughness: 0.35 });
     if (hoseTyp === 'kurz') { stern.position.set(0, -0.12, 0.16); beinL.add(stern); }
     else { stern.position.set(0, -0.08, hoseTyp === 'jeans' ? 0.168 : 0.142); knieL.add(stern); }
   }
 
   // Hüfte
-  const huefte = teil(prisma(junge ? 0.58 : 0.57, 0.24, 0.34, 0.1), look.hose, hoseM(14, 14));
-  huefte.position.y = 0.87;
+  const huefte = teil(prisma(junge ? 0.52 : 0.46, 0.24, junge ? 0.29 : 0.27, 0.1), look.hose, hoseM(14, 14));
+  huefte.position.y = 0.84;
   figur.add(huefte);
-  if (hoseTyp === 'jogging') {     // Kordel vorne
+  if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
+    const hoehe = 0.42, oben = 0.27, unten = 0.4, falten = 18;
+    const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const w = Math.atan2(z, x), t = 0.5 - y / hoehe;            // t: 0 oben, 1 unten
+      const zack = Math.abs(((w / (Math.PI * 2)) * falten % 1 + 1) % 1 - 0.5) * 2;   // Zickzack 0..1
+      const f = 1 + (zack - 0.5) * 0.09 * (0.3 + t);               // Falten werden nach unten tiefer
+      pos.setX(i, x * f); pos.setZ(i, z * f * 0.78);
+    }
+    geo.computeVertexNormals();
+    const rock = teil(geo, look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
+    rock.position.y = 0.98 - hoehe / 2;
+    const bund = teil(new THREE.CylinderGeometry(0.272, 0.272, 0.06, 32), look.umschlag);
+    bund.scale.z = 0.78; bund.position.y = 0.97;
+    figur.add(rock, bund);
+  } else if (hoseTyp === 'jogging') {     // Kordel vorne
     for (const sx of [-1, 1]) {
       const kordel = teil(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), '#f5f3ee');
       kordel.position.set(sx * 0.025, 0.86, 0.178); kordel.rotation.z = sx * 0.12;
@@ -1681,7 +1704,7 @@ function baueFigur(look, ziel = scene) {
   } else {                               // T-Shirt mit offener Jacke drüber
     const shirt = teil(rumpf(-0.44, 0.3, -0.015), look.pulli, { map: stoff('weich', 8, 8) });
     koerper.add(shirt);
-    const jx = junge ? 1 : 0.9;   // Mädchen-Jacke etwas schmaler
+    const jx = junge ? 0.92 : 0.82;   // Jacke passt zum schmaleren Oberkörper
     const j = (b, h, t, x, y, z) => { const m = teil(new THREE.BoxGeometry(b * (b > 0.3 ? jx : 1), h, t), look.jacke); m.position.set(x * jx, y, z); koerper.add(m); return m; };
     j(0.68, 0.78, 0.05, 0, -0.08, -0.17);             // Rücken
     for (const seite of [-1, 1]) {
@@ -1716,7 +1739,7 @@ function baueFigur(look, ziel = scene) {
     const gelenk = new THREE.Group();
     // Mädchen: Schultern schmaler und tiefer, Arme schlanker (wie auf der Skizze)
     const ar = junge ? 1 : 0.88;
-    gelenk.position.set(seite * (junge ? 0.41 : 0.365), junge ? 1.51 : 1.475, 0);
+    gelenk.position.set(seite * (junge ? 0.385 : 0.34), junge ? 1.5 : 1.475, 0);
     // Schulterkugel im Gelenk: verbindet Arm und Körper, auch wenn der Arm schwingt
     const schulterFarbe = oberteilTyp === 'top' ? look.haut : oberteilTyp === 'jacke' ? look.jacke : look.pulli;
     const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.088 : 0.105) * ar, 16, 12), schulterFarbe,
@@ -2478,15 +2501,16 @@ const AUSWAHL = [
   { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
   { titel: 'Jacke', key: 'jacke', nur: ['oberteilTyp', 'jacke'], farben: ['#7a8450', '#1f2a4a', '#e7a3b7', '#c8323c', '#d9cbb5', '#3b5b8c'] },
   { titel: 'Kragen, Bündchen, Taschen', key: 'buendchen', nur: ['oberteilTyp', '!top'], farben: ['#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450', '#c8323c'] },
-  { titel: 'Hose', key: 'hoseTyp', worte: [['jeans', 'Jeans'], ['jogging', 'Jogginghose'], ['kurz', 'Kurze Hose']] },
-  { titel: 'Farbe Hose', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
+  { titel: 'Hose', key: 'hoseTyp', worte: [['jeans', 'Jeans'], ['jogging', 'Jogginghose'], ['kurz', 'Kurze Hose'], ['rock', 'Rock']] },
+  { titel: 'Farbe Hose / Rock', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
   { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
-  { titel: 'Stern auf der Hose', key: 'sternAn', worte: [[true, 'Ja'], [false, 'Nein']] },
-  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
+  { titel: 'Stern auf der Hose', key: 'sternAn', ohne: ['hoseTyp', 'rock'], worte: [[true, 'Ja'], [false, 'Nein']] },
+  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', 'rock'], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
   { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
 ];
 // Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
 const passt = (g) => {
+  if (g.ohne && (AUSSEHEN[g.ohne[0]] ?? STANDARD_AUSSEHEN[g.ohne[0]]) === g.ohne[1]) return false;   // z. B. kein Stern beim Rock
   if (!g.nur) return true;
   const [k, w] = g.nur, ist = AUSSEHEN[k] ?? STANDARD_AUSSEHEN[k];
   return typeof w === 'string' && w.startsWith('!') ? ist !== w.slice(1) : ist === w;
