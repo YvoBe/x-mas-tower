@@ -225,6 +225,41 @@
     #codePanel { max-height: calc(100vh - 80px); overflow-y: auto; }
     .spalte h2 { font-size: 20px; padding-top: 10px; }
   }
+  /* Startbildschirm */
+  #start {
+    position: fixed; inset: 0; z-index: 15;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+    background: radial-gradient(ellipse at center, rgba(31, 42, 74, 0.15), rgba(31, 42, 74, 0.55));
+  }
+  #start .karte {
+    width: min(440px, 100%); max-height: 100%; overflow-y: auto;
+    background: rgba(251, 248, 242, 0.92); border: 4px solid var(--rosa); border-radius: 28px;
+    padding: 22px 24px 20px; text-align: center; color: var(--ink);
+    box-shadow: 0 10px 0 var(--ink);
+  }
+  #start .logo { margin: 0; }
+  #start .logo svg { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto; }
+  #start .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-height: 520px) { #start .logo svg { max-width: 250px; } }
+  #start .unter { margin: 6px 0 16px; font-size: 15px; font-weight: 600; }
+  #start .knoepfe { display: grid; gap: 10px; }
+  #start button {
+    font: 800 20px var(--font); border-radius: 16px; padding: 10px 14px 6px; cursor: pointer;
+    border: 3px solid var(--ink); background: #fff; color: var(--ink);
+  }
+  #start button.haupt { background: var(--ink); color: #fff; font-size: 24px; }
+  #start .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #start button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  #start .tipp { margin: 14px 0 0; font-size: 13px; font-weight: 600; opacity: 0.8; }
+  body.start-offen .hud, body.start-offen .touch, body.start-offen .banner { display: none !important; }
+  @media (max-height: 520px) {
+    #start .karte { padding: 12px 18px 12px; }
+    #start .unter { margin-bottom: 10px; }
+    #start button { font-size: 17px; padding: 7px 12px 4px; }
+    #start button.haupt { font-size: 20px; }
+    #start .tipp { display: none; }
+  }
   /* Hochkant auf dem Handy: Hinweis zum Drehen */
   #drehHinweis {
     position: fixed; inset: 0; z-index: 20;
@@ -236,11 +271,38 @@
   #drehHinweis .handy { font-size: 64px; line-height: 1; animation: drehen 2s ease-in-out infinite; }
   @keyframes drehen { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(90deg); } }
   #drehHinweis button { font: 700 16px var(--font); color: #fbf8f2; background: transparent; border: 2px solid rgba(251, 248, 242, 0.6); border-radius: 12px; padding: 8px 16px 6px; cursor: pointer; }
-  @media (orientation: portrait) { body.is-touch:not(.hochkant-ok):not(.editor-offen) #drehHinweis { display: flex; } }
+  @media (orientation: portrait) { body.is-touch:not(.hochkant-ok):not(.editor-offen):not(.start-offen) #drehHinweis { display: flex; } }
   @media (prefers-reduced-motion: reduce) { #drehHinweis .handy { animation: none; } }
   @media (prefers-reduced-motion: reduce) { #jump:active { transform: none; } }
 </style>
 
+<div id="start" role="dialog" aria-label="Startbildschirm">
+  <div class="karte">
+    <h2 class="logo">
+      <span class="sr">LPlay App Tower</span>
+      <!-- Logo nach der Zeichnung: wellige Form mit doppeltem Rand, TOWER im Bogen, darunter LPlay App -->
+      <svg viewBox="0 0 360 170" aria-hidden="true">
+        <path d="M38 52 C70 22 120 40 160 30 C205 18 250 36 300 26 C335 20 352 52 338 84 C326 112 350 132 322 150 C290 168 240 146 190 156 C140 166 90 150 52 158 C20 164 10 132 26 110 C38 92 12 74 38 52 Z" fill="#fbf8f2" stroke="#1f2a4a" stroke-width="5"/>
+        <path d="M50 62 C78 38 122 52 160 43 C204 32 248 49 296 40 C324 35 336 60 325 85 C316 108 334 126 312 139 C284 153 238 134 190 143 C142 152 94 138 58 145 C34 150 26 126 38 110 C48 95 28 78 50 62 Z" fill="none" stroke="#e7a3b7" stroke-width="4"/>
+        <path id="towerBogen" d="M110 86 Q180 46 250 86" fill="none"/>
+        <text font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="26" letter-spacing="6" fill="#c9607a"><textPath href="#towerBogen" startOffset="50%" text-anchor="middle">TOWER</textPath></text>
+        <text x="180" y="128" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="46" fill="#1f2a4a">LPlay App</text>
+        <text x="62" y="58" font-size="20" fill="#f2c230">★</text><text x="290" y="58" font-size="16" fill="#f2c230">★</text>
+      </svg>
+    </h2>
+    <p class="unter">Spring durch die Türme und finde alle Türchen!</p>
+    <div class="knoepfe">
+      <button type="button" class="haupt" id="startLos">▶ Spielen</button>
+      <div class="zwei">
+        <button type="button" id="startWinter">🎄 Weihnachten</button>
+        <button type="button" id="startSommer">🌸 Sommer</button>
+      </div>
+      <button type="button" id="startFigur">👤 Figur ändern</button>
+    </div>
+    <p class="tipp keys-hint">WASD laufen · Shift sprinten · Leertaste springen</p>
+    <p class="tipp touch-hint">Joystick laufen · RENN sprinten · Knopf springen</p>
+  </div>
+</div>
 <div class="hud">
   <div class="links">
   <button type="button" id="figurKnopf" aria-label="Figur ändern">
@@ -1988,7 +2050,8 @@ function update(dt) {
   let iy = (tasten.KeyW || tasten.ArrowUp ? 1 : 0) - (tasten.KeyS || tasten.ArrowDown ? 1 : 0) + joy.y;
   const len = Math.hypot(ix, iy);
   if (len > 1) { ix /= len; iy /= len; }
-  if (s.feiert) { ix = iy = 0; }
+  if (s.feiert || startOffen) { ix = iy = 0; }
+  if (startOffen) { kam.yaw += dt * 0.12; s.sprungPuffer = 0; }   // Kamera dreht sich langsam im Startbildschirm
   const vorX = -Math.sin(kam.yaw), vorZ = -Math.cos(kam.yaw);
   const rechtsX = Math.cos(kam.yaw), rechtsZ = -Math.sin(kam.yaw);
   const tempoJetzt = sprintAn || tasten.ShiftLeft || tasten.ShiftRight ? SPRINT_TEMPO : LAUF_TEMPO;
@@ -2511,6 +2574,25 @@ codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
 })();
 
 document.getElementById('hochkantKnopf').addEventListener('click', () => document.body.classList.add('hochkant-ok'));
+
+// ---------- Startbildschirm ----------
+const startSeite = document.getElementById('start');
+let startOffen = true;
+document.body.classList.add('start-offen');
+function startSchliessen(sommer) {
+  if (!startOffen) return;
+  startOffen = false;
+  startSeite.hidden = true;
+  document.body.classList.remove('start-offen');
+  if (sommer !== undefined) weltWechseln(sommer);
+  kam.yaw = Math.PI;
+}
+document.getElementById('startLos').addEventListener('click', () => startSchliessen());
+document.getElementById('startWinter').addEventListener('click', () => startSchliessen(false));
+document.getElementById('startSommer').addEventListener('click', () => startSchliessen(true));
+document.getElementById('startFigur').addEventListener('click', () => { startSchliessen(); editorOeffnen(); });
+addEventListener('keydown', (e) => { if (startOffen && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); startSchliessen(); } });
+document.getElementById('startLos').focus();
 
 // Welt aussuchen (oben rechts): Weihnachtswelt oder Sommerwelt
 const weltWinter = document.getElementById('weltWinter'), weltSommer = document.getElementById('weltSommer');
