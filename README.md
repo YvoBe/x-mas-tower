@@ -6,7 +6,7 @@ Ein 3D-Parkour-Spiel im Browser: ein Adventskalender mit 24 Türmen im Schnee.
 - Jeder Turm hat ein eigenes Thema (Tannenbaum, Schneemänner, Geschenkeberg, Lebkuchenhaus, Schlitten mit Rentier, Riesenkugeln), Checkpoints mit Sternen und oben ein Geschenk.
 - Verschiedene Blöcke: eckig, rund, drehend, hoch und runter fahrend, schiebend und kleine Trittsteine. Je höher die Turmnummer, desto mehr besondere Blöcke.
 - Figur-Editor (Knopf oben links): Name, Hautfarbe, Augen, Augenfarbe, Mund, Frisur (lang, Locken, Zopf, Dutt, kurz), Haarfarbe, Oberteil (Top, Pulli, Jacke mit T-Shirt), Hose (Jeans, Jogginghose, kurze Hose), Stern, Schuhe. Die Figur lässt sich drehen.
-- Die andere Seite (Knopf 🌀 oben links): ein normaler Dreh-Turm mit 50 Sprüngen, den man immer spielen kann. Fast alle Plattformen drehen sich, mit Checkpoints.
+- Die andere Seite (Knopf 🌀 oben links): ein normaler Dreh-Turm ohne Weihnachtsdeko mit 50 Sprüngen, den man immer spielen kann. Fast alle Plattformen drehen sich, mit Checkpoints.
 - Mit bis zu 6 Leuten spielen über einen Code oben rechts (klappt nur im veröffentlichten Spiel auf claude.ai).
 - Am besten im Querformat spielen.
 - Steuerung: PC mit WASD + Leertaste, Handy mit Joystick + Sprung-Knopf.
