@@ -1821,7 +1821,7 @@ function gesichtTextur(look, mass) {
       g.quadraticCurveTo(x + s * Math.sin(w * 0.6) * lg * 0.6, y - Math.cos(w * 0.6) * lg * 0.6, ex, ey);
       linie('#1d1612', viele ? 0.004 : 0.0035);
     }
-    const unten = viele ? 3 : junge ? 0 : 2;
+    const unten = 0;   // keine unteren Wimpern
     for (let k = 0; k < unten; k++) {
       const t = 0.62 + k * 0.14;
       const x = s * rx * t, y = ry * 0.75 * Math.sqrt(Math.max(0, 1 - t * t)) + 0.001;
