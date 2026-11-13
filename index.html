@@ -507,13 +507,51 @@ function kette(a, b, abstand = 0.7, durchhang = 1.2) {
 }
 
 // ---------- Tannen (auch als geschmückte Weihnachtsbäume) ----------
-const stammGeo = new THREE.CylinderGeometry(0.18, 0.28, 1.6, 8);
-const nadelGeos = [], schneeGeos = [];
-for (let i = 0; i < 5; i++) {
-  const breite = 2.1 - i * 0.38, hoch = 1.9 - i * 0.2;
-  nadelGeos.push(new THREE.ConeGeometry(breite, hoch, 11));
-  schneeGeos.push(new THREE.ConeGeometry(breite * 0.72, hoch * 0.55, 11));
+const stammGeo = new THREE.CylinderGeometry(0.16, 0.3, 1.8, 10);
+// Echtere Tanne: viele Ast-Etagen mit zackigem, hängendem Rand, innen dunkel, an den Spitzen heller,
+// oben auf den Ästen liegt Schnee. Alles ist EIN Bauteil (schnell genug fürs Handy).
+function baumKrone(seed, schnee) {
+  const r = zufall(seed), teile = [];
+  const ETAGEN = 10, unten = 1.0, oben = 6.9;
+  const dunkel = new THREE.Color(0x14301d), hell = new THREE.Color(0x2e5a38), weiss = new THREE.Color(0xf4f7fb), c = new THREE.Color();
+  for (let i = 0; i < ETAGEN; i++) {
+    const t = i / ETAGEN;
+    const y0 = unten + t * (oben - unten - 1.1);
+    const R = 2.25 * (1 - t) + 0.22, h = 1.35 - t * 0.35;
+    const geo = new THREE.ConeGeometry(R, h, 22, 3);
+    const pos = geo.attributes.position;
+    const zacken = 7 + Math.floor(r() * 4), phase = r() * 6.3;
+    const farben = [];
+    for (let k = 0; k < pos.count; k++) {
+      const x = pos.getX(k), y = pos.getY(k), z = pos.getZ(k);
+      const rr = Math.hypot(x, z), w = Math.atan2(z, x);
+      const anteil = rr / R;                                   // 0 = Stamm, 1 = Astspitze
+      const zack = 1 + (0.22 * Math.sin(w * zacken + phase) + 0.12 * Math.sin(w * 17 + phase * 2)) * anteil;
+      const s2 = zack * (0.95 + 0.07 * Math.sin(w * 5 + phase * 3));
+      pos.setXYZ(k, x * s2, y - anteil * anteil * 0.28 * zack + y0 + h / 2, z * s2);   // Astspitzen hängen etwas
+      c.copy(dunkel).lerp(hell, Math.min(1, anteil * 1.1) * (0.7 + r() * 0.3));
+      if (schnee && y > -h * 0.2 && Math.sin(w * zacken + phase) > -0.2 && r() > 0.25) c.lerp(weiss, 0.85);
+      farben.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(farben, 3));
+    teile.push(geo.toNonIndexed());
+  }
+  // Alle Etagen zu einem Bauteil zusammenfügen
+  const zusammen = new THREE.BufferGeometry();
+  for (const name of ['position', 'color']) {
+    const laenge = teile.reduce((n, g) => n + g.attributes[name].array.length, 0);
+    const arr = new Float32Array(laenge);
+    let o = 0;
+    for (const g of teile) { arr.set(g.attributes[name].array, o); o += g.attributes[name].array.length; }
+    zusammen.setAttribute(name, new THREE.BufferAttribute(arr, 3));
+  }
+  zusammen.computeVertexNormals();
+  return zusammen;
 }
+const KRONEN_SCHNEE = [baumKrone(1, true), baumKrone(2, true), baumKrone(3, true)];
+const KRONEN_GRUEN = [baumKrone(4, false), baumKrone(5, false)];
+const kronenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
+const rindenMat = M(0x4a3426, { roughness: 1 });
 const kugelGeo = new THREE.SphereGeometry(0.13, 10, 8);
 const KUGEL_FARBEN = [FARBEN.rot, FARBEN.gold, FARBEN.rosa, FARBEN.navy, FARBEN.weiss];
 const sternGeo = (() => {
@@ -531,21 +569,17 @@ const drehSterne = [];
 
 function tanne(gruppe, x, z, s, geschmueckt = false, schnee = true) {
   const baum = new THREE.Group();
-  const stamm = new THREE.Mesh(stammGeo, M(0x5a4130));
-  stamm.position.y = 0.8; stamm.castShadow = true;
+  const stamm = new THREE.Mesh(stammGeo, rindenMat);
+  stamm.position.y = 0.9; stamm.castShadow = true;
   baum.add(stamm);
+  const sorte = (Math.abs(Math.round(x * 7 + z * 13)) % 3);
+  const krone = new THREE.Mesh(schnee ? KRONEN_SCHNEE[sorte] : KRONEN_GRUEN[sorte % 2], kronenMat);
+  krone.rotation.y = (x * 3.7 + z) % 6.3;
+  krone.castShadow = true;
+  baum.add(krone);
   const punkte = [];
   for (let i = 0; i < 5; i++) {
-    const hoch = 1.9 - i * 0.2, breite = 2.1 - i * 0.38, y = 1.3 + i * 1.05;
-    const kegel = new THREE.Mesh(nadelGeos[i], M(0x2c4a35));
-    kegel.position.y = y + hoch / 2; kegel.rotation.y = i * 1.3;
-    kegel.castShadow = true;
-    baum.add(kegel);
-    if (schnee) {
-      const sch = new THREE.Mesh(schneeGeos[i], M(0xf7f9fc));
-      sch.position.y = y + hoch * 0.78; sch.rotation.y = kegel.rotation.y;
-      baum.add(sch);
-    }
+    const breite = 2.1 - i * 0.38, y = 1.3 + i * 1.05, hoch = 1.9 - i * 0.2;
     if (geschmueckt) {
       for (let k = 0; k < 6; k++) {
         const w = k * 1.05 + i;
@@ -1257,6 +1291,11 @@ while (gepflanzt < 80) {
     blueten.setColorAt(i, c.set(bluetenFarben[i % bluetenFarben.length]));
   }
   scene.add(stiele, blueten, mitten);
+  // Grüne Tannen am Rand der Wiese (ohne Schnee)
+  for (let i = 0; i < 26; i++) {
+    const w = rw() * Math.PI * 2, r = 58 + rw() * 22;
+    tanne(scene, cx + Math.cos(w) * r, cz + Math.sin(w) * r, 0.9 + rw() * 0.9, false, false);
+  }
 }
 
 // ---------- Berge in der Ferne ----------
