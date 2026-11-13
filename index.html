@@ -2014,18 +2014,20 @@ function baueFigur(look, ziel = scene) {
     // Handgelenk: verbindet die Hand ohne Lücke mit dem Arm
     const handgelenk = teil(new THREE.CylinderGeometry(0.052 * ar, 0.045, 0.12, 14), look.haut);
     handgelenk.scale.z = 1.15; handgelenk.position.y = 0.0;
-    const flaeche = teil(new THREE.SphereGeometry(0.085, 16, 12), look.haut);
-    flaeche.scale.set(0.62, 1.0, 1); flaeche.position.y = -0.07;
+    // Flache Handfläche (dünn von der Seite), die Finger wachsen direkt unten heraus
+    const flaeche = teil(new THREE.SphereGeometry(0.085, 20, 14), look.haut);
+    flaeche.scale.set(0.4, 0.85, 0.75); flaeche.position.y = -0.07;
     hand.add(handgelenk, flaeche);
     for (let k = 0; k < 4; k++) {
       const lg = [0.06, 0.072, 0.068, 0.052][k];
-      const finger = teil(new THREE.CapsuleGeometry(0.021, lg, 4, 8), look.haut);
-      finger.position.set(-seite * 0.01, -0.13 - lg / 2 + 0.015, 0.054 - k * 0.036);
-      finger.rotation.z = -seite * 0.18;     // etwas zum Körper gebogen
+      const finger = teil(new THREE.CapsuleGeometry(0.018, lg, 4, 8), look.haut);
+      finger.geometry.translate(0, -lg / 2, 0);                  // Drehpunkt oben an der Handfläche
+      finger.position.set(-seite * 0.004, -0.1, 0.045 - k * 0.03);
+      finger.rotation.z = -seite * 0.12;     // etwas zum Körper gebogen
       hand.add(finger);
     }
     const daumen = teil(new THREE.CapsuleGeometry(0.024, 0.05, 4, 8), look.haut);
-    daumen.position.set(-seite * 0.03, -0.07, 0.08);
+    daumen.position.set(-seite * 0.012, -0.075, 0.068);
     daumen.rotation.x = 0.6; daumen.rotation.z = -seite * 0.3;
     hand.add(daumen);
     gelenk.add(hand);
