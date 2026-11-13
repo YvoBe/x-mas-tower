@@ -79,8 +79,8 @@
     bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
     width: 128px; height: 128px;
     border-radius: 50%;
-    background: var(--pad);
-    border: 3px solid var(--pad-edge);
+    background: rgba(31, 42, 74, 0.22);
+    border: 3px solid rgba(31, 42, 74, 0.55);
   }
   #knob {
     position: absolute;
@@ -88,7 +88,8 @@
     width: 56px; height: 56px;
     margin: -28px 0 0 -28px;
     border-radius: 50%;
-    background: var(--pad-edge);
+    background: rgba(31, 42, 74, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.8);
   }
   #jump {
     position: fixed;
@@ -198,6 +199,31 @@
     #editor .drehen { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(46% + 24px); }
     .tag p { display: none; }
   }
+  /* Querformat auf dem Handy: alles etwas kleiner, damit mehr vom Spiel zu sehen ist */
+  @media (max-height: 520px) {
+    .tag h1 { font-size: 16px; }
+    .tag p { display: none; }
+    .zahl { font-size: 16px; }
+    #figurKnopf { width: 44px; height: 44px; }
+    #stick { width: 112px; height: 112px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+    #jump { width: 80px; height: 80px; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+    .banner { font-size: 26px; }
+    #codePanel { max-height: calc(100vh - 80px); overflow-y: auto; }
+    .spalte h2 { font-size: 20px; padding-top: 10px; }
+  }
+  /* Hochkant auf dem Handy: Hinweis zum Drehen */
+  #drehHinweis {
+    position: fixed; inset: 0; z-index: 20;
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    background: rgba(31, 42, 74, 0.92); color: #fbf8f2; text-align: center;
+    font-size: 24px; font-weight: 800;
+  }
+  #drehHinweis .handy { font-size: 64px; line-height: 1; animation: drehen 2s ease-in-out infinite; }
+  @keyframes drehen { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(90deg); } }
+  #drehHinweis button { font: 700 16px var(--font); color: #fbf8f2; background: transparent; border: 2px solid rgba(251, 248, 242, 0.6); border-radius: 12px; padding: 8px 16px 6px; cursor: pointer; }
+  @media (orientation: portrait) { body.is-touch:not(.hochkant-ok):not(.editor-offen) #drehHinweis { display: flex; } }
+  @media (prefers-reduced-motion: reduce) { #drehHinweis .handy { animation: none; } }
   @media (prefers-reduced-motion: reduce) { #jump:active { transform: none; } }
 </style>
 
@@ -229,6 +255,11 @@
     <div class="tag zahl" id="tuerchen">🎁 0/24</div>
     <div class="tag zahl" id="height">Draußen</div>
   </div>
+</div>
+<div id="drehHinweis">
+  <div class="handy" aria-hidden="true">📱</div>
+  <div>Dreh dein Handy quer,<br>dann siehst du mehr!</div>
+  <button type="button" id="hochkantKnopf">Trotzdem hochkant spielen</button>
 </div>
 <div class="banner" id="banner" hidden>Geschafft!</div>
 <div id="editor" hidden>
@@ -275,7 +306,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, frisur: 'lang', sternAn: true };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
+for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
+const WAHL_WORTE = { frisur: ['lang', 'zopf', 'dutt', 'kurz'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -333,8 +366,9 @@ const flecken = (() => {
 // Ein Klotz, auf dem man stehen kann (liste = wo er für die Kollision gespeichert wird)
 function klotz(liste, gruppe, x, oben, z, breite, tiefe, farbe, extra = {}) {
   const dicke = extra.dicke || 0.6;
+  let mesh = null;
   if (!extra.unsichtbar) {
-    const mesh = new THREE.Mesh(boxGeo, extra.mat || M(farbe));
+    mesh = new THREE.Mesh(boxGeo, extra.mat || M(farbe));
     mesh.scale.set(breite, dicke, tiefe);
     mesh.position.set(x, oben - dicke / 2, z);
     mesh.castShadow = mesh.receiveShadow = !extra.wand;
@@ -346,6 +380,7 @@ function klotz(liste, gruppe, x, oben, z, breite, tiefe, farbe, extra = {}) {
     minZ: z - tiefe / 2, maxZ: z + tiefe / 2,
     ...extra,
   };
+  if (mesh) k.mesh = mesh;
   liste.push(k);
   return k;
 }
@@ -499,6 +534,226 @@ let alleKloetze = statisch;
 // Boden: verschneite Landschaft
 klotz(statisch, scene, 0, 0, 0, 1200, 1200, FARBEN.schnee, { dicke: 1 });
 
+// ---------- Jeder Turm hat ein eigenes Thema ----------
+const THEMEN = ['baum', 'schneemann', 'geschenke', 'lebkuchen', 'schlitten', 'kugeln'];
+const THEMA_BODEN = { baum: FARBEN.holz, schneemann: 0xe3edf5, geschenke: 0xead1d8, lebkuchen: 0xc89b6d, schlitten: 0xd6c7b0, kugeln: 0x48537a };
+const themaVon = (T) => (T.spezial ? 'baum' : THEMEN[(T.nr - 1) % THEMEN.length]);
+
+// Fester Zufall: gleiche Zahl rein, gleiche Würfe raus
+function zufall(seed) {
+  return () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Runde Plattform (zum Stehen zählt ein Quadrat in der Mitte)
+const zylGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 28);
+function rundPlatte(liste, gruppe, x, oben, z, d, farbe, extra = {}) {
+  const dicke = 0.6;
+  const mesh = new THREE.Mesh(zylGeo, M(farbe));
+  mesh.scale.set(d, dicke, d);
+  mesh.position.set(x, oben - dicke / 2, z);
+  mesh.castShadow = mesh.receiveShadow = true;
+  gruppe.add(mesh);
+  const k = klotz(liste, gruppe, x, oben, z, d * 0.8, d * 0.8, 0, { ...extra, unsichtbar: true });
+  k.mesh = mesh;
+  return k;
+}
+
+// Bewegliche Plattformen bewegen (und wer draufsteht, fährt mit)
+function bewegePlatten(dt) {
+  for (const T of TUERME) {
+    if (!T.gruppe) continue;
+    for (const p of T.platten) {
+      if (!p.bew) continue;
+      const b = p.bew, steht = spieler.boden === p && spieler.amBoden;
+      if (b.art === 'dreh') {
+        const w = b.tempo * dt;
+        p.mesh.rotation.y += w;
+        if (steht) {
+          const mx = (p.minX + p.maxX) / 2, mz = (p.minZ + p.maxZ) / 2;
+          const dx = spieler.pos.x - mx, dz = spieler.pos.z - mz;
+          const c = Math.cos(w), s = Math.sin(w);
+          spieler.pos.x = mx + dx * c + dz * s;
+          spieler.pos.z = mz - dx * s + dz * c;
+          spieler.blick += w;
+        }
+        continue;
+      }
+      b.zeit = (b.zeit || 0) + dt;
+      const f = b.art === 'hoch' ? Math.sin(b.zeit * b.tempo + b.phase) : 0.5 - 0.5 * Math.cos(b.zeit * b.tempo + b.phase);
+      const nx = b.basis.x + (b.dx || 0) * b.amp * (b.art === 'hoch' ? 0 : f);
+      const nz = b.basis.z + (b.dz || 0) * b.amp * (b.art === 'hoch' ? 0 : f);
+      const ny = b.basis.y + (b.art === 'hoch' ? b.amp * f : 0);
+      const mx = (p.minX + p.maxX) / 2, mz = (p.minZ + p.maxZ) / 2;
+      const ddx = nx - mx, ddz = nz - mz, ddy = ny - p.oben;
+      p.minX += ddx; p.maxX += ddx; p.minZ += ddz; p.maxZ += ddz; p.oben += ddy; p.unten += ddy;
+      p.mesh.position.x += ddx; p.mesh.position.y += ddy; p.mesh.position.z += ddz;
+      if (steht) { spieler.pos.x += ddx; spieler.pos.y += ddy; spieler.pos.z += ddz; }
+    }
+  }
+}
+
+// --- Deko-Bausteine ---
+const kugel1 = new THREE.SphereGeometry(1, 20, 16);
+function kugel(g, x, y, z, r, farbe, extra) {
+  const m = new THREE.Mesh(kugel1, M(farbe, extra));
+  m.scale.setScalar(r); m.position.set(x, y, z); m.castShadow = true;
+  g.add(m); return m;
+}
+function schneemann(g, x, z, s, dreh = 0) {
+  const t = new THREE.Group();
+  kugel(t, 0, 0.9, 0, 0.9, 0xfbfcff); kugel(t, 0, 2.2, 0, 0.65, 0xfbfcff); kugel(t, 0, 3.2, 0, 0.45, 0xfbfcff);
+  for (const sx of [-1, 1]) kugel(t, sx * 0.16, 3.32, 0.4, 0.06, 0x1d2236);
+  for (const y of [2.5, 2.2, 1.9]) kugel(t, 0, y, 0.63, 0.07, 0x1d2236);
+  const nase = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 10), M(0xe8822e));
+  nase.rotation.x = Math.PI / 2; nase.position.set(0, 3.2, 0.62); t.add(nase);
+  const schal = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.12, 10, 24), M(FARBEN.rosa));
+  schal.rotation.x = Math.PI / 2; schal.position.y = 2.8; t.add(schal);
+  deko(t, 0, 3.62, 0, 0.9, 0.08, 0.9, FARBEN.navy); deko(t, 0, 3.95, 0, 0.6, 0.6, 0.6, FARBEN.navy);
+  for (const sx of [-1, 1]) {
+    const arm = deko(t, sx * 0.95, 2.4, 0, 0.9, 0.07, 0.07, 0x5a4130);
+    arm.rotation.z = sx * 0.5;
+  }
+  t.position.set(x, 0.04, z); t.scale.setScalar(s); t.rotation.y = dreh;
+  g.add(t); return t;
+}
+function lebkuchenMann(g, x, z, s, dreh = 0) {
+  const t = new THREE.Group();
+  const braun = 0xa8693a;
+  deko(t, 0, 1.1, 0, 0.7, 0.9, 0.2, braun);
+  kugel(t, 0, 1.85, 0, 0.38, braun).scale.z = 0.12;
+  for (const sx of [-1, 1]) {
+    const a = deko(t, sx * 0.55, 1.35, 0, 0.6, 0.22, 0.2, braun); a.rotation.z = sx * 0.4;
+    deko(t, sx * 0.22, 0.4, 0, 0.26, 0.8, 0.2, braun);
+    kugel(t, sx * 0.13, 1.92, 0.06, 0.05, 0xffffff);
+  }
+  for (const y of [1.35, 1.1, 0.85]) kugel(t, 0, y, 0.11, 0.05, FARBEN.rot);
+  const mund = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 6, 12, Math.PI), M(0xffffff));
+  mund.rotation.z = Math.PI; mund.position.set(0, 1.78, 0.06); t.add(mund);
+  t.position.set(x, 0.04, z); t.scale.setScalar(s); t.rotation.y = dreh;
+  g.add(t); return t;
+}
+function geschenk(g, x, y, z, b, farbe, dreh = 0) {
+  const t = new THREE.Group();
+  deko(t, 0, b / 2, 0, b, b, b, farbe);
+  deko(t, 0, b / 2, 0, b + 0.03, b + 0.03, b * 0.18, FARBEN.gold);
+  deko(t, 0, b / 2, 0, b * 0.18, b + 0.03, b + 0.03, FARBEN.gold);
+  for (const sx of [-1, 1]) {
+    const schleife = new THREE.Mesh(new THREE.TorusGeometry(b * 0.16, b * 0.05, 8, 16), M(FARBEN.gold));
+    schleife.position.set(sx * b * 0.14, b + b * 0.12, 0); schleife.rotation.y = Math.PI / 2;
+    t.add(schleife);
+  }
+  t.position.set(x, y, z); t.rotation.y = dreh;
+  g.add(t); return t;
+}
+const GESCHENK_FARBEN = [FARBEN.rot, FARBEN.navy, FARBEN.rosa, FARBEN.weiss, FARBEN.oliv];
+
+function themaDeko(T, g, platten) {
+  const { cx, cz, nr } = T;
+  const thema = themaVon(T);
+  const rnd = zufall(nr * 31 + 7);
+  // In der Mitte steht immer etwas Großes (man kann nicht durchlaufen)
+  if (thema === 'baum') {
+    tanne(g, cx, cz, T.spezial ? 2.2 : 1.5, true, false);
+    klotz(platten, g, cx, 3, cz, 1, 1, 0, { dicke: 3, unsichtbar: true });
+    for (let k = 0; k < 8; k++) {
+      const w = k * 0.8 + nr, rr = 3.4 + (k % 2) * 0.7;
+      geschenk(g, cx + Math.cos(w) * rr, 0.04, cz + Math.sin(w) * rr, 0.6 + (k % 3) * 0.2, GESCHENK_FARBEN[k % 5], w);
+    }
+  } else if (thema === 'schneemann') {
+    schneemann(g, cx, cz, 1.4, Math.PI);
+    klotz(platten, g, cx, 4, cz, 2, 2, 0, { dicke: 4, unsichtbar: true });
+    for (let k = 0; k < 4; k++) {
+      const w = k * Math.PI / 2 + 0.6;
+      schneemann(g, cx + Math.cos(w) * 4.2, cz + Math.sin(w) * 4.2, 0.45, -w + Math.PI / 2);
+    }
+    for (let k = 0; k < 10; k++) kugel(g, cx + (rnd() - 0.5) * 9, 0.25, cz + (rnd() - 0.5) * 9, 0.3, 0xfbfcff);
+  } else if (thema === 'geschenke') {
+    for (let k = 0; k < 14; k++) {
+      const lage = k < 7 ? 0 : k < 11 ? 1 : k < 13 ? 2 : 3;
+      const w = k * 2.4, rr = lage === 3 ? 0 : (1.6 - lage * 0.5) * (0.6 + rnd() * 0.5);
+      const b = 1.2 - lage * 0.15;
+      geschenk(g, cx + Math.cos(w) * rr, 0.04 + lage * 1.05, cz + Math.sin(w) * rr, b, GESCHENK_FARBEN[k % 5], w);
+    }
+    klotz(platten, g, cx, 4, cz, 2.4, 2.4, 0, { dicke: 4, unsichtbar: true });
+    for (let k = 0; k < 8; k++) {
+      const w = k * 0.78, rr = 4 + rnd();
+      geschenk(g, cx + Math.cos(w) * rr, 0.04, cz + Math.sin(w) * rr, 0.5 + rnd() * 0.4, GESCHENK_FARBEN[(k + 2) % 5], w);
+    }
+  } else if (thema === 'lebkuchen') {
+    // Lebkuchenhaus mit Zuckerguss
+    const braun = 0xa8693a;
+    deko(g, cx, 1.3, cz, 3, 2.5, 3, braun);
+    for (const s of [-1, 1]) {
+      const dach = deko(g, cx + s * 0.85, 3.1, cz, 2.1, 0.25, 3.4, 0x7a4524);
+      dach.rotation.z = s * -0.65;
+      const guss = deko(g, cx + s * 0.85, 3.25, cz, 2.1, 0.08, 3.45, 0xffffff);
+      guss.rotation.z = s * -0.65;
+    }
+    deko(g, cx, 0.75, cz - 1.52, 0.8, 1.4, 0.06, 0x5a2f18);
+    for (const s of [-1, 1]) deko(g, cx + s * 0.9, 1.6, cz - 1.52, 0.5, 0.5, 0.06, 0xffe2a0, { emissive: 0x6b5000 });
+    for (let k = 0; k < 9; k++) kugel(g, cx - 1.2 + k * 0.3, 2.55, cz - 1.52, 0.09, GESCHENK_FARBEN[k % 5]);
+    klotz(platten, g, cx, 4, cz, 3, 3, 0, { dicke: 4, unsichtbar: true });
+    for (let k = 0; k < 5; k++) {
+      const w = k * 1.25 + 0.3;
+      lebkuchenMann(g, cx + Math.cos(w) * 4.3, cz + Math.sin(w) * 4.3, 0.8, -w - Math.PI / 2);
+    }
+    for (const [x, z] of [[-3.5, 3.5], [3.5, 3.5], [3.5, -3.5]]) {
+      const st = new THREE.Mesh(stangenGeo, stangenMat);
+      st.scale.setScalar(0.35); st.position.set(cx + x, 0, cz + z); st.rotation.y = rnd() * 6;
+      g.add(st);
+    }
+  } else if (thema === 'schlitten') {
+    const t = new THREE.Group();
+    deko(t, 0, 0.9, 0, 1.6, 0.8, 3, FARBEN.rot);
+    deko(t, 0, 1.6, -1.2, 1.6, 1, 0.5, FARBEN.rot);
+    deko(t, 0, 1.3, 1.25, 1.6, 0.4, 0.5, FARBEN.rot);
+    for (const s of [-1, 1]) {
+      deko(t, s * 0.7, 0.2, 0, 0.1, 0.1, 3.6, FARBEN.gold, { metalness: 0.6, roughness: 0.3 });
+      for (const zz of [-1, 1]) deko(t, s * 0.7, 0.45, zz, 0.08, 0.5, 0.08, FARBEN.gold, { metalness: 0.6, roughness: 0.3 });
+    }
+    geschenk(t, -0.3, 1.3, -0.4, 0.6, FARBEN.navy); geschenk(t, 0.35, 1.3, 0.2, 0.5, FARBEN.weiss); geschenk(t, 0, 1.3, 0.8, 0.45, FARBEN.oliv);
+    // Rentier vorne
+    const r = new THREE.Group();
+    deko(r, 0, 1.2, 0, 0.6, 0.6, 1.4, 0x8a5a33);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) deko(r, sx * 0.2, 0.45, sz * 0.5, 0.15, 0.9, 0.15, 0x6b4329);
+    deko(r, 0, 1.75, 0.75, 0.25, 0.7, 0.25, 0x8a5a33);
+    deko(r, 0, 2.05, 0.95, 0.35, 0.35, 0.5, 0x8a5a33);
+    kugel(r, 0, 2.02, 1.22, 0.09, FARBEN.rot, { emissive: 0x600000 });
+    for (const sx of [-1, 1]) {
+      const geweih = deko(r, sx * 0.22, 2.45, 0.9, 0.06, 0.5, 0.06, 0x5a4130); geweih.rotation.z = sx * -0.5;
+      const ast = deko(r, sx * 0.32, 2.55, 0.95, 0.25, 0.05, 0.05, 0x5a4130); ast.rotation.z = sx * 0.3;
+    }
+    r.position.z = 3; t.add(r);
+    t.position.set(cx, 0.04, cz - 0.6); t.rotation.y = 0.5;
+    g.add(t);
+    klotz(platten, g, cx, 2, cz, 3, 3, 0, { dicke: 2, unsichtbar: true });
+    for (let k = 0; k < 6; k++) geschenk(g, cx + (rnd() - 0.5) * 9, 0.04, cz + (rnd() - 0.5) * 9, 0.5 + rnd() * 0.3, GESCHENK_FARBEN[k % 5], rnd() * 6);
+  } else {  // kugeln: riesige Christbaumkugeln, die von oben hängen
+    const farben = [FARBEN.rosa, FARBEN.gold, FARBEN.rot, FARBEN.weiss, FARBEN.oliv];
+    for (let k = 0; k < 7; k++) {
+      const w = k * 0.9, rr = k === 0 ? 0 : 2.6 + rnd() * 1.6;
+      const y = 3 + rnd() * (T.hoehe - 6), x = cx + Math.cos(w) * rr, z = cz + Math.sin(w) * rr, gr = k === 0 ? 1.6 : 0.6 + rnd() * 0.5;
+      kugel(g, x, y, z, gr, farben[k % 5], { metalness: 0.7, roughness: 0.2 });
+      deko(g, x, y + gr + 0.15, z, gr * 0.4, 0.3, gr * 0.4, FARBEN.gold, { metalness: 0.6, roughness: 0.3 });
+      deko(g, x, (y + gr + T.hoehe) / 2, z, 0.04, T.hoehe - y - gr, 0.04, 0xdddddd);
+    }
+    tanne(g, cx, cz, 0.9, true, false);
+    klotz(platten, g, cx, 3, cz, 1, 1, 0, { dicke: 3, unsichtbar: true });
+  }
+  // In allen Türmen: ein paar schwebende Sterne weiter oben
+  for (let k = 0; k < 4; k++) {
+    const st = new THREE.Mesh(sternGeo, sternMat);
+    st.scale.setScalar(0.5);
+    st.position.set(cx + (rnd() - 0.5) * 6, 6 + rnd() * (T.hoehe - 8), cz + (rnd() - 0.5) * 6);
+    g.add(st); drehSterne.push(st);
+  }
+}
+
 // ---------- Nummern-Schilder ----------
 function nummerTextur(nr, fertig) {
   const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -556,7 +811,7 @@ function baueHuelle(T) {
   const seitenStueck = (aussen - TUER_BREIT) / 2;
   for (const s of [-1, 1]) klotz(statisch, scene, cx + s * (TUER_BREIT / 2 + seitenStueck / 2), hoehe, cz - r, seitenStueck, WAND, 0, wand);
   klotz(statisch, scene, cx, hoehe, cz - r, TUER_BREIT, WAND, 0, { ...wand, dicke: hoehe - TUER_HOCH });
-  klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, FARBEN.holz, { dicke: 0.08 });   // Holzboden
+  klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, THEMA_BODEN[themaVon(T)], { dicke: 0.08 });   // Boden passend zum Thema
 
   // Rahmen
   const rahmenFarbe = spezial ? FARBEN.gold : FARBEN.navy;
@@ -618,17 +873,52 @@ function baueInnen(T) {
     if (s < 6 * o) return [o, o - (s - 4 * o)];
     return [o - (s - 6 * o), -o];
   };
+  // Jeder Turm würfelt seine Blöcke immer gleich (fester Zufall pro Turm)
+  const rnd = zufall(nr * 7919 + 13);
+  const anteil = spezial ? 0.55 : Math.min(0.55, 0.12 + nr * 0.02);   // je höher die Nummer, desto mehr besondere Blöcke
+  let vorherBesonders = false;
   for (let i = 0; i < anzahl; i++) {
-    const [px, pz] = weg(1 + i * schritt);
+    const s = 1 + i * schritt;
+    const [px, pz] = weg(s);
     const cp = (i + 1) % 6 === 0;
-    const gr = cp ? 3.6 : groesse;
-    klotz(platten, g, cx + px, i + 1, cz + pz, gr, gr, cp ? FARBEN.gold : reihe[i % reihe.length], { checkpoint: cp, turm: T });
+    const farbe = cp ? FARBEN.gold : reihe[i % reihe.length];
+    let art = 'eckig';
+    if (!cp && i > 0) {
+      if (!vorherBesonders && rnd() < anteil) {
+        const w = rnd();
+        art = w < 0.3 ? 'dreh' : w < 0.6 ? 'hoch' : w < 0.85 ? 'schieben' : 'klein';
+      } else if (rnd() < 0.4) art = 'rund';
+    }
+    vorherBesonders = !['eckig', 'rund'].includes(art);
+    const x = cx + px, z = cz + pz, h = i + 1;
     if (cp) {
+      klotz(platten, g, x, h, z, 3.6, 3.6, farbe, { checkpoint: true, turm: T });
       const stern = new THREE.Mesh(sternGeo, sternMat);
       stern.scale.setScalar(0.4);
-      stern.position.set(cx + px, i + 2.9, cz + pz);
+      stern.position.set(x, h + 1.9, z);
       g.add(stern);
       drehSterne.push(stern);
+    } else if (art === 'eckig') {
+      klotz(platten, g, x, h, z, groesse, groesse, farbe, { turm: T });
+    } else if (art === 'rund') {
+      rundPlatte(platten, g, x, h, z, groesse * 1.05, farbe, { turm: T });
+    } else if (art === 'dreh') {        // runde Scheibe, die sich dreht und dich mitnimmt
+      const k = rundPlatte(platten, g, x, h, z, groesse * 1.15, farbe, { turm: T });
+      const balken = new THREE.Mesh(boxGeo, M(FARBEN.gold));
+      balken.scale.set(groesse * 1.1, 0.04, 0.25); balken.position.y = 0.52;
+      k.mesh.add(balken);
+      k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
+    } else if (art === 'hoch') {        // fährt langsam hoch und runter
+      const k = klotz(platten, g, x, h, z, groesse, groesse, farbe, { turm: T });
+      k.bew = { art: 'hoch', basis: new THREE.Vector3(x, h, z), phase: rnd() * 6, amp: 0.5, tempo: 1.3 };
+    } else if (art === 'schieben') {    // schiebt sich nach innen und zurück
+      const len = Math.hypot(px, pz) || 1;
+      const k = klotz(platten, g, x, h, z, groesse, groesse, farbe, { turm: T });
+      k.bew = { art: 'schieben', basis: new THREE.Vector3(x, h, z), phase: rnd() * 6, amp: 1.6, tempo: 1.1, dx: -px / len, dz: -pz / len };
+    } else {                            // zwei kleine Trittsteine statt einem Block
+      const [ax, az] = weg(s - schritt * 0.22), [bx, bz] = weg(s + schritt * 0.22);
+      klotz(platten, g, cx + ax, h - 0.25, cz + az, 1.4, 1.4, farbe, { turm: T });
+      klotz(platten, g, cx + bx, h, cz + bz, 1.4, 1.4, farbe, { turm: T });
     }
   }
   // Ziel ganz oben
@@ -642,16 +932,7 @@ function baueInnen(T) {
   deko(g, cx + zx + 1, zh + 0.5, cz + zz + 1, 1.04, 1.04, 0.2, FARBEN.gold);
   deko(g, cx + zx + 1, zh + 0.5, cz + zz + 1, 0.2, 1.04, 1.04, FARBEN.gold);
 
-  // Weihnachtsbaum in der Mitte mit Geschenken
-  tanne(g, cx, cz, spezial ? 2.2 : 1.5, true, false);
-  klotz(platten, g, cx, 3, cz, 1, 1, 0, { dicke: 3, unsichtbar: true });
-  for (let k = 0; k < 7; k++) {
-    const w = k * 0.9 + nr, rr = 3.4 + (k % 2) * 0.7;
-    const b = 0.6 + (k % 3) * 0.2;
-    const x = cx + Math.cos(w) * rr, z = cz + Math.sin(w) * rr;
-    deko(g, x, b / 2 + 0.04, z, b, b, b, [FARBEN.rot, FARBEN.navy, FARBEN.rosa, FARBEN.weiss, FARBEN.oliv][k % 5]);
-    deko(g, x, b / 2 + 0.04, z, b + 0.03, b + 0.03, 0.12, FARBEN.gold);
-  }
+  themaDeko(T, g, platten);
   // Lichterketten innen an den Wänden
   const r = innen - 0.3, punkte = [];
   const ecken = [[-r, -r], [-r, r], [r, r], [r, -r], [-r, -r]];
@@ -837,49 +1118,108 @@ function baueFigur(look, ziel = scene) {
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
   const figur = new THREE.Group();
 
-  // Beine: weite dunkelblaue Hose mit Umschlag unten
+  const hoseTyp = look.hoseTyp || 'jeans';
+  const oberteilTyp = look.oberteilTyp || 'pulli';
+
+  // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const bein = (seite) => {
     const gelenk = new THREE.Group();
     gelenk.position.set(seite * 0.16, 0.84, 0);
-    const b = teil(new THREE.CylinderGeometry(0.15, 0.175, 0.72, 18), look.hose);
-    b.position.y = -0.36;
-    const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag);
-    umschlag.position.y = -0.68;
+    const knie = new THREE.Group();
+    knie.position.y = -0.42;
+    gelenk.add(knie);
+    if (hoseTyp === 'jeans') {          // weite Jeans mit Umschlag
+      const o = teil(new THREE.CylinderGeometry(0.15, 0.16, 0.44, 18), look.hose); o.position.y = -0.21;
+      const u = teil(new THREE.CylinderGeometry(0.16, 0.175, 0.36, 18), look.hose); u.position.y = -0.17;
+      const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag); umschlag.position.y = -0.28;
+      gelenk.add(o); knie.add(u, umschlag);
+    } else if (hoseTyp === 'jogging') { // Jogginghose: schmal, Bündchen am Knöchel, Streifen an der Seite
+      const o = teil(new THREE.CylinderGeometry(0.15, 0.145, 0.44, 18), look.hose); o.position.y = -0.21;
+      const u = teil(new THREE.CylinderGeometry(0.145, 0.12, 0.34, 18), look.hose); u.position.y = -0.16;
+      const bund = teil(new THREE.CylinderGeometry(0.125, 0.125, 0.07, 18), look.umschlag); bund.position.y = -0.33;
+      const s1 = teil(new THREE.BoxGeometry(0.02, 0.44, 0.05), look.umschlag); s1.position.set(seite * 0.15, -0.21, 0);
+      const s2 = teil(new THREE.BoxGeometry(0.02, 0.32, 0.05), look.umschlag); s2.position.set(seite * 0.135, -0.16, 0);
+      gelenk.add(o, s1); knie.add(u, bund, s2);
+    } else {                             // kurze Hose, darunter Beine
+      const o = teil(new THREE.CylinderGeometry(0.155, 0.17, 0.26, 18), look.hose); o.position.y = -0.12;
+      const saum = teil(new THREE.CylinderGeometry(0.175, 0.175, 0.04, 18), look.umschlag); saum.position.y = -0.25;
+      const haut1 = teil(new THREE.CylinderGeometry(0.1, 0.095, 0.22, 14), look.haut); haut1.position.y = -0.33;
+      const haut2 = teil(new THREE.CylinderGeometry(0.095, 0.08, 0.36, 14), look.haut); haut2.position.y = -0.17;
+      const socke = teil(new THREE.CylinderGeometry(0.085, 0.085, 0.08, 14), '#f5f3ee'); socke.position.y = -0.31;
+      gelenk.add(o, saum, haut1); knie.add(haut2, socke);
+    }
     const schuh = teil(rundKlotz(0.26, 0.11, 0.38, 0.05), look.schuhe);
-    schuh.position.set(0, -0.78, 0.06);
-    gelenk.add(b, umschlag, schuh);
+    schuh.position.set(0, -0.36, 0.06);
+    knie.add(schuh);
     figur.add(gelenk);
-    return gelenk;
+    return { gelenk, knie };
   };
-  const beinL = bein(-1), beinR = bein(1);
-  // Goldener Stern auf dem rechten Hosenbein, unter dem Knie
-  const stern = teil(sternForm(0.085, 0.038), look.stern, { metalness: 0.5, roughness: 0.35 });
-  stern.position.set(0, -0.5, 0.17);
-  stern.rotation.x = -0.035;
-  if (look.sternAn !== false) beinL.add(stern);
+  const bL = bein(-1), bR = bein(1);
+  const beinL = bL.gelenk, beinR = bR.gelenk, knieL = bL.knie, knieR = bR.knie;
+  // Stern auf dem rechten Hosenbein
+  if (look.sternAn !== false) {
+    const stern = teil(sternForm(0.075, 0.034), look.stern, { metalness: 0.5, roughness: 0.35 });
+    if (hoseTyp === 'kurz') { stern.position.set(0, -0.12, 0.16); beinL.add(stern); }
+    else { stern.position.set(0, -0.08, hoseTyp === 'jeans' ? 0.168 : 0.142); knieL.add(stern); }
+  }
 
   // Hüfte
   const huefte = teil(prisma(0.6, 0.24, 0.34, 0.1), look.hose);
   huefte.position.y = 0.87;
   figur.add(huefte);
 
-  // Ringelpulli mit dunklem Kragen und Bund
+  // Oberkörper: Pulli, Top oder Jacke mit T-Shirt
   const koerper = new THREE.Group();
   koerper.position.y = 1.29;
-  const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli);
-  pulli.position.y = -0.07;
-  koerper.add(pulli);
-  for (const y of [0.2, 0.08, -0.04, -0.16, -0.28]) {
-    const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen);
-    streifen.position.y = y;
-    koerper.add(streifen);
+  if (oberteilTyp === 'pulli') {         // Ringelpulli mit dunklem Kragen und Bund
+    const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli);
+    pulli.position.y = -0.07;
+    koerper.add(pulli);
+    for (const y of [0.2, 0.08, -0.04, -0.16, -0.28]) {
+      const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen);
+      streifen.position.y = y;
+      koerper.add(streifen);
+    }
+    const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen);
+    bund.position.y = -0.42;
+    const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen);
+    kragen.rotation.x = Math.PI / 2;
+    kragen.position.y = 0.3;
+    koerper.add(bund, kragen);
+  } else if (oberteilTyp === 'top') {    // Top mit Trägern, Schultern frei
+    const top = teil(prisma(0.64, 0.56, 0.35, 0.12), look.pulli);
+    top.position.y = -0.16;
+    const haut = teil(prisma(0.6, 0.2, 0.32, 0.11), look.haut);
+    haut.position.y = 0.21;
+    const saum = teil(prisma(0.655, 0.05, 0.365, 0.125), look.streifen);
+    saum.position.y = 0.1;
+    koerper.add(top, haut, saum);
+    for (const seite of [-1, 1]) {
+      const traeger = teil(new THREE.BoxGeometry(0.06, 0.22, 0.34), look.pulli);
+      traeger.position.set(seite * 0.17, 0.22, 0);
+      koerper.add(traeger);
+    }
+  } else {                               // T-Shirt mit offener Jacke drüber
+    const shirt = teil(prisma(0.62, 0.74, 0.34, 0.11), look.pulli);
+    shirt.position.y = -0.07;
+    koerper.add(shirt);
+    const j = (b, h, t, x, y, z) => { const m = teil(new THREE.BoxGeometry(b, h, t), look.jacke); m.position.set(x, y, z); koerper.add(m); return m; };
+    j(0.68, 0.78, 0.05, 0, -0.08, -0.17);             // Rücken
+    for (const seite of [-1, 1]) {
+      j(0.05, 0.78, 0.38, seite * 0.33, -0.08, 0);    // Seiten
+      j(0.2, 0.78, 0.05, seite * 0.24, -0.08, 0.18);  // vorne links und rechts, in der Mitte offen
+      const revers = j(0.09, 0.22, 0.03, seite * 0.15, 0.2, 0.205);
+      revers.rotation.z = seite * 0.35;
+      const tasche = teil(new THREE.BoxGeometry(0.12, 0.08, 0.02), look.buendchen);
+      tasche.position.set(seite * 0.24, -0.26, 0.21);
+      koerper.add(tasche);
+    }
+    for (const x of [-0.13, 0.13]) {                  // Reißverschluss-Kanten
+      const z = teil(new THREE.BoxGeometry(0.015, 0.74, 0.02), look.buendchen);
+      z.position.set(x * 1.05, -0.08, 0.21);
+      koerper.add(z);
+    }
   }
-  const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen);
-  bund.position.y = -0.42;
-  const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen);
-  kragen.rotation.x = Math.PI / 2;
-  kragen.position.y = 0.3;
-  koerper.add(bund, kragen);
   figur.add(koerper);
 
   // Hals
@@ -887,58 +1227,106 @@ function baueFigur(look, ziel = scene) {
   hals.position.y = 1.64;
   figur.add(hals);
 
-  // Arme: gestreifte Ärmel, dunkles Bündchen, runde Hände
+  // Arme: je nach Oberteil mit langen Ärmeln oder frei
   const arm = (seite) => {
     const gelenk = new THREE.Group();
     gelenk.position.set(seite * 0.44, 1.5, 0);
-    const aermel = teil(new THREE.CapsuleGeometry(0.1, 0.5, 8, 16), look.pulli);
-    aermel.position.y = -0.3;
-    gelenk.add(aermel);
-    for (const y of [-0.12, -0.26, -0.4]) {
-      const s = teil(new THREE.CylinderGeometry(0.106, 0.106, 0.04, 16), look.streifen);
-      s.position.y = y;
-      gelenk.add(s);
+    if (oberteilTyp === 'top') {
+      const a = teil(new THREE.CapsuleGeometry(0.085, 0.5, 8, 16), look.haut);
+      a.position.y = -0.3;
+      gelenk.add(a);
+    } else {
+      const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
+      const aermel = teil(new THREE.CapsuleGeometry(0.1, 0.5, 8, 16), farbe);
+      aermel.position.y = -0.3;
+      gelenk.add(aermel);
+      if (oberteilTyp === 'pulli') {
+        for (const y of [-0.12, -0.26, -0.4]) {
+          const s = teil(new THREE.CylinderGeometry(0.106, 0.106, 0.04, 16), look.streifen);
+          s.position.y = y;
+          gelenk.add(s);
+        }
+      }
+      const buendchen = teil(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 16), look.buendchen);
+      buendchen.position.y = -0.56;
+      gelenk.add(buendchen);
     }
-    const buendchen = teil(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 16), look.buendchen);
-    buendchen.position.y = -0.56;
     const hand = teil(new THREE.SphereGeometry(0.1, 16, 12), look.haut);
     hand.position.y = -0.69;
-    gelenk.add(buendchen, hand);
+    gelenk.add(hand);
     gelenk.rotation.z = seite * 0.1;
     figur.add(gelenk);
     return gelenk;
   };
   const armL = arm(-1), armR = arm(1);
 
-  // Kopf mit freundlichem Gesicht
+  // Kopf mit Gesicht: Augen und Mund kann man aussuchen
   const kopf = new THREE.Group();
   kopf.position.y = 1.92;
   const schaedel = teil(new THREE.SphereGeometry(0.25, 32, 24), look.haut);
   schaedel.scale.set(0.95, 1.08, 0.98);
   kopf.add(schaedel);
+  const augen = look.augen || 'rund';
+  const ag = augen === 'gross' ? 1.3 : 1;
   for (const seite of [-1, 1]) {
-    const weiss = teil(new THREE.SphereGeometry(0.045, 16, 12), '#ffffff');
+    const weiss = teil(new THREE.SphereGeometry(0.045 * ag, 16, 12), '#ffffff');
     weiss.scale.set(1, 1.1, 0.45);
     weiss.position.set(seite * 0.085, 0.02, 0.222);
-    const iris = teil(new THREE.SphereGeometry(0.028, 14, 10), '#4a3326');
+    const iris = teil(new THREE.SphereGeometry(0.028 * ag, 14, 10), look.augenfarbe || '#4a3326');
     iris.scale.set(1, 1, 0.4);
     iris.position.set(seite * 0.085, 0.015, 0.24);
-    const glanz = teil(new THREE.SphereGeometry(0.008, 8, 6), '#ffffff');
-    glanz.position.set(seite * 0.085 + 0.01, 0.028, 0.249);
+    const pupille = teil(new THREE.SphereGeometry(0.013 * ag, 10, 8), '#111111');
+    pupille.scale.set(1, 1, 0.4);
+    pupille.position.set(seite * 0.085, 0.015, 0.247);
+    const glanz = teil(new THREE.SphereGeometry(0.008 * ag, 8, 6), '#ffffff');
+    glanz.position.set(seite * 0.085 + 0.01 * ag, 0.028, 0.252);
     const braue = teil(rundKlotz(0.08, 0.018, 0.02, 0.008), look.haare);
-    braue.position.set(seite * 0.085, 0.085, 0.228);
+    braue.position.set(seite * 0.085, 0.085 + (ag - 1) * 0.06, 0.228);
     braue.rotation.z = seite * -0.12;
     const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: 0.45 }));
     backe.scale.set(1, 0.7, 0.3);
     backe.position.set(seite * 0.13, -0.06, 0.2);
-    kopf.add(weiss, iris, glanz, braue, backe);
+    kopf.add(weiss, iris, pupille, glanz, braue, backe);
+    if (augen === 'wimpern') {
+      for (let k = -1; k <= 1; k++) {
+        const w = teil(new THREE.BoxGeometry(0.008, 0.035, 0.008), '#1d2236');
+        w.position.set(seite * 0.085 + k * 0.022 + seite * 0.012, 0.066, 0.235);
+        w.rotation.z = -(k + seite * 0.8) * 0.35;
+        kopf.add(w);
+      }
+    }
+    if (augen === 'zu') {   // fröhlich zugekniffen: Bogen statt Augen
+      kopf.remove(weiss, iris, pupille, glanz);
+      const bogen = teil(new THREE.TorusGeometry(0.035, 0.009, 6, 14, Math.PI), '#1d2236');
+      bogen.position.set(seite * 0.085, 0.01, 0.235);
+      kopf.add(bogen);
+    }
   }
   const nase = teil(new THREE.SphereGeometry(0.026, 12, 10), '#e8b994');
   nase.position.set(0, -0.035, 0.245);
-  const mund = teil(new THREE.TorusGeometry(0.05, 0.012, 6, 16, Math.PI), '#b4475f');
-  mund.position.set(0, -0.1, 0.224);
-  mund.rotation.z = Math.PI;
-  kopf.add(nase, mund);
+  kopf.add(nase);
+  const mundArt = look.mund || 'laecheln';
+  if (mundArt === 'laecheln') {
+    const mund = teil(new THREE.TorusGeometry(0.05, 0.012, 6, 16, Math.PI), '#b4475f');
+    mund.position.set(0, -0.1, 0.224); mund.rotation.z = Math.PI;
+    kopf.add(mund);
+  } else if (mundArt === 'grinsen') {
+    const mund = teil(new THREE.SphereGeometry(0.06, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#7a2236');
+    mund.scale.set(1.1, 0.8, 0.35); mund.position.set(0, -0.085, 0.222);
+    const zaehne = teil(new THREE.BoxGeometry(0.09, 0.018, 0.01), '#ffffff');
+    zaehne.position.set(0, -0.093, 0.243);
+    kopf.add(mund, zaehne);
+  } else if (mundArt === 'staunen') {
+    const mund = teil(new THREE.TorusGeometry(0.025, 0.012, 8, 18), '#b4475f');
+    mund.position.set(0, -0.11, 0.226);
+    kopf.add(mund);
+  } else {   // frech: Zunge raus
+    const mund = teil(new THREE.TorusGeometry(0.045, 0.011, 6, 16, Math.PI), '#b4475f');
+    mund.position.set(0, -0.1, 0.224); mund.rotation.z = Math.PI;
+    const zunge = teil(new THREE.SphereGeometry(0.025, 12, 10), '#e0707f');
+    zunge.scale.set(1, 1.2, 0.5); zunge.position.set(0.015, -0.14, 0.228);
+    kopf.add(mund, zunge);
+  }
 
   // Lange, offene braune Haare mit Mittelscheitel
   const haarMat = { roughness: 0.85 };
@@ -982,7 +1370,7 @@ function baueFigur(look, ziel = scene) {
   figur.add(kopf);
 
   ziel.add(figur);
-  return { figur, beinL, beinR, armL, armR };
+  return { figur, beinL, beinR, armL, armR, knieL, knieR };
 }
 // Gespeichertes Aussehen laden (falls schon im Editor geändert)
 try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
@@ -1119,6 +1507,8 @@ function update(dt) {
   const s = spieler;
   zeit += dt;
 
+  bewegePlatten(dt);
+
   // 1) Richtung aus Tasten + Joystick, passend zur Kamera
   let ix = (tasten.KeyD || tasten.ArrowRight ? 1 : 0) - (tasten.KeyA || tasten.ArrowLeft ? 1 : 0) + joy.x;
   let iy = (tasten.KeyW || tasten.ArrowUp ? 1 : 0) - (tasten.KeyS || tasten.ArrowDown ? 1 : 0) + joy.y;
@@ -1145,7 +1535,7 @@ function update(dt) {
   for (const p of alleKloetze) {
     if (!ueberXZ(p)) continue;
     if (s.vel.y <= 0 && vorherY >= p.oben - 0.001 && s.pos.y <= p.oben) {
-      s.pos.y = p.oben; s.vel.y = 0; s.amBoden = true;
+      s.pos.y = p.oben; s.vel.y = 0; s.amBoden = true; s.boden = p;
       if (p.checkpoint && s.checkpoint.y < p.oben) {
         s.checkpoint.set((p.minX + p.maxX) / 2, p.oben, (p.minZ + p.maxZ) / 2);
         zeigeBanner('Checkpoint ⭐', 1200);
@@ -1183,13 +1573,16 @@ function update(dt) {
     const w = Math.sin(zeit * 10) * 0.4;
     held.armL.rotation.x = held.armR.rotation.x = -2.8 + w;
     held.beinL.rotation.x = held.beinR.rotation.x = 0;
+    held.knieL.rotation.x = held.knieR.rotation.x = 0;
   } else if (!s.amBoden) {
-    held.beinL.rotation.x = -0.5; held.beinR.rotation.x = 0.3;
+    held.beinL.rotation.x = -0.55; held.beinR.rotation.x = -0.15;
+    held.knieL.rotation.x = 0.75; held.knieR.rotation.x = 0.5;     // Knie knicken beim Springen ab
     held.armL.rotation.x = held.armR.rotation.x = -2.6;     // Arme hoch beim Springen
   } else {
     s.schritt += dt * tempo * 1.6;
     const schwung = Math.sin(s.schritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.8;
     held.beinL.rotation.x = schwung; held.beinR.rotation.x = -schwung;
+    held.knieL.rotation.x = Math.max(0, -schwung) * 0.9; held.knieR.rotation.x = Math.max(0, schwung) * 0.9;
     held.armL.rotation.x = -schwung; held.armR.rotation.x = schwung;
   }
 
@@ -1290,17 +1683,30 @@ function editorFigurNeu() {
 // Auswahl-Spalte rechts
 const AUSWAHL = [
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
+  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['gross', 'Groß'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
+  { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
+  { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
   { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
-  { titel: 'Pulli', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
-  { titel: 'Streifen', key: 'streifen', farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
-  { titel: 'Kragen und Bündchen', key: 'buendchen', farben: ['#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450', '#c8323c'] },
-  { titel: 'Hose', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
-  { titel: 'Hosensaum', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
+  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt']] },
+  { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
+  { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'pulli'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
+  { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
+  { titel: 'Jacke', key: 'jacke', nur: ['oberteilTyp', 'jacke'], farben: ['#7a8450', '#1f2a4a', '#e7a3b7', '#c8323c', '#d9cbb5', '#3b5b8c'] },
+  { titel: 'Kragen, Bündchen, Taschen', key: 'buendchen', nur: ['oberteilTyp', '!top'], farben: ['#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450', '#c8323c'] },
+  { titel: 'Hose', key: 'hoseTyp', worte: [['jeans', 'Jeans'], ['jogging', 'Jogginghose'], ['kurz', 'Kurze Hose']] },
+  { titel: 'Farbe Hose', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
+  { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
   { titel: 'Stern auf der Hose', key: 'sternAn', worte: [[true, 'Ja'], [false, 'Nein']] },
-  { titel: 'Sternfarbe', key: 'stern', farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
+  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
   { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
 ];
+// Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
+const passt = (g) => {
+  if (!g.nur) return true;
+  const [k, w] = g.nur, ist = AUSSEHEN[k] ?? STANDARD_AUSSEHEN[k];
+  return typeof w === 'string' && w.startsWith('!') ? ist !== w.slice(1) : ist === w;
+};
 const spalte = document.getElementById('optionen');
 const nameFeld = document.getElementById('nameFeld');
 nameFeld.value = spielerName;
@@ -1312,11 +1718,11 @@ nameFeld.addEventListener('keydown', (e) => e.stopPropagation());
 nameFeld.addEventListener('keyup', (e) => e.stopPropagation());
 function spalteZeichnen() {
   spalte.innerHTML = '';
-  for (const gruppe of AUSWAHL) {
+  for (const gruppe of AUSWAHL.filter(passt)) {
     const box = document.createElement('section');
     const h = document.createElement('h3'); h.textContent = gruppe.titel;
     const reihe = document.createElement('div'); reihe.className = gruppe.farben ? 'farben' : 'worte';
-    const aktuell = AUSSEHEN[gruppe.key] ?? (gruppe.key === 'sternAn' ? true : gruppe.key === 'frisur' ? 'lang' : null);
+    const aktuell = AUSSEHEN[gruppe.key] ?? STANDARD_AUSSEHEN[gruppe.key];
     for (const wert of gruppe.farben || gruppe.worte) {
       const [w, text] = gruppe.farben ? [wert, ''] : wert;
       const knopf = document.createElement('button');
@@ -1408,7 +1814,7 @@ function sichererLook(l) {
   if (!l || typeof l !== 'object') return out;
   for (const k of Object.keys(STANDARD_AUSSEHEN)) {
     const v = l[k];
-    if (k === 'frisur') { if (['lang', 'zopf', 'dutt', 'kurz'].includes(v)) out.frisur = v; }
+    if (WAHL_WORTE[k]) { if (WAHL_WORTE[k].includes(v)) out[k] = v; }
     else if (k === 'sternAn') { if (typeof v === 'boolean') out.sternAn = v; }
     else if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) out[k] = v;
   }
@@ -1418,8 +1824,9 @@ const sichererName = (n) => (typeof n === 'string' ? n.replace(/[\u0000-\u001f\u
 
 function andereAktualisieren(peers) {
   const gesehen = new Set();
-  for (const p of peers) {
-    if (p.sameTab || p.kind !== 'viewer') continue;
+  // Höchstens 6 Spieler: du und 5 andere
+  for (const p of [...peers].sort((x, y) => (x.peer < y.peer ? -1 : 1))) {
+    if (p.sameTab || p.kind !== 'viewer' || gesehen.size >= 5) continue;
     const pr = p.presence || {};
     if (!Array.isArray(pr.p) || pr.p.length !== 3 || !pr.p.every(Number.isFinite)) continue;
     gesehen.add(p.peer);
@@ -1471,6 +1878,15 @@ async function codeBeitreten(code) {
     codeHinweis.textContent = code === meinCode ? 'Gib deinen Freunden diesen Code.' : `Du spielst im Spiel ${code.toUpperCase()}.`;
     mehr.gruppe.onPeers((ch) => andereAktualisieren(ch.peers), () => { codeHinweis.textContent = 'Verbindung verloren. Gib den Code nochmal ein.'; });
     andereAktualisieren(mehr.gruppe.peers());
+    // Ist das Spiel schon voll? Dann zurück zum eigenen Code.
+    setTimeout(async () => {
+      if (mehr.code !== code || !mehr.gruppe || code === meinCode) return;
+      const andere = mehr.gruppe.peers().filter((x) => !x.sameTab && x.kind === 'viewer').length;
+      if (andere > 5) {
+        await codeBeitreten(meinCode);
+        codeHinweis.textContent = 'Dieses Spiel ist schon voll (6 Spieler).';
+      }
+    }, 2000);
   } catch (e) {
     codeHinweis.textContent = 'Beitreten hat nicht geklappt. Versuch es gleich nochmal.';
   }
@@ -1487,12 +1903,14 @@ function mehrspielerUpdate(dt) {
     f.rotation.y += diff * Math.min(1, dt * 12);
     const tempo = Math.hypot(a.ziel.x - a.alt.x, a.ziel.z - a.alt.z) / Math.max(dt, 0.001);
     if (a.luft) {
-      a.held.beinL.rotation.x = -0.5; a.held.beinR.rotation.x = 0.3;
+      a.held.beinL.rotation.x = -0.55; a.held.beinR.rotation.x = -0.15;
+      a.held.knieL.rotation.x = 0.75; a.held.knieR.rotation.x = 0.5;
       a.held.armL.rotation.x = a.held.armR.rotation.x = -2.6;
     } else {
       a.schritt += dt * Math.min(tempo, LAUF_TEMPO) * 1.6;
       const s = Math.sin(a.schritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.8;
       a.held.beinL.rotation.x = s; a.held.beinR.rotation.x = -s;
+      a.held.knieL.rotation.x = Math.max(0, -s) * 0.9; a.held.knieR.rotation.x = Math.max(0, s) * 0.9;
       a.held.armL.rotation.x = -s; a.held.armR.rotation.x = s;
     }
   }
@@ -1530,6 +1948,8 @@ codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
   }
   codeBeitreten(meinCode);
 })();
+
+document.getElementById('hochkantKnopf').addEventListener('click', () => document.body.classList.add('hochkant-ok'));
 
 // ---------- Hauptschleife ----------
 const uhr = new THREE.Clock();
