@@ -665,6 +665,18 @@ function bewegePlatten(dt) {
         }
         continue;
       }
+      if (b.art === 'weg') {
+        if (steht && !b.uhr) b.uhr = 0.001;
+        if (b.uhr) {
+          b.uhr += dt;
+          if (b.uhr < 1) {           // wackeln und blasser werden
+            p.mesh.position.x = b.x + Math.sin(b.uhr * 55) * 0.05;
+            p.mesh.material.opacity = 1 - b.uhr * 0.5;
+          } else if (!p.aus) { p.aus = true; p.mesh.visible = false; }
+          if (b.uhr > 3.5) { p.aus = false; p.mesh.visible = true; p.mesh.position.x = b.x; p.mesh.material.opacity = 1; b.uhr = 0; }
+        }
+        continue;
+      }
       b.zeit = (b.zeit || 0) + dt;
       const f = b.art === 'hoch' ? Math.sin(b.zeit * b.tempo + b.phase) : 0.5 - 0.5 * Math.cos(b.zeit * b.tempo + b.phase);
       const nx = b.basis.x + (b.dx || 0) * b.amp * (b.art === 'hoch' ? 0 : f);
@@ -897,8 +909,12 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
 const SOMMER = { x: 0, z: 2400 };
 klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x5b7438, { dicke: 1 });   // grüne Wiese
 const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: SOMMER.x, cz: SOMMER.z, innen: 10, hoehe: 56, gruppe: null, platten: [] };
-baueHuelle(DREH_TURM);
-TUERME.push(DREH_TURM);
+DREH_TURM.name = 'Dreh-Turm'; DREH_TURM.sommerArt = 'dreh';
+// Zwei weitere Türme in der Sommerwelt, jeder mit anderen Sachen zum Machen
+const HUEPF_TURM = { nr: 26, name: 'Hüpf-Turm', sommerArt: 'huepf', normal: true, spezial: false, anzahl: 40, cx: SOMMER.x - 44, cz: SOMMER.z + 14, innen: 10, hoehe: 72, gruppe: null, platten: [] };
+const WEG_TURM = { nr: 27, name: 'Wackel-Turm', sommerArt: 'weg', normal: true, spezial: false, anzahl: 44, cx: SOMMER.x + 44, cz: SOMMER.z + 14, innen: 10, hoehe: 50, gruppe: null, platten: [] };
+const SOMMER_TUERME = [DREH_TURM, HUEPF_TURM, WEG_TURM];
+for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
 
 function baueHuelle(T) {
   const { cx, cz, innen, hoehe, spezial } = T;
@@ -1048,14 +1064,21 @@ function baueInnen(T) {
   // Jeder Turm würfelt seine Blöcke immer gleich (fester Zufall pro Turm)
   const rnd = zufall(nr * 7919 + 13);
   const anteil = spezial ? 0.55 : Math.min(0.55, 0.12 + nr * 0.02);   // je höher die Nummer, desto mehr besondere Blöcke
-  let vorherBesonders = false;
+  let vorherBesonders = false, vorherTrampolin = false, hBasis = 0;
   for (let i = 0; i < anzahl; i++) {
+    hBasis += vorherTrampolin ? 3 : 1;   // nach einem Trampolin geht es 3 hoch statt 1
     const s = 1 + i * schritt;
     const [px, pz] = weg(s);
     const cp = (i + 1) % 6 === 0;
     const farbe = cp ? FARBEN.gold : reihe[i % reihe.length];
     let art = 'eckig';
-    if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
+    if (T.sommerArt === 'huepf' && !cp && i > 0) {   // Hüpf-Turm: Trampoline schießen dich hoch
+      const w = rnd();
+      art = !vorherTrampolin && w < 0.38 && hBasis < T.hoehe - 12 ? 'trampolin' : w < 0.6 ? 'dreh' : w < 0.8 ? 'rund' : 'hoch';
+    } else if (T.sommerArt === 'weg' && !cp && i > 0) {   // Wackel-Turm: Blöcke wackeln und verschwinden kurz
+      const w = rnd();
+      art = w < 0.5 ? 'weg' : w < 0.68 ? 'schieben' : w < 0.84 ? 'dreh' : 'rund';
+    } else if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
       const w = rnd();
       art = w < 0.7 ? 'dreh' : w < 0.85 ? 'rund' : 'hoch';
     } else if (!cp && i > 0) {
@@ -1065,7 +1088,8 @@ function baueInnen(T) {
       } else if (rnd() < 0.4) art = 'rund';
     }
     vorherBesonders = !['eckig', 'rund'].includes(art);
-    const x = cx + px, z = cz + pz, h = i + 1;
+    vorherTrampolin = art === 'trampolin';
+    const x = cx + px, z = cz + pz, h = hBasis;
     if (cp) {
       klotz(platten, g, x, h, z, 3.6, 3.6, T.normal ? FARBEN.rosa : farbe, { checkpoint: true, turm: T });
       if (T.normal) {   // Fahne statt Stern
@@ -1088,6 +1112,19 @@ function baueInnen(T) {
       balken.scale.set(groesse * 1.1, 0.04, 0.25); balken.position.y = 0.52;
       k.mesh.add(balken);
       k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
+    } else if (art === 'trampolin') {   // Trampolin: wer drauf landet, fliegt hoch
+      const k = rundPlatte(platten, g, x, h, z, groesse * 1.1, FARBEN.navy, { turm: T });
+      k.trampolin = true;
+      const tuch = new THREE.Mesh(zylGeo, M(FARBEN.rosa));
+      tuch.scale.set(0.82, 0.04, 0.82); tuch.position.y = 0.51;
+      k.mesh.add(tuch);
+      const pfeil = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.5, 4), M(FARBEN.weiss));
+      pfeil.position.set(x, h + 0.9, z); g.add(pfeil);
+      drehSterne.push(pfeil);
+    } else if (art === 'weg') {         // wackelt, wenn man draufsteht, und verschwindet kurz
+      const k = klotz(platten, g, x, h, z, groesse, groesse, FARBEN.oliv, { turm: T });
+      k.mesh.material = M(FARBEN.oliv).clone(); k.mesh.material.transparent = true;
+      k.bew = { art: 'weg', uhr: 0, x, z };
     } else if (art === 'hoch') {        // fährt langsam hoch und runter
       const k = klotz(platten, g, x, h, z, groesse, groesse, farbe, { turm: T });
       k.bew = { art: 'hoch', basis: new THREE.Vector3(x, h, z), phase: rnd() * 6, amp: 0.5, tempo: 1.3 };
@@ -1105,7 +1142,7 @@ function baueInnen(T) {
   let [zx, zz] = weg(1 + anzahl * schritt);
   zx = Math.max(-innen + 2.1, Math.min(innen - 2.1, zx));
   zz = Math.max(-innen + 2.1, Math.min(innen - 2.1, zz));
-  const zh = anzahl + 1;
+  const zh = hBasis + 1;
   klotz(platten, g, cx + zx, zh, cz + zz, 4, 4, spezial ? FARBEN.gold : FARBEN.rosa, { ziel: true, turm: T });
   if (T.normal) {   // Pokal auf dem Ziel
     const gold = { metalness: 0.7, roughness: 0.25 };
@@ -1193,7 +1230,7 @@ while (gepflanzt < 80) {
   const rw = zufall(4242);
   const ort = (min) => { for (;;) { const w = rw() * Math.PI * 2, r = Math.sqrt(rw()) * (R - 1);
     const x = Math.cos(w) * r, z = Math.sin(w) * r;
-    if (Math.abs(x) > 11.5 || Math.abs(z) > 11.5 + min) return [cx + x, cz + z]; } };
+    if (SOMMER_TUERME.every((T) => Math.abs(cx + x - T.cx) > 11.5 || Math.abs(cz + z - T.cz) > 11.5 + min)) return [cx + x, cz + z]; } };
   // Grashalme
   const halmGeo = new THREE.ConeGeometry(0.07, 0.5, 3); halmGeo.translate(0, 0.25, 0);
   const halme = new THREE.InstancedMesh(halmGeo, M(0xffffff, { roughness: 1 }), 7000);
@@ -1649,54 +1686,65 @@ function baueFigur(look, ziel = scene) {
   kopf.add(kinn);
 
   const augen = look.augen || 'rund';
-  const ag = augen === 'gross' ? 1.3 : 1;
+  const ag = augen === 'gross' ? 1.22 : 1;
+  // Wie viele Wimpern: bei "Wimpern" lang und viele, sonst ein paar feine (beim Jungen keine)
+  const wimpernZahl = augen === 'wimpern' ? 9 : junge ? 0 : 5;
+  const wimpernLang = augen === 'wimpern' ? 0.03 : 0.018;
   for (const seite of [-1, 1]) {
-    const weiss = teil(new THREE.SphereGeometry(0.045 * ag, 16, 12), '#ffffff');
-    weiss.scale.set(1, 1.1, 0.45);
-    weiss.position.set(seite * 0.085, 0.02, 0.222);
-    const iris = teil(new THREE.SphereGeometry(0.028 * ag, 14, 10), look.augenfarbe || '#4a3326');
-    iris.scale.set(1, 1, 0.4);
-    iris.position.set(seite * 0.085, 0.015, 0.24);
-    const pupille = teil(new THREE.SphereGeometry(0.013 * ag, 10, 8), '#111111');
-    pupille.scale.set(1, 1, 0.4);
-    pupille.position.set(seite * 0.085, 0.015, 0.247);
-    const glanz = teil(new THREE.SphereGeometry(0.008 * ag, 8, 6), '#ffffff');
-    glanz.position.set(seite * 0.085 + 0.01 * ag, 0.028, 0.252);
     // Augenbraue als geschwungener Bogen (beim Jungen etwas dicker und gerader)
     const braue = teil(new THREE.TorusGeometry(0.075, junge ? 0.011 : 0.008, 6, 14, junge ? 0.9 : 1.15), look.haare);
     braue.scale.set(1, junge ? 0.45 : 0.6, 0.5);
     braue.rotation.z = Math.PI / 2 - (junge ? 0.45 : 0.575) + seite * -0.12;
     braue.position.set(seite * 0.085, 0.085 + (ag - 1) * 0.06 - 0.045 * (junge ? 0.45 : 0.6), 0.226);
-    const ring = teil(new THREE.TorusGeometry(0.027 * ag, 0.0035, 6, 18), '#2a1d16');   // dunkler Rand um die Iris
-    ring.position.set(seite * 0.085, 0.015, 0.2455);
-    const falte = teil(new THREE.TorusGeometry(0.05 * ag, 0.0035, 6, 14, Math.PI * 0.8), '#c99a82');   // Lidfalte
-    falte.rotation.z = Math.PI * 0.1; falte.position.set(seite * 0.085, 0.03, 0.226);
-    const unterlid = teil(new THREE.TorusGeometry(0.043 * ag, 0.0035, 6, 14, Math.PI * 0.7), '#d4a58f');
-    unterlid.rotation.z = Math.PI + Math.PI * 0.15; unterlid.position.set(seite * 0.085, 0.02, 0.229);
-    kopf.add(ring, falte, unterlid);
     const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: junge ? 0.2 : 0.45 }));
     backe.scale.set(1, 0.7, 0.3);
     backe.position.set(seite * 0.13, -0.06, 0.2);
-    kopf.add(weiss, iris, pupille, glanz, braue, backe);
-    if (augen !== 'zu') {   // Augenlid als feine Linie
-      const lid = teil(new THREE.TorusGeometry(0.046 * ag, 0.006, 6, 16, Math.PI), '#6b4a3a');
-      lid.scale.set(1, 1.05, 1);
-      lid.position.set(seite * 0.085, 0.022, 0.229);
-      kopf.add(lid);
+    kopf.add(braue, backe);
+    // Das Auge sitzt in einer eigenen Gruppe, leicht schräg wie echte Augen (außen etwas höher)
+    const auge = new THREE.Group();
+    auge.position.set(seite * 0.085, 0.017, 0.207);
+    auge.rotation.set(0, seite * 0.18, seite * 0.08);
+    kopf.add(auge);
+    const rx = 0.047 * ag, ry = 0.029 * ag;   // mandelförmig: breiter als hoch
+    if (augen === 'zu') {   // fröhlich zugekniffen: Bogen mit Wimpern
+      const bogen = teil(new THREE.TorusGeometry(0.036, 0.0075, 6, 16, Math.PI), '#1d2236');
+      bogen.scale.set(1.2, 0.8, 1); bogen.position.set(0, -0.004, 0.028);
+      auge.add(bogen);
+    } else {
+      const weiss = teil(new THREE.SphereGeometry(1, 22, 14), '#fbf7f2', { roughness: 0.35 });
+      weiss.scale.set(rx, ry, 0.022); weiss.position.z = 0.012;
+      const iris = teil(new THREE.CircleGeometry(0.0235 * ag, 24), look.augenfarbe || '#4a3326', { roughness: 0.3 });
+      iris.position.set(0, -0.001, 0.0345);
+      const ring = teil(new THREE.RingGeometry(0.0215 * ag, 0.0245 * ag, 24), '#241812');   // dunkler Rand um die Iris
+      ring.position.set(0, -0.001, 0.0347);
+      const pupille = teil(new THREE.CircleGeometry(0.0105 * ag, 18), '#0d0d0d');
+      pupille.position.set(0, -0.001, 0.035);
+      const glanz = teil(new THREE.CircleGeometry(0.0055 * ag, 10), '#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.6 });
+      glanz.position.set(0.008 * ag, 0.008 * ag, 0.0353);
+      // Oberlid: Haut über dem oberen Teil des Auges, so wird die Form mandelförmig
+      const lid = teil(new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.36), look.haut);
+      lid.scale.set(rx * 1.08, ry * 1.15, 0.03); lid.position.set(0, 0.003, 0.006); lid.rotation.x = 0.45;
+      auge.add(weiss, iris, ring, pupille, glanz, lid);
     }
-    if (augen === 'wimpern') {
-      for (let k = -1; k <= 1; k++) {
-        const w = teil(new THREE.BoxGeometry(0.008, 0.035, 0.008), '#1d2236');
-        w.position.set(seite * 0.085 + k * 0.022 + seite * 0.012, 0.066, 0.235);
-        w.rotation.z = -(k + seite * 0.8) * 0.35;
-        kopf.add(w);
-      }
-    }
-    if (augen === 'zu') {   // fröhlich zugekniffen: Bogen statt Augen
-      kopf.remove(weiss, iris, pupille, glanz, ring, unterlid);
-      const bogen = teil(new THREE.TorusGeometry(0.035, 0.009, 6, 14, Math.PI), '#1d2236');
-      bogen.position.set(seite * 0.085, 0.01, 0.235);
-      kopf.add(bogen);
+    // Wimpernkranz oben (dunkle Linie) und feine Linie unten
+    const linie = teil(new THREE.TorusGeometry(1, 0.11, 6, 24, Math.PI), '#1d1612');
+    linie.scale.set(rx * 1.02, ry * 1.02, 0.05); linie.position.set(0, 0.001, 0.03);
+    const unten = teil(new THREE.TorusGeometry(1, 0.06, 6, 20, Math.PI), '#b98a76');
+    unten.scale.set(rx * 0.95, ry * 0.9, 0.04); unten.rotation.z = Math.PI; unten.position.set(0, -0.001, 0.029);
+    const falte = teil(new THREE.TorusGeometry(1, 0.06, 6, 20, Math.PI * 0.8), '#c99a82');   // Lidfalte
+    falte.scale.set(rx * 1.05, ry * 1.25, 0.04); falte.rotation.z = Math.PI * 0.1; falte.position.set(0, 0.012, 0.022);
+    auge.add(linie, falte);
+    if (augen !== 'zu') auge.add(unten);
+    // Einzelne Wimpern: dünn, gebogen nach oben und außen, außen länger
+    for (let k = 0; k < wimpernZahl; k++) {
+      const t = wimpernZahl === 1 ? 0.5 : k / (wimpernZahl - 1);   // 0 = innen, 1 = außen
+      const w = Math.PI * (0.85 - t * 0.75) * (seite > 0 ? 1 : -1) + (seite > 0 ? 0 : Math.PI);
+      const len = wimpernLang * (0.6 + t * 0.7);
+      const wimper = teil(new THREE.ConeGeometry(0.0022, len, 4), '#1d1612');
+      wimper.geometry.translate(0, len / 2, 0);
+      wimper.position.set(Math.cos(w) * rx, Math.sin(w) * ry * (augen === 'zu' ? 0.2 : 1), 0.031);
+      wimper.rotation.set(-0.5, 0, w - Math.PI / 2 + seite * -0.25);   // nach außen geneigt und nach vorne gebogen
+      auge.add(wimper);
     }
   }
   // Ohren
@@ -1777,8 +1825,14 @@ function baueFigur(look, ziel = scene) {
   if (frisur === 'locken') {
     // Weiche, echte Locken: Haube oben und viele gedrehte Korkenzieher-Strähnen, die bis zu den Schultern fallen
     const r = zufall(7);
-    const haube = H(new THREE.SphereGeometry(0.275, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.42));
-    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.28;   // Stirn bleibt frei
+    const haube = H(new THREE.SphereGeometry(0.275, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.5));
+    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.12;
+    // An den Seiten geht die Haube bis über die Ohren herunter (keine Lücke an den Schläfen)
+    for (const seite of [-1, 1]) {
+      const schlaefe = H(new THREE.SphereGeometry(0.2, 18, 14));
+      schlaefe.scale.set(0.45, 1, 0.9); schlaefe.position.set(seite * 0.2, 0.05, 0.0);
+      kopf.add(schlaefe);
+    }
     const hinten = H(new THREE.SphereGeometry(0.272, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.82));
     hinten.scale.set(1.05, 1.08, 1.06);
     kopf.add(haube, hinten);
@@ -1798,15 +1852,24 @@ function baueFigur(look, ziel = scene) {
       return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 48, dicke, 6, false);
     };
     const lockenGeos = [locke(0.62, 0.035, 0.034, 3, 0), locke(0.52, 0.03, 0.032, 2.6, 1.3), locke(0.7, 0.038, 0.035, 3.3, 2.1)];
-    const anzahl = 22;
+    // Kurze Löckchen am Haaransatz, damit die Kante weich aussieht
+    const kurzeLocke = locke(0.12, 0.02, 0.028, 1.1, 0);
+    for (let k = 0; k < 14; k++) {
+      const a = -1.25 + (k / 13) * 2.5;   // vorne über die Stirn bis zu den Schläfen
+      const l = H(kurzeLocke);
+      l.position.set(Math.sin(a) * 0.255, 0.25 - Math.abs(a) * 0.1, Math.cos(a) * 0.225);
+      l.rotation.set(-0.9 * Math.cos(a), r() * 6.3, 0.9 * Math.sin(a));
+      kopf.add(l);
+    }
+    const anzahl = 26;
     for (let k = 0; k < anzahl; k++) {
       const a = -2.2 + (k / (anzahl - 1)) * 4.4;            // von der einen Gesichtsseite hinten herum zur anderen
       const vorne = Math.abs(a) > 1.75;
       const s = H(lockenGeos[k % 3]);
       const rr = 0.24 + r() * 0.02;
-      s.position.set(Math.sin(a) * rr, vorne ? 0.02 : 0.05 + r() * 0.04, -Math.cos(a) * rr * 0.95 + (vorne ? 0.03 : 0));
+      s.position.set(Math.sin(a) * rr, vorne ? 0.1 : 0.07 + r() * 0.05, -Math.cos(a) * rr * 0.95 + (vorne ? 0.03 : 0));
       s.rotation.set((r() - 0.5) * 0.15 + (vorne ? 0 : 0.1), r() * 6.3, Math.sin(a) * 0.1);
-      s.scale.y = vorne ? 0.75 : 1;
+      s.scale.y = vorne ? 0.85 : 1;
       kopf.add(s);
     }
   } else if (kurzHaar) {
@@ -1985,7 +2048,7 @@ function ueberXZ(p) {
 function seitlichWegschieben(achse) {
   const s = spieler.pos;
   for (const p of alleKloetze) {
-    if (!ueberXZ(p) || s.y >= p.oben - 0.05 || s.y + GROESSE <= p.unten) continue;
+    if (p.aus || !ueberXZ(p) || s.y >= p.oben - 0.05 || s.y + GROESSE <= p.unten) continue;
     if (p.oben - s.y <= 0.25) { s.y = p.oben; continue; }   // kleine Stufen einfach hochlaufen
     if (achse === 'x') s.x = s.x < (p.minX + p.maxX) / 2 ? p.minX - RADIUS : p.maxX + RADIUS;
     else               s.z = s.z < (p.minZ + p.maxZ) / 2 ? p.minZ - RADIUS : p.maxZ + RADIUS;
@@ -2018,7 +2081,7 @@ function turmGeschafft(T) {
     T.schild.material.needsUpdate = true;
     zeigeTuerchen();
   }
-  zeigeBanner(T.normal ? 'Dreh-Turm geschafft! 🌀' : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
+  zeigeBanner(T.normal ? `${T.name} geschafft! 🌸` : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
   // Nach dem Feiern stehst du wieder vor dem Turm
   setTimeout(() => {
     spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
@@ -2071,9 +2134,10 @@ function update(dt) {
   s.pos.y += s.vel.y * dt;
   s.amBoden = false;
   for (const p of alleKloetze) {
-    if (!ueberXZ(p)) continue;
+    if (p.aus || !ueberXZ(p)) continue;
     if (s.vel.y <= 0 && vorherY >= p.oben - 0.001 && s.pos.y <= p.oben) {
       s.pos.y = p.oben; s.vel.y = 0; s.amBoden = true; s.boden = p;
+      if (p.trampolin) { s.vel.y = SPRUNG_KRAFT * 1.55; s.amBoden = false; s.coyote = 0; continue; }
       if (p.checkpoint && s.checkpoint.y < p.oben) {
         s.checkpoint.set((p.minX + p.maxX) / 2, p.oben, (p.minZ + p.maxZ) / 2);
         zeigeBanner('Checkpoint ⭐', 1200);
@@ -2162,7 +2226,7 @@ function update(dt) {
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
-  hoehe.textContent = T ? `${T.normal ? 'Dreh-Turm' : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : 'Draußen';
+  hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : 'Draußen';
   const sommer = imSommer(s.pos);
   if (sommer !== zeigeSommer) {
     zeigeSommer = sommer;
@@ -2177,52 +2241,41 @@ function update(dt) {
 // =====================================================================
 const editor = { offen: false, dreh: 0 };
 const editorScene = new THREE.Scene();
-editorScene.background = new THREE.Color(0x1f2a4a);
-editorScene.fog = new THREE.Fog(0x1f2a4a, 12, 30);
+editorScene.background = new THREE.Color(0xffffff);
+let editorSchrift = null;
 const editorKamera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
 editorKamera.position.set(0, 1.35, 5.2);
 editorKamera.lookAt(0, 1.1, 0);
-editorScene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a3150, 0.9));
-const editorLicht = new THREE.DirectionalLight(0xffe7c4, 0.9);
+editorScene.add(new THREE.HemisphereLight(0xffffff, 0xc9c4d2, 0.6));
+const editorLicht = new THREE.DirectionalLight(0xffefe0, 0.75);
 editorLicht.position.set(2, 5, 4);
 editorLicht.castShadow = true;
 editorScene.add(editorLicht);
-const lampe = new THREE.PointLight(0xffb36b, 0.9, 12);
+const lampe = new THREE.PointLight(0xfff0f4, 0.5, 12);
 lampe.position.set(-2.5, 2, 1.5);
 editorScene.add(lampe);
 {
-  // Runder Teppich, Holzboden, Wand mit Lichterketten, Tannenbaum, Geschenke, Zuckerstange
-  const boden = new THREE.Mesh(new THREE.CircleGeometry(14, 40), M(0x6e5440));
+  // Heller Umstyling-Raum: alles weiß, an der Wand steht groß "Umstyling"
+  const boden = new THREE.Mesh(new THREE.CircleGeometry(14, 40), M(0xffffff, { roughness: 0.9 }));
   boden.rotation.x = -Math.PI / 2; boden.receiveShadow = true;
-  const teppich = new THREE.Mesh(new THREE.CircleGeometry(1.4, 40), M(FARBEN.rosa));
+  const teppich = new THREE.Mesh(new THREE.CircleGeometry(1.4, 48), M(0xf7f3ee));
   teppich.rotation.x = -Math.PI / 2; teppich.position.y = 0.01; teppich.receiveShadow = true;
-  const rand = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.55, 40), M(FARBEN.weiss));
+  const rand = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.48, 48), M(FARBEN.rosa));
   rand.rotation.x = -Math.PI / 2; rand.position.y = 0.012;
   editorScene.add(boden, teppich, rand);
-  const wand = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), M(0x2a3760));
+  const wand = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), M(0xffffff, { roughness: 1 }));
   wand.position.set(0, 6, -4);
   editorScene.add(wand);
-  const punkte = [];
-  for (let i = 0; i < 4; i++) {
-    const y = 4.6 - i * 0.2;
-    punkte.push(...kette(new THREE.Vector3(-7 + i * 3.5, y, -3.9), new THREE.Vector3(-3.5 + i * 3.5, y, -3.9), 0.35, 0.8));
-  }
-  lichter(editorScene, punkte, 0.6);
-  tanne(editorScene, -2.6, -2.4, 0.55, true, false);
-  for (const [x, z, b, f] of [[-1.8, -1.2, 0.5, FARBEN.rot], [-1.3, -1.7, 0.4, FARBEN.navy], [-2.3, -0.9, 0.35, FARBEN.weiss], [2.1, -1.4, 0.55, FARBEN.oliv], [2.6, -0.8, 0.35, FARBEN.rosa]]) {
-    deko(editorScene, x, b / 2, z, b, b, b, f);
-    deko(editorScene, x, b / 2, z, b + 0.02, b + 0.02, 0.08, FARBEN.gold);
-  }
-  const stange = new THREE.Mesh(stangenGeo, stangenMat);
-  stange.scale.setScalar(0.3); stange.position.set(2.8, 0, -2.2);
-  editorScene.add(stange);
-  for (let i = 0; i < 9; i++) {   // hängende Sterne
-    const st = new THREE.Mesh(sternGeo, sternMat);
-    st.scale.setScalar(0.18);
-    st.position.set(-4 + i, 3.6 + Math.sin(i * 1.7) * 0.4, -3.6);
-    editorScene.add(st);
-    drehSterne.push(st);
-  }
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1f2a4a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '800 170px "Baloo 2", "Trebuchet MS", sans-serif';
+  g.fillText('Umstyling', 512, 120);
+  g.fillStyle = '#e7a3b7'; g.fillRect(220, 214, 584, 14);
+  const schrift = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+  schrift.position.set(0, 3.62, -3.95);
+  editorScene.add(schrift);
+  editorSchrift = { mesh: schrift, canvas: c };
 }
 let editorFigur = null;
 function editorFigurNeu() {
