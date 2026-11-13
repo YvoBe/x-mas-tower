@@ -1704,6 +1704,21 @@ function gesichtTextur(look, mass) {
   return tex;
 }
 
+// Fuß-Form für Schuhe: eine Kugel, unten flach, hinten schmal (Ferse), vorne breiter und flacher (Zehen)
+function fussOben(h, zn) { return h / 2 * Math.sqrt(Math.max(0, 1 - zn * zn)) * (1 - 0.4 * Math.max(0, zn)); }
+function fussForm(b, h, l) {
+  const geo = new THREE.SphereGeometry(1, 28, 18);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const breite = 0.78 + 0.32 * (z + 1) / 2;                 // Ferse schmal, Ballen breit
+    if (y > 0) y *= 1 - 0.4 * Math.max(0, z);                 // vorne zu den Zehen flacher
+    if (y < -0.55) y = -0.55;                                 // flache Sohle
+    pos.setXYZ(i, x * b / 2 * breite, y * h / 2, z * l / 2);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
 function baueFigur(look, ziel = scene) {
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
@@ -1752,14 +1767,18 @@ function baueFigur(look, ziel = scene) {
       const socke = teil(new THREE.CylinderGeometry(0.085, 0.085, 0.08, 14), '#f5f3ee'); socke.position.y = -0.31;
       gelenk.add(o, saum, haut1); knie.add(haut2, socke);
     }
-    const schuh = teil(rundKlotz(0.26, 0.11, 0.38, 0.05), look.schuhe);
-    schuh.position.set(0, -0.36, 0.06);
-    const sohle = teil(rundKlotz(0.275, 0.04, 0.395, 0.018), look.schuhe === '#f5f3ee' ? '#d9d4cb' : '#f5f3ee');
-    sohle.position.set(0, -0.415, 0.06);
+    // Runder Schuh wie ein echter Fuß: hinten schmale runde Ferse, vorne breiter, Spitze flacher
+    const FB = 0.24, FH = 0.17, FL = 0.4;
+    const schuh = teil(fussForm(FB, FH, FL), look.schuhe);
+    schuh.position.set(0, -0.395 + FH / 2 * 0.55, 0.06);
+    const sohle = teil(fussForm(FB * 1.05, 0.07, FL * 1.03), look.schuhe === '#f5f3ee' ? '#d9d4cb' : '#f5f3ee');
+    sohle.position.set(0, -0.435 + 0.035 * 0.55, 0.06);
     knie.add(schuh, sohle);
-    for (let k = 0; k < 3; k++) {   // Schnürsenkel
-      const band = teil(new THREE.BoxGeometry(0.1, 0.012, 0.018), look.schuhe === '#f5f3ee' ? '#e7a3b7' : '#f5f3ee');
-      band.position.set(0, -0.3, 0.12 + k * 0.045); band.rotation.x = -0.35;
+    for (let k = 0; k < 3; k++) {   // Schnürsenkel auf dem Spann
+      const zn = 0.05 + k * 0.22;
+      const band = teil(new THREE.CapsuleGeometry(0.008, 0.07, 3, 6), look.schuhe === '#f5f3ee' ? '#e7a3b7' : '#f5f3ee');
+      band.rotation.z = Math.PI / 2; band.rotation.x = -0.35 - zn * 0.4;
+      band.position.set(0, schuh.position.y + fussOben(FH, zn) - 0.004, 0.06 + zn * FL / 2);
       knie.add(band);
     }
     figur.add(gelenk);
