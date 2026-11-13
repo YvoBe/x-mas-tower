@@ -1,0 +1,1567 @@
+<title>Tower Parkour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap">
+<style>
+  /* Ein Spielbildschirm über die ganze Fläche, Steuerung schwebt darüber. Bewusst nur ein Look (Winterhimmel), kein Dark Mode. */
+  :root {
+    --sky: #c6d8e6;
+    --ink: #1f2a4a;
+    --panel: rgba(255, 255, 255, 0.8);
+    --pad: rgba(255, 255, 255, 0.28);
+    --pad-edge: rgba(255, 255, 255, 0.85);
+    --pop: #1f2a4a;
+    --gold: #f2c230;
+    --rosa: #e7a3b7;
+    --font: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--sky);
+    color: var(--ink);
+    font-family: var(--font);
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; }
+
+  .hud {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: max(16px, env(safe-area-inset-left, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .tag {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 6px 14px 4px;
+    line-height: 1.2;
+    min-width: 0;
+  }
+  .tag h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.02em; }
+  .tag p { margin: 0; font-size: 13px; font-weight: 600; }
+  .zahl { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .banner {
+    position: fixed;
+    left: 50%;
+    top: 30%;
+    transform: translate(-50%, -50%);
+    background: var(--gold);
+    color: var(--ink);
+    font-size: clamp(26px, 6.5vw, 46px);
+    font-weight: 800;
+    padding: 8px 28px 2px;
+    border-radius: 20px;
+    box-shadow: 0 6px 0 var(--ink);
+    pointer-events: none;
+    text-align: center;
+    max-width: calc(100% - 32px);
+  }
+
+  /* Handy-Steuerung: nur auf Touch-Geräten sichtbar */
+  .touch { display: none; }
+  body.is-touch .touch { display: block; }
+  body.is-touch .keys-hint { display: none; }
+  body:not(.is-touch) .touch-hint { display: none; }
+
+  #stick {
+    position: fixed;
+    left: calc(max(16px, env(safe-area-inset-left, 0px)) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+    width: 128px; height: 128px;
+    border-radius: 50%;
+    background: var(--pad);
+    border: 3px solid var(--pad-edge);
+  }
+  #knob {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 56px; height: 56px;
+    margin: -28px 0 0 -28px;
+    border-radius: 50%;
+    background: var(--pad-edge);
+  }
+  #jump {
+    position: fixed;
+    right: calc(max(16px, env(safe-area-inset-right, 0px)) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    border: 3px solid var(--pad-edge);
+    background: var(--pop);
+    color: #fff;
+    font: 800 18px var(--font);
+    padding-top: 4px;
+  }
+  #jump:active { transform: scale(0.94); }
+
+  /* Figur-Knopf oben links */
+  .links { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+  #figurKnopf {
+    pointer-events: auto;
+    flex: none;
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    border: 3px solid var(--rosa);
+    background: var(--panel);
+    color: var(--ink);
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  body.editor-offen .hud, body.editor-offen .touch, body.editor-offen .banner { display: none !important; }
+
+  /* Mitspielen */
+  #codeKnopf { pointer-events: auto; border: 3px solid var(--rosa); cursor: pointer; font-family: var(--font); color: var(--ink); }
+  #codeKnopf .code { letter-spacing: 0.12em; }
+  [hidden] { display: none !important; }
+  #codePanel { pointer-events: auto; width: min(280px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
+  #codePanel .titel { font-size: 17px; font-weight: 800; }
+  #codePanel p { font-size: 13px; }
+  .codeZeile { display: flex; gap: 6px; }
+  #codeFeld, #nameFeld {
+    flex: 1; min-width: 0;
+    font: 700 16px var(--font); color: var(--ink);
+    border: 2px solid rgba(31, 42, 74, 0.3); border-radius: 10px; padding: 6px 10px 4px;
+    text-transform: none;
+  }
+  #codeFeld { text-transform: uppercase; letter-spacing: 0.1em; }
+  #codeLos, #meinCodeKnopf { font: 800 15px var(--font); border-radius: 10px; cursor: pointer; padding: 6px 12px 4px; }
+  #codeLos { background: var(--ink); color: #fff; border: 0; }
+  #meinCodeKnopf { background: transparent; color: var(--ink); border: 2px solid rgba(31, 42, 74, 0.3); }
+  #spielerListe { margin: 0; padding: 0 0 0 18px; font-size: 14px; font-weight: 700; }
+  .nameZeile { display: flex; align-items: center; gap: 10px; padding: 4px 18px 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6380; }
+
+  /* Figur-Editor */
+  #editor { position: fixed; inset: 0; pointer-events: none; }
+  #editor .spalte {
+    pointer-events: auto;
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    right: max(16px, env(safe-area-inset-right, 0px));
+    width: min(320px, 42vw);
+    background: rgba(251, 248, 242, 0.95);
+    border-radius: 22px;
+    border: 3px solid var(--rosa);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .spalte h2 { margin: 0; padding: 14px 18px 4px; font-size: 24px; font-weight: 800; }
+  #optionen { flex: 1; overflow-y: auto; padding: 4px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
+  #optionen h3 { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6380; }
+  .farben, .worte { display: flex; flex-wrap: wrap; gap: 8px; }
+  .farben button {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid rgba(31, 42, 74, 0.25);
+    cursor: pointer; padding: 0;
+  }
+  .farben button.an { box-shadow: 0 0 0 3px #fbf8f2, 0 0 0 6px var(--ink); }
+  .worte button {
+    font: 700 15px var(--font); color: var(--ink);
+    background: #fff; border: 2px solid rgba(31, 42, 74, 0.25);
+    border-radius: 999px; padding: 4px 14px 2px; cursor: pointer;
+  }
+  .worte button.an { background: var(--ink); color: #fff; border-color: var(--ink); }
+  #fertig {
+    margin: 0 18px 16px; padding: 10px 0 6px;
+    font: 800 20px var(--font); color: #fff;
+    background: var(--ink); border: 0; border-radius: 14px; cursor: pointer;
+  }
+  #editor .drehen {
+    pointer-events: auto;
+    position: absolute;
+    left: max(16px, env(safe-area-inset-left, 0px));
+    right: calc(min(320px, 42vw) + 32px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    display: flex; justify-content: center; align-items: center; gap: 12px;
+    color: #fbf8f2; font-weight: 700; font-size: 15px;
+  }
+  .drehen span { background: rgba(31, 42, 74, 0.7); border-radius: 999px; padding: 4px 12px 2px; }
+  .drehen button {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 2px solid rgba(251, 248, 242, 0.7);
+    background: rgba(31, 42, 74, 0.7); color: #fbf8f2;
+    font-size: 24px; cursor: pointer;
+  }
+  @media (max-width: 640px) {
+    #editor .spalte { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; height: 46%; }
+    #editor .drehen { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(46% + 24px); }
+    .tag p { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { #jump:active { transform: none; } }
+</style>
+
+<div class="hud">
+  <div class="links">
+  <button type="button" id="figurKnopf" aria-label="Figur ändern">
+    <svg width="28" height="30" viewBox="0 0 28 30" aria-hidden="true"><circle cx="14" cy="7" r="6" fill="currentColor"/><path d="M4 29v-9a10 10 0 0 1 20 0v9z" fill="#e7a3b7" stroke="currentColor" stroke-width="2"/><path d="M8 19h12M7 23h14" stroke="currentColor" stroke-width="2"/></svg>
+  </button>
+  <div class="tag">
+    <h1>Tower Parkour</h1>
+    <p class="keys-hint">WASD laufen · Leertaste springen · Maus ziehen dreht die Kamera</p>
+    <p class="touch-hint">Joystick laufen · Knopf springen · Wischen dreht die Kamera</p>
+  </div>
+  </div>
+  <div class="rechts">
+    <button type="button" class="tag zahl" id="codeKnopf" aria-label="Mit Freunden spielen">
+      <span class="anzahl">👥 1</span> · Code <span class="code">-----</span>
+    </button>
+    <div class="tag" id="codePanel" hidden>
+      <p class="titel">Mit Freunden spielen</p>
+      <p id="codeHinweis">Gib deinen Freunden deinen Code.</p>
+      <div class="codeZeile">
+        <input id="codeFeld" type="text" maxlength="8" placeholder="Code" autocomplete="off" aria-label="Code von deinem Freund">
+        <button type="button" id="codeLos">Beitreten</button>
+      </div>
+      <button type="button" id="meinCodeKnopf" class="klein">Zurück zu meinem Code</button>
+      <ul id="spielerListe"></ul>
+    </div>
+    <div class="tag zahl" id="tuerchen">🎁 0/24</div>
+    <div class="tag zahl" id="height">Draußen</div>
+  </div>
+</div>
+<div class="banner" id="banner" hidden>Geschafft!</div>
+<div id="editor" hidden>
+  <aside class="spalte" aria-label="Figur ändern">
+    <h2>Deine Figur</h2>
+    <label class="nameZeile" for="nameFeld">Name
+      <input id="nameFeld" type="text" maxlength="16" autocomplete="off">
+    </label>
+    <div id="optionen"></div>
+    <button type="button" id="fertig">Fertig ✓</button>
+  </aside>
+  <div class="drehen">
+    <button type="button" id="drehLinks" aria-label="Nach links drehen">⟲</button>
+    <span>Ziehen zum Drehen</span>
+    <button type="button" id="drehRechts" aria-label="Nach rechts drehen">⟳</button>
+  </div>
+</div>
+<div class="touch" id="stick"><div id="knob"></div></div>
+<button class="touch" id="jump" aria-label="Springen">SPRING</button>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+// =====================================================================
+//  TOWER PARKOUR  –  Adventskalender mit 24 Türmen
+//  Tipp: Zahlen in EINSTELLUNGEN darfst du einfach ändern und ausprobieren!
+// =====================================================================
+
+// ---------- EINSTELLUNGEN (wie Variablen in Scratch) ----------
+const LAUF_TEMPO   = 6;    // wie schnell die Figur läuft
+const SPRUNG_KRAFT = 9.5;  // wie hoch sie springt
+const SCHWERKRAFT  = 25;   // wie stark sie nach unten fällt
+
+// Aussehen der Figur. In Schritt 3 bauen wir dafür ein Menü.
+const AUSSEHEN = {
+  haut:      '#f1c9a5',
+  haare:     '#5b3a24',   // braun
+  pulli:     '#f5f3ee',   // weiß ...
+  streifen:  '#e7a3b7',   // ... mit rosa Streifen
+  buendchen: '#1f2a4a',   // Kragen, Ärmelenden und unten am Pulli
+  hose:      '#1f2a4a',   // dunkelblau
+  umschlag:  '#2e3d68',   // hochgekrempelter Hosensaum
+  stern:     '#f2c230',   // goldener Stern
+  schuhe:    '#f5f3ee',
+};
+
+// So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, frisur: 'lang', sternAn: true };
+let spielerName = 'Spieler';
+try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
+const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
+
+const FARBEN = {
+  weiss: 0xf5f3ee, oliv: 0x7a8450, rosa: 0xe7a3b7, navy: 0x1f2a4a, schnee: 0xf3f6fa,
+  gold: 0xe0b23a, rot: 0xc8323c, holz: 0xcbb89a,
+};
+
+// ---------- Die 3D-Welt ----------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc6d8e6);
+scene.fog = new THREE.Fog(0xc6d8e6, 90, 460);
+
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 800);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4d0, 0.85));
+const sonne = new THREE.DirectionalLight(0xfff3e2, 0.8);
+sonne.castShadow = true;
+sonne.shadow.mapSize.set(1024, 1024);
+sonne.shadow.bias = -0.0005;
+sonne.shadow.normalBias = 0.03;
+Object.assign(sonne.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 90 });
+scene.add(sonne, sonne.target);
+
+// ---------- Gemeinsame Bausteine (spart Rechenzeit, wichtig fürs Handy) ----------
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+const matCache = {};
+const M = (farbe, extra = {}) => {
+  const key = farbe + JSON.stringify(extra);
+  return matCache[key] ||= new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.8, ...extra });
+};
+// Feste Wände (nicht durchsichtig)
+const glasNormal = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 0.9 });
+const glasGold = new THREE.MeshStandardMaterial({ color: 0xf3e3b0, roughness: 0.6, metalness: 0.2 });
+
+// Weicher runder Fleck: für Wolken, Schneeflocken und Lichter
+const flecken = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.45, 'rgba(255,255,255,0.75)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+
+// Ein Klotz, auf dem man stehen kann (liste = wo er für die Kollision gespeichert wird)
+function klotz(liste, gruppe, x, oben, z, breite, tiefe, farbe, extra = {}) {
+  const dicke = extra.dicke || 0.6;
+  if (!extra.unsichtbar) {
+    const mesh = new THREE.Mesh(boxGeo, extra.mat || M(farbe));
+    mesh.scale.set(breite, dicke, tiefe);
+    mesh.position.set(x, oben - dicke / 2, z);
+    mesh.castShadow = mesh.receiveShadow = !extra.wand;
+    gruppe.add(mesh);
+  }
+  const k = {
+    oben, unten: oben - dicke,
+    minX: x - breite / 2, maxX: x + breite / 2,
+    minZ: z - tiefe / 2, maxZ: z + tiefe / 2,
+    ...extra,
+  };
+  liste.push(k);
+  return k;
+}
+// Nur Deko (man läuft hindurch), Position = Mitte
+function deko(gruppe, x, y, z, b, h, t, farbe, extra) {
+  const m = new THREE.Mesh(boxGeo, M(farbe, extra));
+  m.scale.set(b, h, t); m.position.set(x, y, z); m.castShadow = true;
+  gruppe.add(m);
+  return m;
+}
+
+// ---------- Lichterketten ----------
+// Zwei Gruppen blinken abwechselnd
+const LICHT_FARBEN = [0xffe2a0, 0xffe2a0, 0xffe2a0, 0xff6b7a, 0x8fe3a3, 0x8cc8ff, 0xf7b6c8];
+const lichtMatA = new THREE.PointsMaterial({ map: flecken, size: 0.55, vertexColors: true, transparent: true, depthWrite: false });
+const lichtMatB = lichtMatA.clone();
+function lichter(gruppe, punkte, groesse = 1) {
+  for (const [teil, mat] of [[0, lichtMatA], [1, lichtMatB]]) {
+    const pos = [], col = [];
+    punkte.forEach((p, i) => {
+      if (i % 2 !== teil) return;
+      pos.push(p.x, p.y, p.z);
+      const c = new THREE.Color(LICHT_FARBEN[(i * 7) % LICHT_FARBEN.length]);
+      col.push(c.r, c.g, c.b);
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const pts = new THREE.Points(geo, groesse === 1 ? mat : (() => { const m2 = mat.clone(); m2.size *= groesse; return m2; })());
+    gruppe.add(pts);
+  }
+}
+// Eine Kette, die zwischen zwei Punkten etwas durchhängt
+function kette(a, b, abstand = 0.7, durchhang = 1.2) {
+  const n = Math.max(2, Math.round(a.distanceTo(b) / abstand)), punkte = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, p = a.clone().lerp(b, t);
+    p.y -= durchhang * 4 * t * (1 - t);
+    punkte.push(p);
+  }
+  return punkte;
+}
+
+// ---------- Tannen (auch als geschmückte Weihnachtsbäume) ----------
+const stammGeo = new THREE.CylinderGeometry(0.18, 0.28, 1.6, 8);
+const nadelGeos = [], schneeGeos = [];
+for (let i = 0; i < 5; i++) {
+  const breite = 2.1 - i * 0.38, hoch = 1.9 - i * 0.2;
+  nadelGeos.push(new THREE.ConeGeometry(breite, hoch, 11));
+  schneeGeos.push(new THREE.ConeGeometry(breite * 0.72, hoch * 0.55, 11));
+}
+const kugelGeo = new THREE.SphereGeometry(0.13, 10, 8);
+const KUGEL_FARBEN = [FARBEN.rot, FARBEN.gold, FARBEN.rosa, FARBEN.navy, FARBEN.weiss];
+const sternGeo = (() => {
+  const f = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? 0.42 : 1, w = Math.PI / 2 + (i * Math.PI) / 5;
+    i ? f.lineTo(Math.cos(w) * r, Math.sin(w) * r) : f.moveTo(Math.cos(w) * r, Math.sin(w) * r);
+  }
+  const g = new THREE.ExtrudeGeometry(f, { depth: 0.25, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 2 });
+  g.center();
+  return g;
+})();
+const sternMat = M(FARBEN.gold, { metalness: 0.6, roughness: 0.3, emissive: 0x6b4c00 });
+const drehSterne = [];
+
+function tanne(gruppe, x, z, s, geschmueckt = false, schnee = true) {
+  const baum = new THREE.Group();
+  const stamm = new THREE.Mesh(stammGeo, M(0x5a4130));
+  stamm.position.y = 0.8; stamm.castShadow = true;
+  baum.add(stamm);
+  const punkte = [];
+  for (let i = 0; i < 5; i++) {
+    const hoch = 1.9 - i * 0.2, breite = 2.1 - i * 0.38, y = 1.3 + i * 1.05;
+    const kegel = new THREE.Mesh(nadelGeos[i], M(0x2c4a35));
+    kegel.position.y = y + hoch / 2; kegel.rotation.y = i * 1.3;
+    kegel.castShadow = true;
+    baum.add(kegel);
+    if (schnee) {
+      const sch = new THREE.Mesh(schneeGeos[i], M(0xf7f9fc));
+      sch.position.y = y + hoch * 0.78; sch.rotation.y = kegel.rotation.y;
+      baum.add(sch);
+    }
+    if (geschmueckt) {
+      for (let k = 0; k < 6; k++) {
+        const w = k * 1.05 + i;
+        const kugel = new THREE.Mesh(kugelGeo, M(KUGEL_FARBEN[(k + i) % 5], { metalness: 0.4, roughness: 0.3 }));
+        kugel.position.set(Math.cos(w) * breite * 0.82, y + 0.25, Math.sin(w) * breite * 0.82);
+        baum.add(kugel);
+      }
+      for (let k = 0; k < 16; k++) {
+        const w = (k / 16) * Math.PI * 2 + i * 0.4, r = breite * (0.95 - (k / 16) * 0.5);
+        punkte.push(new THREE.Vector3(Math.cos(w) * r, y + 0.1 + (k / 16) * hoch * 0.8, Math.sin(w) * r));
+      }
+    }
+  }
+  if (geschmueckt) {
+    const stern = new THREE.Mesh(sternGeo, sternMat);
+    stern.scale.setScalar(0.45);
+    stern.position.y = 1.3 + 5 * 1.05 + 0.6;
+    baum.add(stern);
+    drehSterne.push(stern);
+    lichter(baum, punkte, 0.8);
+  }
+  baum.position.set(x, 0, z);
+  baum.scale.setScalar(s);
+  gruppe.add(baum);
+  return baum;
+}
+
+// ---------- Zuckerstangen ----------
+const streifenTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbf8f2'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#c8323c';
+  for (let i = -64; i < 128; i += 32) {
+    g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 14, 0); g.lineTo(i + 14 + 64, 64); g.lineTo(i + 64, 64); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(10, 1);
+  return t;
+})();
+class StangenKurve extends THREE.Curve {
+  constructor(gerade, bogen) { super(); this.gerade = gerade; this.bogen = bogen; }
+  getPoint(t, ziel = new THREE.Vector3()) {
+    const gesamt = this.gerade + Math.PI * this.bogen, d = t * gesamt;
+    if (d <= this.gerade) return ziel.set(0, d, 0);
+    const w = (d - this.gerade) / this.bogen;
+    return ziel.set(this.bogen - this.bogen * Math.cos(w), this.gerade + this.bogen * Math.sin(w), 0);
+  }
+}
+const stangenGeo = new THREE.TubeGeometry(new StangenKurve(8, 1.5), 80, 0.45, 16, false);
+const stangenMat = new THREE.MeshStandardMaterial({ map: streifenTex, roughness: 0.35 });
+const stangen = [];
+function zuckerstange(x, z, dreh) {
+  const m = new THREE.Mesh(stangenGeo, stangenMat);
+  m.position.set(x, -0.3, z); m.rotation.y = dreh; m.castShadow = true;
+  scene.add(m);
+  const ende = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M(FARBEN.rot, { roughness: 0.35 }));
+  ende.position.set(3, 7.7, 0);
+  m.add(ende);
+  stangen.push(new THREE.Vector3(x, 9.1, z));
+}
+
+// ---------- Kollisions-Listen ----------
+const statisch = [];   // Boden, Wände, ... (immer da)
+let alleKloetze = statisch;
+
+// Boden: verschneite Landschaft
+klotz(statisch, scene, 0, 0, 0, 1200, 1200, FARBEN.schnee, { dicke: 1 });
+
+// ---------- Nummern-Schilder ----------
+function nummerTextur(nr, fertig) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = fertig || nr === 24 ? '#f2c230' : '#fbf8f2';
+  g.beginPath(); g.arc(128, 128, 118, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 16; g.strokeStyle = nr === 24 ? '#c8323c' : '#e7a3b7';
+  g.beginPath(); g.arc(128, 128, 110, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#1f2a4a';
+  g.font = '800 140px "Baloo 2", "Trebuchet MS", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(nr), 128, 142);
+  if (fertig) { g.font = '800 54px sans-serif'; g.fillText('✓', 196, 60); }
+  return new THREE.CanvasTexture(c);
+}
+
+// ---------- Die 24 Türme ----------
+// Wie ein echter Adventskalender sind die Nummern durcheinander. 24 steht in der Mitte, 0 ist der Dorfplatz.
+const PLAN = [
+  [7, 15, 2, 20, 11],
+  [4, 18, 9, 23, 13],
+  [16, 1, 24, 6, 21],
+  [10, 22, 3, 14, 8],
+  [19, 5, 0, 12, 17],
+];
+const ABSTAND = 48, WAND = 0.6, TUER_BREIT = 5, TUER_HOCH = 5.5;
+const TUERME = [];
+
+let geschafft = [];
+try { geschafft = JSON.parse(localStorage.getItem('turmparkour-geschafft') || '[]'); } catch (e) { geschafft = []; }
+
+PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
+  if (!nr) return;
+  const spezial = nr === 24;
+  const anzahl = spezial ? 40 : 12 + nr;            // so viele Sprünge bis oben: jeder Turm ist länger
+  const T = {
+    nr, spezial, anzahl,
+    cx: (c - 2) * ABSTAND, cz: (2 - r) * ABSTAND,
+    innen: spezial ? 11 : 9,
+    hoehe: anzahl + 6,
+    gruppe: null, platten: [],
+  };
+  baueHuelle(T);
+  TUERME.push(T);
+}));
+
+function baueHuelle(T) {
+  const { cx, cz, innen, hoehe, spezial } = T;
+  const glas = spezial ? glasGold : glasNormal;
+  const aussen = 2 * innen + 2 * WAND, r = innen + WAND / 2;
+  const wand = { dicke: hoehe, wand: true, mat: glas };
+  klotz(statisch, scene, cx, hoehe, cz + r, aussen, WAND, 0, wand);
+  klotz(statisch, scene, cx + r, hoehe, cz, WAND, 2 * innen, 0, wand);
+  klotz(statisch, scene, cx - r, hoehe, cz, WAND, 2 * innen, 0, wand);
+  const seitenStueck = (aussen - TUER_BREIT) / 2;
+  for (const s of [-1, 1]) klotz(statisch, scene, cx + s * (TUER_BREIT / 2 + seitenStueck / 2), hoehe, cz - r, seitenStueck, WAND, 0, wand);
+  klotz(statisch, scene, cx, hoehe, cz - r, TUER_BREIT, WAND, 0, { ...wand, dicke: hoehe - TUER_HOCH });
+  klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, FARBEN.holz, { dicke: 0.08 });   // Holzboden
+
+  // Rahmen
+  const rahmenFarbe = spezial ? FARBEN.gold : FARBEN.navy;
+  const extra = spezial ? { metalness: 0.6, roughness: 0.3 } : {};
+  for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) deko(scene, cx + x, hoehe / 2, cz + z, 0.8, hoehe, 0.8, rahmenFarbe, extra);
+  for (let y = 8; y <= hoehe; y += 8) {
+    const oben = y + 8 > hoehe;
+    const yy = oben ? hoehe : y, dick = oben ? 0.5 : 0.2, farbe = oben ? rahmenFarbe : FARBEN.rosa;
+    deko(scene, cx, yy, cz + r, aussen, dick, 0.7, farbe, oben ? extra : {});
+    deko(scene, cx, yy, cz - r, aussen, dick, 0.7, farbe, oben ? extra : {});
+    deko(scene, cx + r, yy, cz, 0.7, dick, aussen, farbe, oben ? extra : {});
+    deko(scene, cx - r, yy, cz, 0.7, dick, aussen, farbe, oben ? extra : {});
+  }
+  for (const s of [-1, 1]) deko(scene, cx + s * (TUER_BREIT / 2 + 0.25), TUER_HOCH / 2, cz - r, 0.5, TUER_HOCH, 0.9, FARBEN.weiss);
+  deko(scene, cx, TUER_HOCH + 0.25, cz - r, TUER_BREIT + 1, 0.5, 0.9, FARBEN.weiss);
+  // Kranz über der Tür
+  const kranz = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.22, 10, 24), M(0x2c4a35));
+  kranz.position.set(cx, TUER_HOCH + 1.3, cz - r - 0.5);
+  const schleife = deko(scene, cx, TUER_HOCH + 0.65, cz - r - 0.7, 0.45, 0.3, 0.1, FARBEN.rot);
+  scene.add(kranz);
+
+  // Große Nummer vorne
+  T.schild = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), new THREE.MeshBasicMaterial({ map: nummerTextur(T.nr, geschafft.includes(T.nr)), transparent: true }));
+  T.schild.position.set(cx, TUER_HOCH + 4, cz - r - 0.45);
+  T.schild.rotation.y = Math.PI;
+  scene.add(T.schild);
+
+  // Lichterkette oben am Rand (beim Turm 24 auch an den Ecken herunter)
+  const ecken = [[-r, -r], [r, -r], [r, r], [-r, r], [-r, -r]].map(([x, z]) => new THREE.Vector3(cx + x, hoehe + 0.35, cz + z));
+  const punkte = [];
+  for (let i = 0; i < 4; i++) punkte.push(...kette(ecken[i], ecken[i + 1], 0.9, 0.6));
+  if (spezial) {
+    for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) {
+      for (let y = 0.5; y < hoehe; y += 0.8) punkte.push(new THREE.Vector3(cx + x * 1.06, y, cz + z * 1.06));
+    }
+    const stern = new THREE.Mesh(sternGeo, sternMat);
+    stern.scale.setScalar(3.2);
+    stern.position.set(cx, hoehe + 5, cz);
+    scene.add(stern);
+    drehSterne.push(stern);
+  }
+  lichter(scene, punkte);
+}
+
+// Das Innere eines Turms wird erst gebaut, wenn man in die Nähe kommt (damit es auf dem Handy flüssig bleibt)
+function baueInnen(T) {
+  const { cx, cz, innen, anzahl, spezial, nr } = T;
+  const g = new THREE.Group();
+  const platten = [];
+  const o = innen - 2, L = 8 * o;
+  const schritt = spezial ? 4.5 : 4.2 + nr * 0.02;
+  const groesse = spezial ? 2.6 : Math.max(2.4, 3 - nr * 0.025);
+  const reihe = spezial ? [FARBEN.gold, FARBEN.weiss, FARBEN.rot, FARBEN.weiss] : [FARBEN.weiss, FARBEN.oliv, FARBEN.rosa, FARBEN.navy];
+  // Punkt auf dem Weg rundherum an den Wänden: links nach hinten, hinten nach rechts, rechts nach vorne, vorne nach links
+  const weg = (s) => {
+    s = ((s % L) + L) % L;
+    if (s < 2 * o) return [-o, -o + s];
+    if (s < 4 * o) return [-o + (s - 2 * o), o];
+    if (s < 6 * o) return [o, o - (s - 4 * o)];
+    return [o - (s - 6 * o), -o];
+  };
+  for (let i = 0; i < anzahl; i++) {
+    const [px, pz] = weg(1 + i * schritt);
+    const cp = (i + 1) % 6 === 0;
+    const gr = cp ? 3.6 : groesse;
+    klotz(platten, g, cx + px, i + 1, cz + pz, gr, gr, cp ? FARBEN.gold : reihe[i % reihe.length], { checkpoint: cp, turm: T });
+    if (cp) {
+      const stern = new THREE.Mesh(sternGeo, sternMat);
+      stern.scale.setScalar(0.4);
+      stern.position.set(cx + px, i + 2.9, cz + pz);
+      g.add(stern);
+      drehSterne.push(stern);
+    }
+  }
+  // Ziel ganz oben
+  let [zx, zz] = weg(1 + anzahl * schritt);
+  zx = Math.max(-innen + 2.1, Math.min(innen - 2.1, zx));
+  zz = Math.max(-innen + 2.1, Math.min(innen - 2.1, zz));
+  const zh = anzahl + 1;
+  klotz(platten, g, cx + zx, zh, cz + zz, 4, 4, spezial ? FARBEN.gold : FARBEN.rosa, { ziel: true, turm: T });
+  // Großes Geschenk auf dem Ziel
+  deko(g, cx + zx + 1, zh + 0.5, cz + zz + 1, 1, 1, 1, spezial ? FARBEN.rot : FARBEN.navy);
+  deko(g, cx + zx + 1, zh + 0.5, cz + zz + 1, 1.04, 1.04, 0.2, FARBEN.gold);
+  deko(g, cx + zx + 1, zh + 0.5, cz + zz + 1, 0.2, 1.04, 1.04, FARBEN.gold);
+
+  // Weihnachtsbaum in der Mitte mit Geschenken
+  tanne(g, cx, cz, spezial ? 2.2 : 1.5, true, false);
+  klotz(platten, g, cx, 3, cz, 1, 1, 0, { dicke: 3, unsichtbar: true });
+  for (let k = 0; k < 7; k++) {
+    const w = k * 0.9 + nr, rr = 3.4 + (k % 2) * 0.7;
+    const b = 0.6 + (k % 3) * 0.2;
+    const x = cx + Math.cos(w) * rr, z = cz + Math.sin(w) * rr;
+    deko(g, x, b / 2 + 0.04, z, b, b, b, [FARBEN.rot, FARBEN.navy, FARBEN.rosa, FARBEN.weiss, FARBEN.oliv][k % 5]);
+    deko(g, x, b / 2 + 0.04, z, b + 0.03, b + 0.03, 0.12, FARBEN.gold);
+  }
+  // Lichterketten innen an den Wänden
+  const r = innen - 0.3, punkte = [];
+  const ecken = [[-r, -r], [-r, r], [r, r], [r, -r], [-r, -r]];
+  for (let y = 4; y < T.hoehe - 1; y += 5) {
+    for (let i = 0; i < 4; i++) {
+      punkte.push(...kette(
+        new THREE.Vector3(cx + ecken[i][0], y, cz + ecken[i][1]),
+        new THREE.Vector3(cx + ecken[i + 1][0], y, cz + ecken[i + 1][1]), 0.8, 0.9));
+    }
+  }
+  lichter(g, punkte);
+  scene.add(g);
+  T.gruppe = g;
+  T.platten = platten;
+}
+function entferneInnen(T) {
+  scene.remove(T.gruppe);
+  T.gruppe.traverse((o) => {
+    if (o.isPoints) o.geometry.dispose();
+    const i = drehSterne.indexOf(o);
+    if (i >= 0) drehSterne.splice(i, 1);
+  });
+  T.gruppe = null;
+  T.platten = [];
+}
+function tuermeNachladen(pos) {
+  let geaendert = false;
+  for (const T of TUERME) {
+    const d = Math.hypot(pos.x - T.cx, pos.z - T.cz);
+    if (!T.gruppe && d < 42) { baueInnen(T); geaendert = true; }
+    else if (T.gruppe && d > 62) { entferneInnen(T); geaendert = true; }
+  }
+  if (geaendert) alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
+}
+
+// ---------- Dorfplatz mit großem Weihnachtsbaum ----------
+const PLATZ = new THREE.Vector3(0, 0, -2 * ABSTAND);
+tanne(scene, PLATZ.x, PLATZ.z, 2.6, true);
+klotz(statisch, scene, PLATZ.x, 4, PLATZ.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
+
+// Zuckerstangen zwischen den Türmen und am Platz, mit Lichterketten dazwischen
+const LINIEN = [-1.5 * ABSTAND, -0.5 * ABSTAND, 0.5 * ABSTAND, 1.5 * ABSTAND];
+for (const x of LINIEN) for (const z of LINIEN) zuckerstange(x, z, ((x + z) / 16) * 0.7);
+zuckerstange(-7, PLATZ.z - 12, Math.PI);
+zuckerstange(7, PLATZ.z - 12, 0);
+{
+  const punkte = [];
+  const bei = (x, z) => stangen.find((p) => p.x === x && p.z === z);
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) {
+    punkte.push(...kette(bei(LINIEN[k], LINIEN[i]), bei(LINIEN[k + 1], LINIEN[i]), 0.9, 2));
+    punkte.push(...kette(bei(LINIEN[i], LINIEN[k]), bei(LINIEN[i], LINIEN[k + 1]), 0.9, 2));
+  }
+  punkte.push(...kette(bei(-7, PLATZ.z - 12), bei(7, PLATZ.z - 12), 0.7, 1.5));
+  lichter(scene, punkte, 1.2);
+}
+
+// ---------- Tannen draußen ----------
+let gepflanzt = 0;
+while (gepflanzt < 80) {
+  const winkel = Math.random() * Math.PI * 2, abstand = 140 + Math.random() * 110;
+  tanne(scene, Math.cos(winkel) * abstand, Math.sin(winkel) * abstand, 0.8 + Math.random() * 1.1);
+  gepflanzt++;
+}
+
+// ---------- Berge in der Ferne ----------
+const felsMat = new THREE.MeshStandardMaterial({ color: 0x6f7c8c, roughness: 1, flatShading: true });
+const gipfelMat = new THREE.MeshStandardMaterial({ color: 0xf7f9fc, roughness: 0.9, flatShading: true });
+for (let i = 0; i < 28; i++) {
+  const winkel = (i / 28) * Math.PI * 2 + Math.random() * 0.2;
+  const abstand = 290 + Math.random() * 90;
+  const hoch = 60 + Math.random() * 80, breit = 50 + Math.random() * 40;
+  const berg = new THREE.Group();
+  const fels = new THREE.Mesh(new THREE.ConeGeometry(breit, hoch, 7, 3), felsMat);
+  const pos = fels.geometry.attributes.position;
+  for (let k = 0; k < pos.count; k++) {
+    if (pos.getY(k) < hoch / 2 - 0.1) {
+      pos.setX(k, pos.getX(k) * (0.85 + Math.random() * 0.3));
+      pos.setZ(k, pos.getZ(k) * (0.85 + Math.random() * 0.3));
+    }
+  }
+  fels.geometry.computeVertexNormals();
+  fels.position.y = hoch / 2 - 2;
+  const gipfel = new THREE.Mesh(new THREE.ConeGeometry(breit * 0.36, hoch * 0.36, 7), gipfelMat);
+  gipfel.position.y = hoch - 2 - hoch * 0.18 + 0.5;
+  berg.add(fels, gipfel);
+  berg.position.set(Math.cos(winkel) * abstand, 0, Math.sin(winkel) * abstand);
+  berg.rotation.y = Math.random() * 3;
+  scene.add(berg);
+}
+
+// ---------- Weiche Wolken ----------
+const wolken = [];
+for (let i = 0; i < 22; i++) {
+  const wolke = new THREE.Group();
+  const anzahl = 10 + Math.floor(Math.random() * 10);
+  const laenge = 14 + Math.random() * 18;
+  for (let k = 0; k < anzahl; k++) {
+    const t = k / anzahl - 0.5;
+    const unten = Math.random() < 0.4;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: flecken, transparent: true, depthWrite: false, fog: false,
+      color: unten ? 0xdde3ea : 0xffffff, opacity: 0.55 + Math.random() * 0.35,
+    }));
+    const groesse = (1 - Math.abs(t) * 1.2) * (9 + Math.random() * 8);
+    s.scale.set(groesse * 1.4, groesse, 1);
+    s.position.set(t * laenge, (unten ? -1 : 1) * Math.random() * 1.5 + (1 - Math.abs(t) * 2) * 2, (Math.random() - 0.5) * 6);
+    wolke.add(s);
+  }
+  const winkel = Math.random() * Math.PI * 2, abstand = 80 + Math.random() * 160;
+  wolke.position.set(Math.cos(winkel) * abstand, 70 + Math.random() * 40, Math.sin(winkel) * abstand);
+  wolke.userData.tempo = 0.3 + Math.random() * 0.4;
+  scene.add(wolke);
+  wolken.push(wolke);
+}
+
+// ---------- Fallender Schnee ----------
+const FLOCKEN = 1800, SCHNEE_RAUM = 50;
+const flockenPos = new Float32Array(FLOCKEN * 3);
+for (let i = 0; i < FLOCKEN; i++) {
+  flockenPos[i * 3] = (Math.random() - 0.5) * SCHNEE_RAUM;
+  flockenPos[i * 3 + 1] = Math.random() * 35;
+  flockenPos[i * 3 + 2] = (Math.random() - 0.5) * SCHNEE_RAUM;
+}
+const flockenGeo = new THREE.BufferGeometry();
+flockenGeo.setAttribute('position', new THREE.BufferAttribute(flockenPos, 3));
+const schneeFall = new THREE.Points(flockenGeo, new THREE.PointsMaterial({
+  map: flecken, size: 0.18, transparent: true, depthWrite: false, color: 0xffffff,
+}));
+scene.add(schneeFall);
+function schneeUpdate(dt, um) {
+  const p = flockenGeo.attributes.position;
+  for (let i = 0; i < FLOCKEN; i++) {
+    let y = p.getY(i) - dt * (1.2 + (i % 7) * 0.15);
+    const x = p.getX(i) + Math.sin(y * 0.8 + i) * dt * 0.3;
+    if (y < 0) y += 35;
+    p.setXY(i, x, y);
+  }
+  p.needsUpdate = true;
+  schneeFall.position.set(Math.round(um.x / 10) * 10, um.y - 8, Math.round(um.z / 10) * 10);
+}
+
+// ---------- Die Figur ----------
+function rundKlotz(w, h, d, r) {
+  const form = new THREE.Shape();
+  form.moveTo(-(w / 2 - r), -(h / 2 - r));
+  form.lineTo(w / 2 - r, -(h / 2 - r));
+  form.lineTo(w / 2 - r, h / 2 - r);
+  form.lineTo(-(w / 2 - r), h / 2 - r);
+  const geo = new THREE.ExtrudeGeometry(form, {
+    depth: d - 2 * r, bevelEnabled: true, bevelSize: r, bevelThickness: r, bevelSegments: 5, curveSegments: 5,
+  });
+  geo.center();
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Ein Klotz mit runden senkrechten Kanten (für Pulli und Streifen)
+function prisma(w, h, d, r) {
+  const f = new THREE.Shape();
+  f.moveTo(-w / 2 + r, -d / 2);
+  f.lineTo(w / 2 - r, -d / 2); f.absarc(w / 2 - r, -d / 2 + r, r, -Math.PI / 2, 0);
+  f.lineTo(w / 2, d / 2 - r);  f.absarc(w / 2 - r, d / 2 - r, r, 0, Math.PI / 2);
+  f.lineTo(-w / 2 + r, d / 2); f.absarc(-w / 2 + r, d / 2 - r, r, Math.PI / 2, Math.PI);
+  f.lineTo(-w / 2, -d / 2 + r); f.absarc(-w / 2 + r, -d / 2 + r, r, Math.PI, Math.PI * 1.5);
+  const geo = new THREE.ExtrudeGeometry(f, { depth: h, bevelEnabled: false, curveSegments: 6 });
+  geo.rotateX(-Math.PI / 2);
+  geo.center();
+  return geo;
+}
+
+// Ein Stern (für die Hose)
+function sternForm(aussen, innen) {
+  const f = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? innen : aussen, w = Math.PI / 2 + (i * Math.PI) / 5;
+    i ? f.lineTo(Math.cos(w) * r, Math.sin(w) * r) : f.moveTo(Math.cos(w) * r, Math.sin(w) * r);
+  }
+  return new THREE.ExtrudeGeometry(f, { depth: 0.015, bevelEnabled: false });
+}
+
+function baueFigur(look, ziel = scene) {
+  const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
+  const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
+  const figur = new THREE.Group();
+
+  // Beine: weite dunkelblaue Hose mit Umschlag unten
+  const bein = (seite) => {
+    const gelenk = new THREE.Group();
+    gelenk.position.set(seite * 0.16, 0.84, 0);
+    const b = teil(new THREE.CylinderGeometry(0.15, 0.175, 0.72, 18), look.hose);
+    b.position.y = -0.36;
+    const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag);
+    umschlag.position.y = -0.68;
+    const schuh = teil(rundKlotz(0.26, 0.11, 0.38, 0.05), look.schuhe);
+    schuh.position.set(0, -0.78, 0.06);
+    gelenk.add(b, umschlag, schuh);
+    figur.add(gelenk);
+    return gelenk;
+  };
+  const beinL = bein(-1), beinR = bein(1);
+  // Goldener Stern auf dem rechten Hosenbein, unter dem Knie
+  const stern = teil(sternForm(0.085, 0.038), look.stern, { metalness: 0.5, roughness: 0.35 });
+  stern.position.set(0, -0.5, 0.17);
+  stern.rotation.x = -0.035;
+  if (look.sternAn !== false) beinL.add(stern);
+
+  // Hüfte
+  const huefte = teil(prisma(0.6, 0.24, 0.34, 0.1), look.hose);
+  huefte.position.y = 0.87;
+  figur.add(huefte);
+
+  // Ringelpulli mit dunklem Kragen und Bund
+  const koerper = new THREE.Group();
+  koerper.position.y = 1.29;
+  const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli);
+  pulli.position.y = -0.07;
+  koerper.add(pulli);
+  for (const y of [0.2, 0.08, -0.04, -0.16, -0.28]) {
+    const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen);
+    streifen.position.y = y;
+    koerper.add(streifen);
+  }
+  const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen);
+  bund.position.y = -0.42;
+  const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen);
+  kragen.rotation.x = Math.PI / 2;
+  kragen.position.y = 0.3;
+  koerper.add(bund, kragen);
+  figur.add(koerper);
+
+  // Hals
+  const hals = teil(new THREE.CylinderGeometry(0.075, 0.085, 0.14, 12), look.haut);
+  hals.position.y = 1.64;
+  figur.add(hals);
+
+  // Arme: gestreifte Ärmel, dunkles Bündchen, runde Hände
+  const arm = (seite) => {
+    const gelenk = new THREE.Group();
+    gelenk.position.set(seite * 0.44, 1.5, 0);
+    const aermel = teil(new THREE.CapsuleGeometry(0.1, 0.5, 8, 16), look.pulli);
+    aermel.position.y = -0.3;
+    gelenk.add(aermel);
+    for (const y of [-0.12, -0.26, -0.4]) {
+      const s = teil(new THREE.CylinderGeometry(0.106, 0.106, 0.04, 16), look.streifen);
+      s.position.y = y;
+      gelenk.add(s);
+    }
+    const buendchen = teil(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 16), look.buendchen);
+    buendchen.position.y = -0.56;
+    const hand = teil(new THREE.SphereGeometry(0.1, 16, 12), look.haut);
+    hand.position.y = -0.69;
+    gelenk.add(buendchen, hand);
+    gelenk.rotation.z = seite * 0.1;
+    figur.add(gelenk);
+    return gelenk;
+  };
+  const armL = arm(-1), armR = arm(1);
+
+  // Kopf mit freundlichem Gesicht
+  const kopf = new THREE.Group();
+  kopf.position.y = 1.92;
+  const schaedel = teil(new THREE.SphereGeometry(0.25, 32, 24), look.haut);
+  schaedel.scale.set(0.95, 1.08, 0.98);
+  kopf.add(schaedel);
+  for (const seite of [-1, 1]) {
+    const weiss = teil(new THREE.SphereGeometry(0.045, 16, 12), '#ffffff');
+    weiss.scale.set(1, 1.1, 0.45);
+    weiss.position.set(seite * 0.085, 0.02, 0.222);
+    const iris = teil(new THREE.SphereGeometry(0.028, 14, 10), '#4a3326');
+    iris.scale.set(1, 1, 0.4);
+    iris.position.set(seite * 0.085, 0.015, 0.24);
+    const glanz = teil(new THREE.SphereGeometry(0.008, 8, 6), '#ffffff');
+    glanz.position.set(seite * 0.085 + 0.01, 0.028, 0.249);
+    const braue = teil(rundKlotz(0.08, 0.018, 0.02, 0.008), look.haare);
+    braue.position.set(seite * 0.085, 0.085, 0.228);
+    braue.rotation.z = seite * -0.12;
+    const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: 0.45 }));
+    backe.scale.set(1, 0.7, 0.3);
+    backe.position.set(seite * 0.13, -0.06, 0.2);
+    kopf.add(weiss, iris, glanz, braue, backe);
+  }
+  const nase = teil(new THREE.SphereGeometry(0.026, 12, 10), '#e8b994');
+  nase.position.set(0, -0.035, 0.245);
+  const mund = teil(new THREE.TorusGeometry(0.05, 0.012, 6, 16, Math.PI), '#b4475f');
+  mund.position.set(0, -0.1, 0.224);
+  mund.rotation.z = Math.PI;
+  kopf.add(nase, mund);
+
+  // Lange, offene braune Haare mit Mittelscheitel
+  const haarMat = { roughness: 0.85 };
+  const oben = teil(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47), look.haare, haarMat);
+  oben.scale.set(1.0, 1.1, 1.02);
+  oben.rotation.x = -0.1;
+  const hinten = teil(new THREE.SphereGeometry(0.268, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.8), look.haare, haarMat);
+  hinten.scale.set(1.0, 1.08, 1.04);
+  kopf.add(oben, hinten);
+  const frisur = look.frisur || 'lang';
+  if (frisur === 'lang') {
+    const lang = teil(rundKlotz(0.54, 0.8, 0.12, 0.05), look.haare, haarMat);   // hinten bis zum Rücken
+    lang.position.set(0, -0.4, -0.18);
+    kopf.add(lang);
+  }
+  if (frisur === 'zopf') {
+    const gummi = teil(new THREE.TorusGeometry(0.055, 0.02, 8, 16), look.streifen);
+    gummi.position.set(0, 0.06, -0.27);
+    const zopf = teil(new THREE.CapsuleGeometry(0.08, 0.42, 8, 12), look.haare, haarMat);
+    zopf.position.set(0, -0.18, -0.34);
+    zopf.rotation.x = 0.3;
+    kopf.add(gummi, zopf);
+  }
+  if (frisur === 'dutt') {
+    const dutt = teil(new THREE.SphereGeometry(0.13, 18, 14), look.haare, haarMat);
+    dutt.position.set(0, 0.27, -0.12);
+    kopf.add(dutt);
+  }
+  for (const seite of [-1, 1]) {
+    // Strähnen links und rechts vom Gesicht bis über die Schultern
+    const lg = frisur === 'lang' ? 0.8 : frisur === 'kurz' ? 0.42 : 0.3;
+    const straehne = teil(rundKlotz(0.12, lg, 0.2, 0.05), look.haare, haarMat);
+    straehne.position.set(seite * 0.235, 0.11 - lg / 2, -0.02);
+    straehne.rotation.z = seite * 0.06;
+    const scheitel = teil(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), look.haare, haarMat);
+    scheitel.scale.set(1, 0.5, 1.05);
+    scheitel.position.set(seite * 0.11, 0.17, 0.08);
+    scheitel.rotation.z = seite * -0.45;
+    kopf.add(straehne, scheitel);
+  }
+  figur.add(kopf);
+
+  ziel.add(figur);
+  return { figur, beinL, beinR, armL, armR };
+}
+// Gespeichertes Aussehen laden (falls schon im Editor geändert)
+try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
+let held = baueFigur(AUSSEHEN);
+// ---------- Spieler-Zustand ----------
+const RADIUS = 0.4, GROESSE = 2.2;
+const START = new THREE.Vector3(0, 0, -2 * ABSTAND - 20);
+const spieler = {
+  pos: START.clone(),
+  vel: new THREE.Vector3(),
+  amBoden: false,
+  coyote: 0,       // kurze Zeit nach der Kante darf man noch springen (macht es leichter)
+  sprungPuffer: 0, // Sprung kurz vor der Landung gedrückt? Zählt trotzdem.
+  checkpoint: START.clone(),
+  turm: null,      // in welchem Turm wir gerade sind
+  blick: 0,
+  schritt: 0,
+  feiert: false,
+};
+
+
+// ---------- Eingabe: Tastatur ----------
+const tasten = {};
+addEventListener('keydown', (e) => {
+  tasten[e.code] = true;
+  if (e.code === 'Space') { spieler.sprungPuffer = 0.15; e.preventDefault(); }
+  if (e.code.startsWith('Arrow')) e.preventDefault();
+});
+addEventListener('keyup', (e) => { tasten[e.code] = false; });
+
+// ---------- Eingabe: Handy ----------
+if ('ontouchstart' in window || matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');
+addEventListener('touchstart', () => document.body.classList.add('is-touch'), { once: true, passive: true });
+
+const stick = document.getElementById('stick'), knob = document.getElementById('knob');
+const joy = { x: 0, y: 0, id: null };
+function stickBewegen(e) {
+  const r = stick.getBoundingClientRect();
+  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  const max = r.width / 2, len = Math.hypot(dx, dy);
+  if (len > max) { dx *= max / len; dy *= max / len; }
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  joy.x = dx / max; joy.y = -dy / max;
+}
+stick.addEventListener('pointerdown', (e) => { joy.id = e.pointerId; stick.setPointerCapture(e.pointerId); stickBewegen(e); });
+stick.addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) stickBewegen(e); });
+const stickLos = (e) => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
+stick.addEventListener('pointerup', stickLos);
+stick.addEventListener('pointercancel', stickLos);
+
+document.getElementById('jump').addEventListener('pointerdown', (e) => { e.preventDefault(); spieler.sprungPuffer = 0.15; });
+
+// ---------- Kamera drehen (Maus ziehen / wischen) ----------
+const kam = { yaw: Math.PI, pitch: 0.35, abstand: 7.5, id: null, lx: 0, ly: 0 };
+const leinwand = renderer.domElement;
+leinwand.addEventListener('pointerdown', (e) => { kam.id = e.pointerId; kam.lx = e.clientX; kam.ly = e.clientY; leinwand.setPointerCapture(e.pointerId); });
+leinwand.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== kam.id) return;
+  if (editor.offen) {   // im Figur-Editor dreht Ziehen die Figur
+    editor.dreh += (e.clientX - kam.lx) * 0.01;
+    kam.lx = e.clientX; kam.ly = e.clientY;
+    return;
+  }
+  kam.yaw -= (e.clientX - kam.lx) * 0.006;
+  kam.pitch = Math.min(1.2, Math.max(-0.1, kam.pitch + (e.clientY - kam.ly) * 0.004));
+  kam.lx = e.clientX; kam.ly = e.clientY;
+});
+const kamLos = (e) => { if (e.pointerId === kam.id) kam.id = null; };
+leinwand.addEventListener('pointerup', kamLos);
+leinwand.addEventListener('pointercancel', kamLos);
+
+// ---------- Kollision ----------
+function ueberXZ(p) {
+  const s = spieler.pos;
+  return s.x + RADIUS > p.minX && s.x - RADIUS < p.maxX && s.z + RADIUS > p.minZ && s.z - RADIUS < p.maxZ;
+}
+function seitlichWegschieben(achse) {
+  const s = spieler.pos;
+  for (const p of alleKloetze) {
+    if (!ueberXZ(p) || s.y >= p.oben - 0.05 || s.y + GROESSE <= p.unten) continue;
+    if (p.oben - s.y <= 0.25) { s.y = p.oben; continue; }   // kleine Stufen einfach hochlaufen
+    if (achse === 'x') s.x = s.x < (p.minX + p.maxX) / 2 ? p.minX - RADIUS : p.maxX + RADIUS;
+    else               s.z = s.z < (p.minZ + p.maxZ) / 2 ? p.minZ - RADIUS : p.maxZ + RADIUS;
+  }
+}
+const turmBei = (pos) => TUERME.find((T) => Math.abs(pos.x - T.cx) < T.innen && Math.abs(pos.z - T.cz) < T.innen) || null;
+
+// ---------- Anzeigen ----------
+const banner = document.getElementById('banner');
+const hoehe = document.getElementById('height');
+const tuerchenAnzeige = document.getElementById('tuerchen');
+const zeigeTuerchen = () => { tuerchenAnzeige.textContent = `🎁 ${geschafft.length}/24`; };
+zeigeTuerchen();
+let bannerTimer;
+function zeigeBanner(text, ms = 3000) {
+  banner.textContent = text; banner.hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { banner.hidden = true; }, ms);
+}
+zeigeBanner('Lauf in einen Turm! 🎄', 3500);
+
+function turmGeschafft(T) {
+  if (spieler.feiert) return;
+  spieler.feiert = true;
+  if (!geschafft.includes(T.nr)) {
+    geschafft.push(T.nr);
+    try { localStorage.setItem('turmparkour-geschafft', JSON.stringify(geschafft)); } catch (e) {}
+    T.schild.material.map.dispose();
+    T.schild.material.map = nummerTextur(T.nr, true);
+    T.schild.material.needsUpdate = true;
+    zeigeTuerchen();
+  }
+  zeigeBanner(T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
+  // Nach dem Feiern stehst du wieder vor dem Turm
+  setTimeout(() => {
+    spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
+    spieler.vel.set(0, 0, 0);
+    spieler.blick = 0; kam.yaw = Math.PI;
+    spieler.feiert = false;
+  }, 2500);
+}
+// Schrift für die Nummern ist manchmal erst später geladen: dann neu malen
+document.fonts?.ready.then(() => TUERME.forEach((T) => {
+  T.schild.material.map.dispose();
+  T.schild.material.map = nummerTextur(T.nr, geschafft.includes(T.nr));
+  T.schild.material.needsUpdate = true;
+}));
+
+// ---------- Ein Spiel-Schritt (wie "wiederhole fortlaufend" in Scratch) ----------
+let nachladenUhr = 0, zeit = 0;
+tuermeNachladen(spieler.pos);
+
+function update(dt) {
+  const s = spieler;
+  zeit += dt;
+
+  // 1) Richtung aus Tasten + Joystick, passend zur Kamera
+  let ix = (tasten.KeyD || tasten.ArrowRight ? 1 : 0) - (tasten.KeyA || tasten.ArrowLeft ? 1 : 0) + joy.x;
+  let iy = (tasten.KeyW || tasten.ArrowUp ? 1 : 0) - (tasten.KeyS || tasten.ArrowDown ? 1 : 0) + joy.y;
+  const len = Math.hypot(ix, iy);
+  if (len > 1) { ix /= len; iy /= len; }
+  if (s.feiert) { ix = iy = 0; }
+  const vorX = -Math.sin(kam.yaw), vorZ = -Math.cos(kam.yaw);
+  const rechtsX = Math.cos(kam.yaw), rechtsZ = -Math.sin(kam.yaw);
+  s.vel.x = (rechtsX * ix + vorX * iy) * LAUF_TEMPO;
+  s.vel.z = (rechtsZ * ix + vorZ * iy) * LAUF_TEMPO;
+
+  // 2) Springen und Schwerkraft
+  s.coyote -= dt; s.sprungPuffer -= dt;
+  if (s.sprungPuffer > 0 && s.coyote > 0) { s.vel.y = SPRUNG_KRAFT; s.coyote = 0; s.sprungPuffer = 0; }
+  s.vel.y = Math.max(s.vel.y - SCHWERKRAFT * dt, -30);
+
+  // 3) Bewegen und nicht durch Wände laufen
+  s.pos.x += s.vel.x * dt; seitlichWegschieben('x');
+  s.pos.z += s.vel.z * dt; seitlichWegschieben('z');
+
+  const vorherY = s.pos.y;
+  s.pos.y += s.vel.y * dt;
+  s.amBoden = false;
+  for (const p of alleKloetze) {
+    if (!ueberXZ(p)) continue;
+    if (s.vel.y <= 0 && vorherY >= p.oben - 0.001 && s.pos.y <= p.oben) {
+      s.pos.y = p.oben; s.vel.y = 0; s.amBoden = true;
+      if (p.checkpoint && s.checkpoint.y < p.oben) {
+        s.checkpoint.set((p.minX + p.maxX) / 2, p.oben, (p.minZ + p.maxZ) / 2);
+        zeigeBanner('Checkpoint ⭐', 1200);
+      }
+      if (p.ziel) turmGeschafft(p.turm);
+    } else if (s.vel.y > 0 && vorherY + GROESSE <= p.unten && s.pos.y + GROESSE > p.unten) {
+      s.pos.y = p.unten - GROESSE; s.vel.y = 0;   // Kopf gestoßen
+    }
+  }
+  if (s.amBoden) s.coyote = 0.12;
+
+  // 4) In welchem Turm bin ich? Beim Reingehen ist der Eingang der erste Checkpoint.
+  const T = turmBei(s.pos);
+  if (T !== s.turm) {
+    s.turm = T;
+    if (T) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
+  }
+  // Runtergefallen? Zurück zum Checkpoint
+  if (s.pos.y < -15 || (T && s.amBoden && s.pos.y < 0.1 && s.checkpoint.y > 1)) {
+    s.pos.copy(s.checkpoint); s.vel.set(0, 0, 0);
+  }
+  nachladenUhr -= dt;
+  if (nachladenUhr < 0) { nachladenUhr = 0.4; tuermeNachladen(s.pos); }
+
+  // 5) Figur drehen und animieren
+  const tempo = Math.hypot(s.vel.x, s.vel.z);
+  if (tempo > 0.1) {
+    const ziel = Math.atan2(s.vel.x, s.vel.z);
+    const diff = ((ziel - s.blick + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    s.blick += diff * Math.min(1, dt * 12);
+  }
+  held.figur.position.copy(s.pos);
+  held.figur.rotation.y = s.blick;
+  if (s.feiert) {
+    const w = Math.sin(zeit * 10) * 0.4;
+    held.armL.rotation.x = held.armR.rotation.x = -2.8 + w;
+    held.beinL.rotation.x = held.beinR.rotation.x = 0;
+  } else if (!s.amBoden) {
+    held.beinL.rotation.x = -0.5; held.beinR.rotation.x = 0.3;
+    held.armL.rotation.x = held.armR.rotation.x = -2.6;     // Arme hoch beim Springen
+  } else {
+    s.schritt += dt * tempo * 1.6;
+    const schwung = Math.sin(s.schritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.8;
+    held.beinL.rotation.x = schwung; held.beinR.rotation.x = -schwung;
+    held.armL.rotation.x = -schwung; held.armR.rotation.x = schwung;
+  }
+
+  // 6) Kamera folgt der Figur
+  const blickZiel = s.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
+  camera.position.set(
+    blickZiel.x + Math.sin(kam.yaw) * Math.cos(kam.pitch) * kam.abstand,
+    blickZiel.y + Math.sin(kam.pitch) * kam.abstand,
+    blickZiel.z + Math.cos(kam.yaw) * Math.cos(kam.pitch) * kam.abstand
+  );
+  // Im Turm bleibt die Kamera drinnen, damit keine Wand im Bild ist
+  if (T && camera.position.y < T.hoehe + 1) {
+    camera.position.x = Math.max(T.cx - T.innen + 0.4, Math.min(T.cx + T.innen - 0.4, camera.position.x));
+    camera.position.z = Math.max(T.cz - T.innen + 0.4, Math.min(T.cz + T.innen - 0.4, camera.position.z));
+  }
+  // Draußen: Kamera nicht hinter einer Turmwand verstecken, sondern näher zur Figur holen
+  if (!T) {
+    const weg = camera.position.clone().sub(blickZiel);
+    for (let f = 1; f > 0.1; f -= 0.08) {
+      const c = blickZiel.clone().addScaledVector(weg, f);
+      const drin = TUERME.some((U) => Math.abs(c.x - U.cx) < U.innen + 1.2 && Math.abs(c.z - U.cz) < U.innen + 1.2 && c.y < U.hoehe + 0.5);
+      if (!drin) { camera.position.copy(c); break; }
+    }
+  }
+  camera.position.y = Math.max(0.6, camera.position.y);
+  camera.lookAt(blickZiel);
+  sonne.position.set(s.pos.x + 12, s.pos.y + 30, s.pos.z + 8);
+  sonne.target.position.copy(s.pos);
+
+  // 7) Deko bewegen: Wolken, Schnee, blinkende Lichter, drehende Sterne
+  schneeUpdate(dt, s.pos);
+  for (const w of wolken) { w.position.x += w.userData.tempo * dt; if (w.position.x > 260) w.position.x = -260; }
+  lichtMatA.opacity = 0.6 + 0.4 * Math.sin(zeit * 2.5);
+  lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
+  for (const st of drehSterne) st.rotation.y += dt * 1.2;
+
+  hoehe.textContent = T ? `Turm ${T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : 'Draußen';
+}
+
+// =====================================================================
+//  FIGUR-EDITOR
+// =====================================================================
+const editor = { offen: false, dreh: 0 };
+const editorScene = new THREE.Scene();
+editorScene.background = new THREE.Color(0x1f2a4a);
+editorScene.fog = new THREE.Fog(0x1f2a4a, 12, 30);
+const editorKamera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+editorKamera.position.set(0, 1.35, 5.2);
+editorKamera.lookAt(0, 1.1, 0);
+editorScene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a3150, 0.9));
+const editorLicht = new THREE.DirectionalLight(0xffe7c4, 0.9);
+editorLicht.position.set(2, 5, 4);
+editorLicht.castShadow = true;
+editorScene.add(editorLicht);
+const lampe = new THREE.PointLight(0xffb36b, 0.9, 12);
+lampe.position.set(-2.5, 2, 1.5);
+editorScene.add(lampe);
+{
+  // Runder Teppich, Holzboden, Wand mit Lichterketten, Tannenbaum, Geschenke, Zuckerstange
+  const boden = new THREE.Mesh(new THREE.CircleGeometry(14, 40), M(0x6e5440));
+  boden.rotation.x = -Math.PI / 2; boden.receiveShadow = true;
+  const teppich = new THREE.Mesh(new THREE.CircleGeometry(1.4, 40), M(FARBEN.rosa));
+  teppich.rotation.x = -Math.PI / 2; teppich.position.y = 0.01; teppich.receiveShadow = true;
+  const rand = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.55, 40), M(FARBEN.weiss));
+  rand.rotation.x = -Math.PI / 2; rand.position.y = 0.012;
+  editorScene.add(boden, teppich, rand);
+  const wand = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), M(0x2a3760));
+  wand.position.set(0, 6, -4);
+  editorScene.add(wand);
+  const punkte = [];
+  for (let i = 0; i < 4; i++) {
+    const y = 4.6 - i * 0.2;
+    punkte.push(...kette(new THREE.Vector3(-7 + i * 3.5, y, -3.9), new THREE.Vector3(-3.5 + i * 3.5, y, -3.9), 0.35, 0.8));
+  }
+  lichter(editorScene, punkte, 0.6);
+  tanne(editorScene, -2.6, -2.4, 0.55, true, false);
+  for (const [x, z, b, f] of [[-1.8, -1.2, 0.5, FARBEN.rot], [-1.3, -1.7, 0.4, FARBEN.navy], [-2.3, -0.9, 0.35, FARBEN.weiss], [2.1, -1.4, 0.55, FARBEN.oliv], [2.6, -0.8, 0.35, FARBEN.rosa]]) {
+    deko(editorScene, x, b / 2, z, b, b, b, f);
+    deko(editorScene, x, b / 2, z, b + 0.02, b + 0.02, 0.08, FARBEN.gold);
+  }
+  const stange = new THREE.Mesh(stangenGeo, stangenMat);
+  stange.scale.setScalar(0.3); stange.position.set(2.8, 0, -2.2);
+  editorScene.add(stange);
+  for (let i = 0; i < 9; i++) {   // hängende Sterne
+    const st = new THREE.Mesh(sternGeo, sternMat);
+    st.scale.setScalar(0.18);
+    st.position.set(-4 + i, 3.6 + Math.sin(i * 1.7) * 0.4, -3.6);
+    editorScene.add(st);
+    drehSterne.push(st);
+  }
+}
+let editorFigur = null;
+function editorFigurNeu() {
+  if (editorFigur) editorScene.remove(editorFigur.figur);
+  editorFigur = baueFigur(AUSSEHEN, editorScene);
+}
+
+// Auswahl-Spalte rechts
+const AUSWAHL = [
+  { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
+  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz']] },
+  { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
+  { titel: 'Pulli', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
+  { titel: 'Streifen', key: 'streifen', farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
+  { titel: 'Kragen und Bündchen', key: 'buendchen', farben: ['#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450', '#c8323c'] },
+  { titel: 'Hose', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
+  { titel: 'Hosensaum', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
+  { titel: 'Stern auf der Hose', key: 'sternAn', worte: [[true, 'Ja'], [false, 'Nein']] },
+  { titel: 'Sternfarbe', key: 'stern', farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
+  { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
+];
+const spalte = document.getElementById('optionen');
+const nameFeld = document.getElementById('nameFeld');
+nameFeld.value = spielerName;
+nameFeld.addEventListener('input', () => {
+  spielerName = nameFeld.value.replace(/[\u0000-\u001f]/g, '').slice(0, 16);
+  try { localStorage.setItem('turmparkour-name', spielerName); } catch (e) {}
+});
+nameFeld.addEventListener('keydown', (e) => e.stopPropagation());
+nameFeld.addEventListener('keyup', (e) => e.stopPropagation());
+function spalteZeichnen() {
+  spalte.innerHTML = '';
+  for (const gruppe of AUSWAHL) {
+    const box = document.createElement('section');
+    const h = document.createElement('h3'); h.textContent = gruppe.titel;
+    const reihe = document.createElement('div'); reihe.className = gruppe.farben ? 'farben' : 'worte';
+    const aktuell = AUSSEHEN[gruppe.key] ?? (gruppe.key === 'sternAn' ? true : gruppe.key === 'frisur' ? 'lang' : null);
+    for (const wert of gruppe.farben || gruppe.worte) {
+      const [w, text] = gruppe.farben ? [wert, ''] : wert;
+      const knopf = document.createElement('button');
+      knopf.type = 'button';
+      if (gruppe.farben) { knopf.style.background = w; knopf.setAttribute('aria-label', `${gruppe.titel} ${w}`); }
+      else knopf.textContent = text;
+      if (w === aktuell) knopf.classList.add('an');
+      knopf.addEventListener('click', () => {
+        AUSSEHEN[gruppe.key] = w;
+        try { localStorage.setItem('turmparkour-figur', JSON.stringify(AUSSEHEN)); } catch (e) {}
+        editorFigurNeu();
+        spalteZeichnen();
+      });
+      reihe.appendChild(knopf);
+    }
+    box.append(h, reihe);
+    spalte.appendChild(box);
+  }
+}
+function editorOeffnen() {
+  editor.offen = true;
+  editor.dreh = 0;
+  document.body.classList.add('editor-offen');
+  document.getElementById('editor').hidden = false;
+  editorFigurNeu();
+  spalteZeichnen();
+  groesseAnpassen();
+}
+function editorSchliessen() {
+  editor.offen = false;
+  document.body.classList.remove('editor-offen');
+  document.getElementById('editor').hidden = true;
+  scene.remove(held.figur);
+  held = baueFigur(AUSSEHEN);
+  eigenesSchild();
+  mehr.lookGesendet = '';
+  if (mehr.gruppe) andereAktualisieren(mehr.gruppe.peers());
+  groesseAnpassen();
+}
+document.getElementById('figurKnopf').addEventListener('click', editorOeffnen);
+document.getElementById('fertig').addEventListener('click', editorSchliessen);
+document.getElementById('drehLinks').addEventListener('click', () => { editor.dreh -= Math.PI / 4; });
+document.getElementById('drehRechts').addEventListener('click', () => { editor.dreh += Math.PI / 4; });
+
+// =====================================================================
+//  MIT FREUNDEN SPIELEN (Code oben rechts)
+//  Jede Gruppe hat einen Code. Wer den gleichen Code eingibt, ist im gleichen Spiel.
+// =====================================================================
+const CODE_ZEICHEN = 'abcdefghjkmnpqrstuvwxyz23456789';
+let meinCode = '';
+try { meinCode = localStorage.getItem('turmparkour-code') || ''; } catch (e) {}
+if (!/^[a-z2-9]{5}$/.test(meinCode)) {
+  meinCode = Array.from({ length: 5 }, () => CODE_ZEICHEN[Math.floor(Math.random() * CODE_ZEICHEN.length)]).join('');
+  try { localStorage.setItem('turmparkour-code', meinCode); } catch (e) {}
+}
+const mehr = { room: null, gruppe: null, code: meinCode, andere: new Map(), sendeUhr: 0, lookGesendet: '' };
+const codeKnopf = document.getElementById('codeKnopf');
+const codePanel = document.getElementById('codePanel');
+const codeFeld = document.getElementById('codeFeld');
+const spielerListe = document.getElementById('spielerListe');
+const codeHinweis = document.getElementById('codeHinweis');
+
+// Namensschild über dem Kopf
+function namensSchild(name) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.font = '800 60px "Baloo 2", "Trebuchet MS", sans-serif';
+  const breite = Math.min(500, g.measureText(name).width + 64);
+  g.fillStyle = 'rgba(31, 42, 74, 0.82)';
+  if (g.roundRect) { g.beginPath(); g.roundRect(256 - breite / 2, 22, breite, 88, 44); g.fill(); }
+  else g.fillRect(256 - breite / 2, 22, breite, 88);
+  g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(name, 256, 70);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
+  s.scale.set(2, 0.5, 1);
+  s.position.y = 2.75;
+  return s;
+}
+function eigenesSchild() {
+  if (held.schild) { held.figur.remove(held.schild); held.schild.material.map.dispose(); }
+  held.schild = namensSchild(meinName());
+  held.figur.add(held.schild);
+}
+eigenesSchild();
+
+// Aussehen von anderen nur mit erlaubten Werten übernehmen (Schutz vor Unsinn)
+function sichererLook(l) {
+  const out = { ...STANDARD_AUSSEHEN };
+  if (!l || typeof l !== 'object') return out;
+  for (const k of Object.keys(STANDARD_AUSSEHEN)) {
+    const v = l[k];
+    if (k === 'frisur') { if (['lang', 'zopf', 'dutt', 'kurz'].includes(v)) out.frisur = v; }
+    else if (k === 'sternAn') { if (typeof v === 'boolean') out.sternAn = v; }
+    else if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) out[k] = v;
+  }
+  return out;
+}
+const sichererName = (n) => (typeof n === 'string' ? n.replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮]/g, '').trim().slice(0, 16) : '') || 'Gast';
+
+function andereAktualisieren(peers) {
+  const gesehen = new Set();
+  for (const p of peers) {
+    if (p.sameTab || p.kind !== 'viewer') continue;
+    const pr = p.presence || {};
+    if (!Array.isArray(pr.p) || pr.p.length !== 3 || !pr.p.every(Number.isFinite)) continue;
+    gesehen.add(p.peer);
+    let a = mehr.andere.get(p.peer);
+    const lookText = JSON.stringify(pr.l || {});
+    const name = sichererName(pr.n);
+    if (!a) {
+      a = { lookText: null, name: null, held: null, ziel: new THREE.Vector3(), blick: 0, luft: false, schritt: 0, alt: new THREE.Vector3() };
+      mehr.andere.set(p.peer, a);
+    }
+    if (a.lookText !== lookText || a.name !== name) {
+      if (a.held) scene.remove(a.held.figur);
+      a.held = baueFigur(sichererLook(pr.l));
+      a.held.figur.add(namensSchild(name));
+      if (a.lookText === null) a.held.figur.position.set(pr.p[0], pr.p[1], pr.p[2]);
+      else a.held.figur.position.copy(a.alt);
+      a.lookText = lookText; a.name = name;
+    }
+    a.ziel.set(pr.p[0], pr.p[1], pr.p[2]);
+    a.blick = Number.isFinite(pr.r) ? pr.r : 0;
+    a.luft = pr.a === 1;
+  }
+  for (const [peer, a] of mehr.andere) {
+    if (!gesehen.has(peer)) { if (a.held) scene.remove(a.held.figur); mehr.andere.delete(peer); }
+  }
+  // Liste der Mitspieler
+  spielerListe.innerHTML = '';
+  const ich = document.createElement('li'); ich.textContent = `${meinName()} (du)`;
+  spielerListe.appendChild(ich);
+  for (const a of mehr.andere.values()) {
+    const li = document.createElement('li'); li.textContent = a.name;
+    spielerListe.appendChild(li);
+  }
+  codeKnopf.querySelector('.anzahl').textContent = `👥 ${mehr.andere.size + 1}`;
+}
+
+async function codeBeitreten(code) {
+  if (!mehr.room) return;
+  code = code.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (code.length < 3) { codeHinweis.textContent = 'Der Code ist zu kurz.'; return; }
+  try {
+    if (mehr.gruppe) { await mehr.gruppe.leave(); }
+    for (const a of mehr.andere.values()) if (a.held) scene.remove(a.held.figur);
+    mehr.andere.clear();
+    mehr.gruppe = await mehr.room.join('tp-' + code);
+    mehr.code = code;
+    mehr.lookGesendet = '';
+    codeKnopf.querySelector('.code').textContent = code.toUpperCase();
+    codeHinweis.textContent = code === meinCode ? 'Gib deinen Freunden diesen Code.' : `Du spielst im Spiel ${code.toUpperCase()}.`;
+    mehr.gruppe.onPeers((ch) => andereAktualisieren(ch.peers), () => { codeHinweis.textContent = 'Verbindung verloren. Gib den Code nochmal ein.'; });
+    andereAktualisieren(mehr.gruppe.peers());
+  } catch (e) {
+    codeHinweis.textContent = 'Beitreten hat nicht geklappt. Versuch es gleich nochmal.';
+  }
+}
+
+function mehrspielerUpdate(dt) {
+  // Andere Spieler weich zu ihrer neuen Position bewegen und animieren
+  for (const a of mehr.andere.values()) {
+    if (!a.held) continue;
+    const f = a.held.figur;
+    a.alt.copy(f.position);
+    f.position.lerp(a.ziel, Math.min(1, dt * 12));
+    const diff = ((a.blick - f.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    f.rotation.y += diff * Math.min(1, dt * 12);
+    const tempo = Math.hypot(a.ziel.x - a.alt.x, a.ziel.z - a.alt.z) / Math.max(dt, 0.001);
+    if (a.luft) {
+      a.held.beinL.rotation.x = -0.5; a.held.beinR.rotation.x = 0.3;
+      a.held.armL.rotation.x = a.held.armR.rotation.x = -2.6;
+    } else {
+      a.schritt += dt * Math.min(tempo, LAUF_TEMPO) * 1.6;
+      const s = Math.sin(a.schritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.8;
+      a.held.beinL.rotation.x = s; a.held.beinR.rotation.x = -s;
+      a.held.armL.rotation.x = -s; a.held.armR.rotation.x = s;
+    }
+  }
+  // Eigene Position etwa 15 Mal pro Sekunde schicken
+  if (!mehr.gruppe) return;
+  mehr.sendeUhr -= dt;
+  if (mehr.sendeUhr > 0) return;
+  mehr.sendeUhr = 1 / 15;
+  const s = spieler.pos, r2 = (v) => Math.round(v * 100) / 100;
+  const patch = { p: [r2(s.x), r2(s.y), r2(s.z)], r: r2(spieler.blick), a: spieler.amBoden ? 0 : 1 };
+  const lookText = JSON.stringify(AUSSEHEN) + meinName();
+  if (lookText !== mehr.lookGesendet) {
+    patch.l = { ...AUSSEHEN };
+    delete patch.l.name;
+    patch.n = meinName();
+    mehr.lookGesendet = lookText;
+  }
+  mehr.gruppe.presence(patch).catch(() => {});
+}
+
+// Code-Knopf und Panel
+codeKnopf.addEventListener('click', () => { codePanel.hidden = !codePanel.hidden; });
+document.getElementById('codeLos').addEventListener('click', () => codeBeitreten(codeFeld.value));
+codeFeld.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') codeBeitreten(codeFeld.value); });
+codeFeld.addEventListener('keyup', (e) => e.stopPropagation());
+document.getElementById('meinCodeKnopf').addEventListener('click', () => codeBeitreten(meinCode));
+codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
+
+// Verbinden (klappt nur im veröffentlichten Spiel auf claude.ai)
+(async () => {
+  try { mehr.room = window.claude?.use ? await window.claude.use('room') : null; } catch (e) { mehr.room = null; }
+  if (!mehr.room) {
+    codeHinweis.textContent = 'Mitspielen geht hier gerade nicht. Öffne das Spiel über den Link und melde dich an.';
+    return;
+  }
+  codeBeitreten(meinCode);
+})();
+
+// ---------- Hauptschleife ----------
+const uhr = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(uhr.getDelta(), 0.05);
+  if (editor.offen) {
+    zeit += dt;
+    editorFigur.figur.rotation.y += (editor.dreh - editorFigur.figur.rotation.y) * Math.min(1, dt * 8);
+    editorFigur.armL.rotation.x = Math.sin(zeit * 1.5) * 0.08;
+    editorFigur.armR.rotation.x = -Math.sin(zeit * 1.5) * 0.08;
+    lichtMatA.opacity = 0.6 + 0.4 * Math.sin(zeit * 2.5);
+    lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
+    for (const st of drehSterne) st.rotation.y += dt * 1.2;
+    renderer.render(editorScene, editorKamera);
+  } else {
+    update(dt);
+    mehrspielerUpdate(dt);
+    renderer.render(scene, camera);
+  }
+});
+
+function groesseAnpassen() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  editorKamera.aspect = w / h;
+  // Figur in den freien Platz neben (oder über) der Auswahl-Spalte schieben
+  if (w > 640) editorKamera.setViewOffset(w, h, Math.min(170, w * 0.2), 0, w, h);
+  else editorKamera.setViewOffset(w, h, 0, h * 0.25, w, h);
+  editorKamera.position.z = w / h < 0.8 ? 9.5 : 5.2;
+  editorKamera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+addEventListener('resize', groesseAnpassen);
+</script>
