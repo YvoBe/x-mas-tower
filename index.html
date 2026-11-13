@@ -1798,7 +1798,7 @@ function baueFigur(look, ziel = scene) {
   huefte.position.y = 0.84;
   figur.add(huefte);
   if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
-    const hoehe = 0.42, oben = 0.27, unten = 0.4, falten = 18;
+    const hoehe = 0.42, oben = 0.255, unten = 0.4, falten = 18;
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -1810,9 +1810,9 @@ function baueFigur(look, ziel = scene) {
     }
     geo.computeVertexNormals();
     const rock = teil(geo, look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
-    rock.position.y = 0.98 - hoehe / 2;
-    const bund = teil(new THREE.CylinderGeometry(0.272, 0.272, 0.06, 32), look.umschlag);
-    bund.scale.z = 0.78; bund.position.y = 0.97;
+    rock.position.y = 0.9 - hoehe / 2;   // oben unter dem Oberteil versteckt, damit keine Falten durchschauen
+    const bund = teil(new THREE.CylinderGeometry(0.257, 0.257, 0.05, 32), look.umschlag);
+    bund.scale.z = 0.78; bund.position.y = 0.895;
     figur.add(rock, bund);
   } else if (hoseTyp === 'jogging') {     // Kordel vorne
     for (const sx of [-1, 1]) {
@@ -1850,8 +1850,12 @@ function baueFigur(look, ziel = scene) {
     const saum = teil(rumpf(0.075, 0.125, 0.012), look.streifen);
     koerper.add(top, haut, saum);
     for (const seite of [-1, 1]) {
-      const traeger = teil(new THREE.BoxGeometry(0.05, 0.2, 0.33), look.pulli);
-      traeger.position.set(seite * 0.15, 0.2, 0);
+      // Runder Träger: ein Schlauch, der vorne hochgeht, über die Schulter läuft und hinten wieder runter
+      const tx = seite * (junge ? 0.16 : 0.15);
+      const bogen = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(tx, 0.1, 0.17), new THREE.Vector3(tx, 0.24, 0.15), new THREE.Vector3(tx * 1.02, 0.315, 0.06),
+        new THREE.Vector3(tx * 1.02, 0.325, -0.02), new THREE.Vector3(tx * 1.02, 0.31, -0.1), new THREE.Vector3(tx, 0.22, -0.16), new THREE.Vector3(tx, 0.1, -0.17)]);
+      const traeger = teil(new THREE.TubeGeometry(bogen, 30, 0.016, 8, false), look.pulli);
       koerper.add(traeger);
       const schleife = teil(new THREE.ConeGeometry(0.03, 0.06, 8), look.streifen);   // kleine Schleife vorne
       schleife.rotation.z = seite * Math.PI / 2; schleife.position.set(seite * 0.03, 0.1, 0.185);
@@ -1924,10 +1928,13 @@ function baueFigur(look, ziel = scene) {
     }
     // Hand: Handfläche, vier leicht gebogene Finger und ein Daumen
     const hand = new THREE.Group();
-    hand.position.y = -0.62;
+    hand.position.y = -0.6;
+    // Handgelenk: verbindet die Hand ohne Lücke mit dem Arm
+    const handgelenk = teil(new THREE.CylinderGeometry(0.052 * ar, 0.045, 0.12, 14), look.haut);
+    handgelenk.scale.z = 1.15; handgelenk.position.y = 0.0;
     const flaeche = teil(new THREE.SphereGeometry(0.085, 16, 12), look.haut);
-    flaeche.scale.set(0.6, 1.0, 1); flaeche.position.y = -0.06;
-    hand.add(flaeche);
+    flaeche.scale.set(0.62, 1.0, 1); flaeche.position.y = -0.07;
+    hand.add(handgelenk, flaeche);
     for (let k = 0; k < 4; k++) {
       const lg = [0.06, 0.072, 0.068, 0.052][k];
       const finger = teil(new THREE.CapsuleGeometry(0.021, lg, 4, 8), look.haut);
@@ -1974,7 +1981,7 @@ function baueFigur(look, ziel = scene) {
     // Weiche, echte Locken: Haube oben und viele gedrehte Korkenzieher-Strähnen, die bis zu den Schultern fallen
     const r = zufall(7);
     const haube = H(new THREE.SphereGeometry(0.275, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.5));
-    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.12;
+    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.68;   // nach hinten gekippt: Stirn frei, kein Pony
     // An den Seiten geht die Haube bis über die Ohren herunter (keine Lücke an den Schläfen)
     for (const seite of [-1, 1]) {
       const schlaefe = H(new THREE.SphereGeometry(0.2, 18, 14));
@@ -1984,12 +1991,6 @@ function baueFigur(look, ziel = scene) {
     const hinten = H(new THREE.SphereGeometry(0.272, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.82));
     hinten.scale.set(1.05, 1.08, 1.06);
     kopf.add(haube, hinten);
-    // Lockere Wellen vorne am Scheitel
-    for (const seite of [-1, 1]) {
-      const welle = H(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2));
-      welle.scale.set(1.05, 0.55, 1.08); welle.position.set(seite * 0.11, 0.17, 0.08); welle.rotation.z = seite * -0.45;
-      kopf.add(welle);
-    }
     // Eine Locke: ein Schlauch, der sich wie eine Feder nach unten dreht
     const locke = (laenge, weite, dicke, windungen, phase) => {
       const punkte = [];
@@ -2000,15 +2001,6 @@ function baueFigur(look, ziel = scene) {
       return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 48, dicke, 6, false);
     };
     const lockenGeos = [locke(0.62, 0.035, 0.034, 3, 0), locke(0.52, 0.03, 0.032, 2.6, 1.3), locke(0.7, 0.038, 0.035, 3.3, 2.1)];
-    // Kurze Löckchen am Haaransatz, damit die Kante weich aussieht
-    const kurzeLocke = locke(0.12, 0.02, 0.028, 1.1, 0);
-    for (let k = 0; k < 14; k++) {
-      const a = -1.25 + (k / 13) * 2.5;   // vorne über die Stirn bis zu den Schläfen
-      const l = H(kurzeLocke);
-      l.position.set(Math.sin(a) * 0.255, 0.25 - Math.abs(a) * 0.1, Math.cos(a) * 0.225);
-      l.rotation.set(-0.9 * Math.cos(a), r() * 6.3, 0.9 * Math.sin(a));
-      kopf.add(l);
-    }
     const anzahl = 26;
     for (let k = 0; k < anzahl; k++) {
       const a = -2.2 + (k / (anzahl - 1)) * 4.4;            // von der einen Gesichtsseite hinten herum zur anderen
