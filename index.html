@@ -436,6 +436,8 @@ const M = (farbe, extra = {}) => {
 // Feste Wände (nicht durchsichtig)
 const glasNormal = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 0.9 });
 const glasGold = new THREE.MeshStandardMaterial({ color: 0xf3e3b0, roughness: 0.6, metalness: 0.2 });
+// Sommertürme: helles, sonniges Gelb, als ob die Sonne drauf scheint
+const glasSommer = new THREE.MeshStandardMaterial({ color: 0xfff7dc, roughness: 0.8, emissive: 0xffe9a8, emissiveIntensity: 0.22 });
 
 // Weicher runder Fleck: für Wolken, Schneeflocken und Lichter
 const flecken = (() => {
@@ -571,6 +573,51 @@ const sternGeo = (() => {
 const sternMat = M(FARBEN.gold, { metalness: 0.6, roughness: 0.3, emissive: 0x6b4c00 });
 const drehSterne = [];
 
+// Birken: weißer Stamm mit schwarzen Flecken und hellgrüne, lockere Blätterbüschel.
+// orte = [[x, y, z, groesse], ...]. Alles als InstancedMesh, damit es auf dem Handy flüssig läuft.
+const birkenRinde = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f3f1ea'; g.fillRect(0, 0, 64, 256);
+  const r = zufall(17);
+  for (let i = 0; i < 46; i++) {
+    g.fillStyle = r() < 0.7 ? '#2b2a28' : '#6d6a63';
+    const y = r() * 256, w = 6 + r() * 26, h = 1.5 + r() * 4;
+    g.fillRect(r() * 64, y, w, h);
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+function birken(gruppe, orte, BUESCHEL = 9, fein = 1) {
+  if (!orte.length) return;
+  const stammGeoB = new THREE.CylinderGeometry(0.11, 0.2, 7, 8); stammGeoB.translate(0, 3.5, 0);
+  const astGeo = new THREE.CylinderGeometry(0.035, 0.06, 1.6, 5); astGeo.translate(0, 0.8, 0);
+  const blattGeo = new THREE.IcosahedronGeometry(1, fein);
+  const r = zufall(321);
+  const AESTE = 3;
+  const staemme = new THREE.InstancedMesh(stammGeoB, new THREE.MeshStandardMaterial({ map: birkenRinde, roughness: 0.85 }), orte.length);
+  const aeste = new THREE.InstancedMesh(astGeo, new THREE.MeshStandardMaterial({ color: 0x5a5148, roughness: 1 }), orte.length * AESTE);
+  const blaetter = new THREE.InstancedMesh(blattGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, flatShading: true }), orte.length * BUESCHEL);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), c = new THREE.Color();
+  orte.forEach(([x, y, z, g], i) => {
+    const neig = (r() - 0.5) * 0.12;
+    m.compose(ps.set(x, y, z), q.setFromEuler(e.set(neig, r() * 6.3, neig)), sc.set(g, g * (0.9 + r() * 0.3), g));
+    staemme.setMatrixAt(i, m);
+    for (let k = 0; k < AESTE; k++) {
+      const w = r() * 6.3;
+      m.compose(ps.set(x, y + g * (3.6 + k * 0.9), z), q.setFromEuler(e.set(Math.cos(w) * 0.9, 0, Math.sin(w) * 0.9)), sc.set(g, g, g));
+      aeste.setMatrixAt(i * AESTE + k, m);
+    }
+    for (let k = 0; k < BUESCHEL; k++) {
+      const w = r() * 6.3, rr = (k === 0 ? 0 : 0.6 + r() * 1.1) * g, hh = y + g * (5.2 + r() * 2.6 - rr * 0.15 / g);
+      const b = g * (0.75 + r() * 0.55);
+      m.compose(ps.set(x + Math.cos(w) * rr, hh, z + Math.sin(w) * rr), q.setFromEuler(e.set(r(), r(), r())), sc.set(b, b * 1.15, b));
+      blaetter.setMatrixAt(i * BUESCHEL + k, m);
+      blaetter.setColorAt(i * BUESCHEL + k, c.setHSL(0.22 + r() * 0.05, 0.5, 0.42 + r() * 0.14));
+    }
+  });
+  for (const im of [staemme, aeste, blaetter]) { im.castShadow = true; gruppe.add(im); }
+}
 function tanne(gruppe, x, z, s, geschmueckt = false, schnee = true) {
   const baum = new THREE.Group();
   const stamm = new THREE.Mesh(stammGeo, rindenMat);
@@ -945,18 +992,18 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
 // Die andere Seite: ein normaler Turm, den man immer spielen kann, mit drehenden Plattformen
 // Die Sommerwelt liegt weit weg von der Weihnachtswelt, damit man sie nicht sieht
 const SOMMER = { x: 0, z: 2400 };
-klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x5b7438, { dicke: 1 });   // grüne Wiese
+klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x6b8a3e, { dicke: 1 });   // grüne Wiese
 const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: SOMMER.x, cz: SOMMER.z, innen: 10, hoehe: 56, gruppe: null, platten: [] };
 DREH_TURM.name = 'Dreh-Turm'; DREH_TURM.sommerArt = 'dreh';
 // Zwei weitere Türme in der Sommerwelt, jeder mit anderen Sachen zum Machen
-const HUEPF_TURM = { nr: 26, name: 'Hüpf-Turm', sommerArt: 'huepf', normal: true, spezial: false, anzahl: 40, cx: SOMMER.x - 44, cz: SOMMER.z + 14, innen: 10, hoehe: 72, gruppe: null, platten: [] };
-const WEG_TURM = { nr: 27, name: 'Wackel-Turm', sommerArt: 'weg', normal: true, spezial: false, anzahl: 44, cx: SOMMER.x + 44, cz: SOMMER.z + 14, innen: 10, hoehe: 50, gruppe: null, platten: [] };
+const HUEPF_TURM = { nr: 26, name: 'Hüpf-Turm', sommerArt: 'huepf', normal: true, spezial: false, anzahl: 40, cx: SOMMER.x - 120, cz: SOMMER.z + 75, innen: 10, hoehe: 72, gruppe: null, platten: [] };
+const WEG_TURM = { nr: 27, name: 'Wackel-Turm', sommerArt: 'weg', normal: true, spezial: false, anzahl: 44, cx: SOMMER.x + 115, cz: SOMMER.z + 40, innen: 10, hoehe: 50, gruppe: null, platten: [] };
 const SOMMER_TUERME = [DREH_TURM, HUEPF_TURM, WEG_TURM];
 for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
 
 function baueHuelle(T) {
   const { cx, cz, innen, hoehe, spezial } = T;
-  const glas = spezial ? glasGold : glasNormal;
+  const glas = T.sommerArt ? glasSommer : spezial ? glasGold : glasNormal;
   const aussen = 2 * innen + 2 * WAND, r = innen + WAND / 2;
   const wand = { dicke: hoehe, wand: true, mat: glas };
   klotz(statisch, scene, cx, hoehe, cz + r, aussen, WAND, 0, wand);
@@ -968,7 +1015,7 @@ function baueHuelle(T) {
   klotz(statisch, scene, cx, 0.04, cz, 2 * innen, 2 * innen, THEMA_BODEN[themaVon(T)], { dicke: 0.08 });   // Boden passend zum Thema
 
   // Rahmen
-  const rahmenFarbe = spezial ? FARBEN.gold : FARBEN.navy;
+  const rahmenFarbe = spezial ? FARBEN.gold : T.sommerArt ? 0x8f9b52 : FARBEN.navy;   // Sommer: hellgrüner Rahmen
   const extra = spezial ? { metalness: 0.6, roughness: 0.3 } : {};
   for (const [x, z] of [[r, r], [-r, r], [r, -r], [-r, -r]]) deko(scene, cx + x, hoehe / 2, cz + z, 0.8, hoehe, 0.8, rahmenFarbe, extra);
   for (let y = 8; y <= hoehe; y += 8) {
@@ -1264,23 +1311,38 @@ while (gepflanzt < 80) {
 
 // ---------- Sommerwelt: Blumenwiese um den Dreh-Turm ----------
 {
-  const { cx, cz } = DREH_TURM, R = 75;
+  const cx = SOMMER.x, cz = SOMMER.z, R = 255;
   const rw = zufall(4242);
   const ort = (min) => { for (;;) { const w = rw() * Math.PI * 2, r = Math.sqrt(rw()) * (R - 1);
     const x = Math.cos(w) * r, z = Math.sin(w) * r;
     if (SOMMER_TUERME.every((T) => Math.abs(cx + x - T.cx) > 11.5 || Math.abs(cz + z - T.cz) > 11.5 + min)) return [cx + x, cz + z]; } };
   // Grashalme
-  const halmGeo = new THREE.ConeGeometry(0.07, 0.5, 3); halmGeo.translate(0, 0.25, 0);
-  const halme = new THREE.InstancedMesh(halmGeo, M(0xffffff, { roughness: 1 }), 7000);
+  // Ein Grasbüschel aus 6 Halmen (als eine Form, damit es viel Gras gibt und trotzdem flüssig läuft)
+  const halmGeo = (() => {
+    const teile = [], rb = zufall(9);
+    for (let k = 0; k < 6; k++) {
+      const h = 0.5 + rb() * 0.6, g = new THREE.ConeGeometry(0.07, h, 3).toNonIndexed();
+      g.translate(0, h / 2, 0); g.rotateX((rb() - 0.5) * 0.6); g.rotateZ((rb() - 0.5) * 0.6);
+      g.translate((rb() - 0.5) * 0.5, 0, (rb() - 0.5) * 0.5);
+      teile.push(g);
+    }
+    const pos = [], nrm = [];
+    for (const g of teile) { pos.push(...g.attributes.position.array); nrm.push(...g.attributes.normal.array); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    return geo;
+  })();
+  const halme = new THREE.InstancedMesh(halmGeo, M(0xffffff, { roughness: 1 }), 30000);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), c = new THREE.Color();
   for (let i = 0; i < halme.count; i++) {
     const [x, z] = ort(0), g = 0.6 + rw() * 0.9;
     m.compose(ps.set(x, 0, z), q.setFromEuler(e.set((rw() - 0.5) * 0.5, rw() * 6.3, (rw() - 0.5) * 0.5)), sc.set(1, g, 1));
-    halme.setMatrixAt(i, m); halme.setColorAt(i, c.setHSL(0.22 + rw() * 0.05, 0.4, 0.38 + rw() * 0.14));
+    halme.setMatrixAt(i, m); halme.setColorAt(i, c.setHSL(0.22 + rw() * 0.06, 0.5, 0.36 + rw() * 0.18));
   }
   scene.add(halme);
   // Blumen: Stiel und runde Blüte mit Mitte
-  const N = 450;
+  const N = 2600;
   const stielGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 5); stielGeo.translate(0, 0.4, 0);
   const bluetenGeo = new THREE.SphereGeometry(0.3, 12, 6); bluetenGeo.scale(1, 0.45, 1); bluetenGeo.translate(0, 0.82, 0);
   const mitteGeo = new THREE.SphereGeometry(0.11, 8, 6); mitteGeo.translate(0, 0.92, 0);
@@ -1295,11 +1357,18 @@ while (gepflanzt < 80) {
     blueten.setColorAt(i, c.set(bluetenFarben[i % bluetenFarben.length]));
   }
   scene.add(stiele, blueten, mitten);
-  // Grüne Tannen am Rand der Wiese (ohne Schnee)
-  for (let i = 0; i < 26; i++) {
-    const w = rw() * Math.PI * 2, r = 58 + rw() * 22;
-    tanne(scene, cx + Math.cos(w) * r, cz + Math.sin(w) * r, 0.9 + rw() * 0.9, false, false);
+  // Birken: in kleinen Gruppen auf der Wiese und dichter am Rand
+  const birkenOrte = [];
+  for (let gruppe = 0; gruppe < 34; gruppe++) {
+    const w = rw() * Math.PI * 2, r = 40 + rw() * 215;
+    const gx = cx + Math.cos(w) * r, gz = cz + Math.sin(w) * r;
+    for (let k = 0; k < 2 + Math.floor(rw() * 4); k++) {
+      const x = gx + (rw() - 0.5) * 12, z = gz + (rw() - 0.5) * 12;
+      if (SOMMER_TUERME.some((T) => Math.abs(x - T.cx) < 16 && Math.abs(z - T.cz) < 22)) continue;
+      birkenOrte.push([x, 0, z, 1 + rw() * 0.6]);
+    }
   }
+  birken(scene, birkenOrte);
 }
 
 // ---------- Berge in der Ferne ----------
@@ -1379,6 +1448,7 @@ function baueGebirge(mx, mz, sommer) {
     if (steigung > 2.6 || n2(x / 25, z / 25) < 0.35) continue;   // nur flachere Stellen, in Gruppen
     orte.push([x, h - 2.6, z, 2.2 + rw() * 2.4]);
   }
+  if (sommer) { birken(scene, orte.map(([x, y, z, g]) => [x, y, z, g * 0.55]), 4, 0); return; }
   const nadelGeo = new THREE.ConeGeometry(1, 2.6, 7); nadelGeo.translate(0, 1.6, 0);
   const kappeGeo = new THREE.ConeGeometry(0.55, 1.1, 7); kappeGeo.translate(0, 2.55, 0);
   const nadeln = new THREE.InstancedMesh(nadelGeo, new THREE.MeshStandardMaterial({ color: 0x2f4f3a, roughness: 0.9, flatShading: true }), orte.length);
@@ -2489,7 +2559,7 @@ const startFiguren = [];
 }
 const START_FLUG = [
   { sommer: false, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
-  { sommer: true, figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 8), weit: 165, hoch: 58 },
+  { sommer: true, figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
 ];
 const FLUG_DAUER = 16;
 let startFlugZeit = 0, startFlugWelt = -1;
