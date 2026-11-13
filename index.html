@@ -784,7 +784,15 @@ function bewegePlatten(dt) {
         }
         continue;
       }
+      if (b.art === 'knack') {        // Knack-Geräusch und Risse im Wachs, danach heilt es wieder
+        if (steht && !b.stand) { knackTon(); b.risse.visible = true; b.uhr = 2.5; }
+        b.stand = steht;
+        if (b.uhr > 0) { b.uhr -= dt; if (b.uhr <= 0 && !steht) b.risse.visible = false; else if (b.uhr <= 0) b.uhr = 0.5; }
+        continue;
+      }
       if (b.art === 'squishy') {     // einsinken, wenn man draufsteht, sonst langsam wieder hoch
+        if (steht && !b.stand) squishTon(b.sorte);   // Geräusch beim Draufspringen
+        b.stand = steht;
         const ziel = steht ? 0.45 : 0;
         b.s += (ziel - b.s) * Math.min(1, dt * (steht ? 9 : 3));
         const dy = (b.oben0 - b.s) - p.oben;
@@ -821,6 +829,98 @@ function bewegePlatten(dt) {
 }
 
 // --- Squishies: Butter (Stück mit Papier) und Käse (Ecke mit Löchern) ---
+const butterMasse = (groesse) => [groesse * 1.25, groesse * 0.78];
+let _butterTextur = null;
+function butterTextur() {
+  if (_butterTextur) return _butterTextur;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbe9a6'; g.fillRect(0, 0, 512, 256);
+  g.fillStyle = '#fff8dc'; g.fillRect(0, 70, 512, 116);           // helles Band in der Mitte
+  g.strokeStyle = '#2f5aa8'; g.lineWidth = 8; g.strokeRect(14, 14, 484, 228);
+  g.fillStyle = '#2f5aa8';
+  g.font = '800 120px "Baloo 2", "Trebuchet MS", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('Butter', 256, 134);
+  _butterTextur = new THREE.CanvasTexture(c);
+  return _butterTextur;
+}
+// Geräusche: weiches "Quietsch-Matsch", wenn man auf einen Squishy springt (ohne Sounddatei, direkt erzeugt)
+let tonKontext = null;
+function tonStart() {
+  if (!tonKontext) { try { tonKontext = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (tonKontext.state === 'suspended') tonKontext.resume();
+  return tonKontext;
+}
+addEventListener('pointerdown', tonStart); addEventListener('keydown', tonStart); addEventListener('touchstart', tonStart);
+function squishTon(art) {
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t = a.currentTime, kaese = art === 'kaese';
+  // Matsch: kurzes Rauschen durch einen Filter, der nach unten gleitet
+  const n = a.createBuffer(1, a.sampleRate * 0.35, a.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const rausch = a.createBufferSource(); rausch.buffer = n;
+  const filter = a.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = 6;
+  filter.frequency.setValueAtTime(kaese ? 1400 : 900, t); filter.frequency.exponentialRampToValueAtTime(kaese ? 300 : 180, t + 0.3);
+  const lautR = a.createGain(); lautR.gain.setValueAtTime(0.0001, t); lautR.gain.exponentialRampToValueAtTime(0.35, t + 0.02); lautR.gain.exponentialRampToValueAtTime(0.0001, t + 0.33);
+  rausch.connect(filter).connect(lautR).connect(a.destination);
+  // Quietschen: ein Ton, der nach unten rutscht
+  const ton = a.createOscillator(); ton.type = 'sine';
+  ton.frequency.setValueAtTime(kaese ? 520 : 380, t); ton.frequency.exponentialRampToValueAtTime(kaese ? 260 : 150, t + 0.25);
+  const lautT = a.createGain(); lautT.gain.setValueAtTime(0.0001, t); lautT.gain.exponentialRampToValueAtTime(0.18, t + 0.015); lautT.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  ton.connect(lautT).connect(a.destination);
+  rausch.start(t); rausch.stop(t + 0.36); ton.start(t); ton.stop(t + 0.3);
+}
+function knackTon() {
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t0 = a.currentTime;
+  // mehrere kurze, harte Klicks hintereinander, wie brechendes Wachs
+  for (let k = 0; k < 5; k++) {
+    const t = t0 + k * 0.025 + Math.random() * 0.02;
+    const len = 0.03 + Math.random() * 0.03;
+    const n = a.createBuffer(1, Math.ceil(a.sampleRate * len), a.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const quelle = a.createBufferSource(); quelle.buffer = n;
+    const filter = a.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1800 + Math.random() * 2500; filter.Q.value = 1.2;
+    const laut = a.createGain(); laut.gain.value = k === 0 ? 0.9 : 0.5;
+    quelle.connect(filter).connect(laut).connect(a.destination);
+    quelle.start(t);
+  }
+}
+// Schokoladentafel, die in Wachs getaucht ist (glänzende Hülle), mit Rissen, die beim Draufspringen erscheinen
+function schokoWachs(g, x, oben, z, b, t, rnd) {
+  const tafel = new THREE.Group();
+  const H = 0.5;
+  tafel.position.set(x, oben - H, z);
+  const schoko = M(0x5a3420, { roughness: 0.45 });
+  const sx = 4, sz = 2, sp = 0.05;
+  const stueckB = (b - 0.2 - sp * (sx - 1)) / sx, stueckT = (t - 0.2 - sp * (sz - 1)) / sz;
+  const boden = new THREE.Mesh(new THREE.BoxGeometry(b - 0.12, H * 0.5, t - 0.12), schoko);
+  boden.position.y = H * 0.25; tafel.add(boden);
+  for (let i = 0; i < sx; i++) for (let j = 0; j < sz; j++) {
+    const stueck = new THREE.Mesh(rundKlotz(stueckB, H * 0.45, stueckT, 0.05), schoko);
+    stueck.position.set(-b / 2 + 0.1 + stueckB / 2 + i * (stueckB + sp), H * 0.62, -t / 2 + 0.1 + stueckT / 2 + j * (stueckT + sp));
+    tafel.add(stueck);
+  }
+  // Wachs-Hülle: durchsichtig und glänzend, zartrosa
+  const wachs = new THREE.Mesh(rundKlotz(b, H + 0.08, t, 0.08), new THREE.MeshStandardMaterial({ color: 0xffe3ec, transparent: true, opacity: 0.45, roughness: 0.08, metalness: 0.05, depthWrite: false }));
+  wachs.position.y = (H + 0.08) / 2;
+  tafel.add(wachs);
+  // Risse (erst unsichtbar)
+  const risse = new THREE.Group();
+  const rissMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (let k = 0; k < 7; k++) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.3 + rnd() * 0.5, 0.012, 0.025), rissMat);
+    r.position.set((rnd() - 0.5) * b * 0.7, H + 0.085, (rnd() - 0.5) * t * 0.6);
+    r.rotation.y = rnd() * Math.PI;
+    risse.add(r);
+  }
+  risse.visible = false;
+  tafel.add(risse);
+  tafel.traverse((m) => { if (m.isMesh && m !== wachs) { m.castShadow = true; m.receiveShadow = true; } });
+  g.add(tafel);
+  return risse;
+}
 function squishy(g, art, x, oben, z, groesse, rnd) {
   const vis = new THREE.Group();
   const H = 1.1;
@@ -828,13 +928,13 @@ function squishy(g, art, x, oben, z, groesse, rnd) {
   vis.position.set(x, oben - H, z);   // unten fest, oben sinkt ein
   const weich = { roughness: 0.55 };
   if (art === 'butter') {
-    const papier = new THREE.Mesh(rundKlotz(groesse * 1.02, 0.35, groesse * 0.82, 0.08), M(0xf7f3ea, weich));
-    papier.position.y = 0.175;
-    const butter = new THREE.Mesh(rundKlotz(groesse * 0.92, H - 0.2, groesse * 0.74, 0.18), M(0xfbe7a1, weich));
-    butter.position.y = 0.2 + (H - 0.2) / 2;
-    const streifen = new THREE.Mesh(rundKlotz(groesse * 1.03, 0.06, groesse * 0.83, 0.03), M(0xf2b8c6, weich));
-    streifen.position.y = 0.3;
-    vis.add(papier, butter, streifen);
+    // Rechteckiges Butter-Päckchen mit blauer Schrift "Butter"
+    const [bb, bt] = butterMasse(groesse);
+    const seite = new THREE.MeshStandardMaterial({ color: 0xfbe9a6, roughness: 0.5 });
+    const schrift = new THREE.MeshStandardMaterial({ map: butterTextur(), roughness: 0.5 });
+    const paeckchen = new THREE.Mesh(new THREE.BoxGeometry(bb, H, bt), [seite, seite, schrift, seite, schrift, schrift]);
+    paeckchen.position.y = H / 2;
+    vis.add(paeckchen);
   } else {
     // Käse-Stück mit Löchern oben und an den Seiten
     const kaese = new THREE.Group();
@@ -1315,7 +1415,7 @@ function baueInnen(T) {
       art = w < 0.5 ? 'weg' : w < 0.68 ? 'schieben' : w < 0.84 ? 'dreh' : 'rund';
     } else if (T.welt === 'aesthetic' && !cp && i > 0) {   // Wolken-Turm: Squishies (Butter und Käse), die einsinken
       const w = rnd();
-      art = w < 0.4 ? 'butter' : w < 0.8 ? 'kaese' : w < 0.9 ? 'rund' : 'dreh';
+      art = w < 0.32 ? 'butter' : w < 0.6 ? 'kaese' : w < 0.86 ? 'schoko' : w < 0.94 ? 'rund' : 'dreh';
     } else if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
       const w = rnd();
       art = w < 0.7 ? 'dreh' : w < 0.85 ? 'rund' : 'hoch';
@@ -1351,8 +1451,13 @@ function baueInnen(T) {
       k.mesh.add(balken);
       k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
     } else if (art === 'butter' || art === 'kaese') {   // Squishy: sinkt weich ein, wenn man draufsteht
-      const k = klotz(platten, g, x, h, z, groesse, groesse, 0, { turm: T, unsichtbar: true });
-      k.bew = { art: 'squishy', vis: squishy(g, art, x, h, z, groesse, rnd), oben0: h, s: 0 };
+      const [sb, st] = art === 'butter' ? butterMasse(groesse) : [groesse * 0.95, groesse * 0.95];
+      const k = klotz(platten, g, x, h, z, sb, st, 0, { turm: T, unsichtbar: true });
+      k.bew = { art: 'squishy', sorte: art, vis: squishy(g, art, x, h, z, groesse, rnd), oben0: h, s: 0 };
+    } else if (art === 'schoko') {      // Schokolade in Wachs: hart, macht "Knack" und bekommt Risse
+      const sb = groesse * 1.2, st = groesse * 0.8;
+      const k = klotz(platten, g, x, h, z, sb, st, 0, { turm: T, unsichtbar: true });
+      k.bew = { art: 'knack', risse: schokoWachs(g, x, h, z, sb, st, rnd), uhr: 0 };
     } else if (art === 'trampolin') {   // Trampolin: wer drauf landet, fliegt hoch
       const k = rundPlatte(platten, g, x, h, z, groesse * 1.1, FARBEN.navy, { turm: T });
       k.trampolin = true;
