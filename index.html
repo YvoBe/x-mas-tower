@@ -1460,6 +1460,33 @@ function rundKlotz(w, h, d, r) {
 }
 
 // Ein Klotz mit runden senkrechten Kanten (für Pulli und Streifen)
+// Oberkörper wie auf der Skizze: breite Brust, schmalere Taille, unten wieder etwas weiter.
+// yVon/yBis in Körper-Koordinaten (-0.44 = Saum, 0.3 = Hals), plus = etwas dicker (für Streifen)
+function rumpfBreite(y) {
+  const p = [[-0.46, 0.33], [-0.3, 0.318], [-0.12, 0.302], [0.05, 0.318], [0.17, 0.338], [0.25, 0.305], [0.29, 0.22], [0.31, 0.12]];
+  if (y <= p[0][0]) return p[0][1];
+  for (let i = 1; i < p.length; i++) if (y <= p[i][0]) {
+    const t = (y - p[i - 1][0]) / (p[i][0] - p[i - 1][0]), s = t * t * (3 - 2 * t);
+    return p[i - 1][1] + (p[i][1] - p[i - 1][1]) * s;
+  }
+  return p[p.length - 1][1];
+}
+function rumpf(yVon, yBis, plus = 0, tiefe = 0.57) {
+  const pts = [new THREE.Vector2(0.001, yVon)];
+  const n = Math.max(2, Math.round((yBis - yVon) / 0.03));
+  for (let i = 0; i <= n; i++) { const y = yVon + (yBis - yVon) * i / n; pts.push(new THREE.Vector2(rumpfBreite(y) + plus, y)); }
+  pts.push(new THREE.Vector2(0.001, yBis));
+  const geo = new THREE.LatheGeometry(pts, 40);
+  // Querschnitt eckig-rund (wie ein Kissen) statt kreisrund
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), w = Math.atan2(z, x);
+    const f = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), 4) + Math.pow(Math.abs(Math.sin(w)), 4), 0.25);
+    pos.setX(i, x * f); pos.setZ(i, z * f * (tiefe + plus * 0.6));
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
 function prisma(w, h, d, r) {
   const f = new THREE.Shape();
   f.moveTo(-w / 2 + r, -d / 2);
@@ -1621,39 +1648,32 @@ function baueFigur(look, ziel = scene) {
   koerper.position.y = 1.29;
   if (oberteilTyp === 'pulli') {         // Ringelpulli mit dunklem Kragen und Bund
     const strick = { map: stoff('strick', 9, 9) };
-    const pulli = teil(prisma(0.66, 0.74, 0.36, 0.12), look.pulli, strick);
-    pulli.position.y = -0.07;
+    const pulli = teil(rumpf(-0.44, 0.3), look.pulli, strick);
     koerper.add(pulli);
     for (const y of [0.2, 0.08, -0.04, -0.16, -0.28]) {
-      const streifen = teil(prisma(0.672, 0.045, 0.372, 0.125), look.streifen, strick);
-      streifen.position.y = y;
+      const streifen = teil(rumpf(y - 0.0225, y + 0.0225, 0.006), look.streifen, strick);
       koerper.add(streifen);
     }
-    const bund = teil(prisma(0.68, 0.08, 0.38, 0.13), look.buendchen, { map: stoff('rippe', 14, 1) });
-    bund.position.y = -0.42;
+    const bund = teil(rumpf(-0.46, -0.38, 0.012), look.buendchen, { map: stoff('rippe', 14, 1) });
     const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen, { map: stoff('rippe', 1, 12) });
     kragen.rotation.x = Math.PI / 2;
     kragen.position.y = 0.3;
     koerper.add(bund, kragen);
   } else if (oberteilTyp === 'top') {    // Top mit Trägern, Schultern frei
-    const top = teil(prisma(0.64, 0.56, 0.35, 0.12), look.pulli);
-    top.position.y = -0.16;
-    const haut = teil(prisma(0.6, 0.2, 0.32, 0.11), look.haut);
-    haut.position.y = 0.21;
-    const saum = teil(prisma(0.655, 0.05, 0.365, 0.125), look.streifen);
-    saum.position.y = 0.1;
+    const top = teil(rumpf(-0.44, 0.12, 0.004), look.pulli);
+    const haut = teil(rumpf(0.1, 0.3, -0.02), look.haut);
+    const saum = teil(rumpf(0.075, 0.125, 0.012), look.streifen);
     koerper.add(top, haut, saum);
     for (const seite of [-1, 1]) {
-      const traeger = teil(new THREE.BoxGeometry(0.06, 0.22, 0.34), look.pulli);
-      traeger.position.set(seite * 0.17, 0.22, 0);
+      const traeger = teil(new THREE.BoxGeometry(0.05, 0.2, 0.33), look.pulli);
+      traeger.position.set(seite * 0.15, 0.2, 0);
       koerper.add(traeger);
       const schleife = teil(new THREE.ConeGeometry(0.03, 0.06, 8), look.streifen);   // kleine Schleife vorne
       schleife.rotation.z = seite * Math.PI / 2; schleife.position.set(seite * 0.03, 0.1, 0.185);
       koerper.add(schleife);
     }
   } else {                               // T-Shirt mit offener Jacke drüber
-    const shirt = teil(prisma(0.62, 0.74, 0.34, 0.11), look.pulli, { map: stoff('weich', 8, 8) });
-    shirt.position.y = -0.07;
+    const shirt = teil(rumpf(-0.44, 0.3, -0.015), look.pulli, { map: stoff('weich', 8, 8) });
     koerper.add(shirt);
     const j = (b, h, t, x, y, z) => { const m = teil(new THREE.BoxGeometry(b, h, t), look.jacke); m.position.set(x, y, z); koerper.add(m); return m; };
     j(0.68, 0.78, 0.05, 0, -0.08, -0.17);             // Rücken
@@ -1677,17 +1697,6 @@ function baueFigur(look, ziel = scene) {
     kapuze.rotation.set(-0.5, 0, Math.PI); kapuze.position.set(0, 0.3, -0.16);
     koerper.add(zipper, kapuze);
   }
-  // Runde Schultern, damit die Arme mit dem Körper verbunden sind (wie auf der Zeichnung)
-  {
-    const top = oberteilTyp === 'top';
-    const schulterFarbe = top ? look.haut : oberteilTyp === 'jacke' ? look.jacke : look.pulli;
-    const schultern = teil(new THREE.CapsuleGeometry(top ? 0.085 : 0.11, top ? 0.56 : 0.54, 8, 16), schulterFarbe,
-      oberteilTyp === 'pulli' ? { map: stoff('strick', 9, 3) } : {});
-    schultern.rotation.z = Math.PI / 2;
-    schultern.scale.set(1, 1, top ? 1.85 : 1.6);
-    schultern.position.y = top ? 0.23 : 0.21;
-    koerper.add(schultern);
-  }
   figur.add(koerper);
 
   // Hals
@@ -1698,7 +1707,7 @@ function baueFigur(look, ziel = scene) {
   // Arme: je nach Oberteil mit langen Ärmeln oder frei
   const arm = (seite) => {
     const gelenk = new THREE.Group();
-    gelenk.position.set(seite * 0.39, 1.5, 0);
+    gelenk.position.set(seite * 0.4, 1.5, 0);
     // Schulterkugel im Gelenk: verbindet Arm und Körper, auch wenn der Arm schwingt
     const schulterFarbe = oberteilTyp === 'top' ? look.haut : oberteilTyp === 'jacke' ? look.jacke : look.pulli;
     const kugel = teil(new THREE.SphereGeometry(oberteilTyp === 'top' ? 0.088 : 0.105, 16, 12), schulterFarbe,
@@ -1725,8 +1734,23 @@ function baueFigur(look, ziel = scene) {
       buendchen.position.y = -0.56;
       gelenk.add(buendchen);
     }
-    const hand = teil(new THREE.SphereGeometry(0.1, 16, 12), look.haut);
-    hand.position.y = -0.69;
+    // Hand: Handfläche, vier leicht gebogene Finger und ein Daumen
+    const hand = new THREE.Group();
+    hand.position.y = -0.62;
+    const flaeche = teil(new THREE.SphereGeometry(0.085, 16, 12), look.haut);
+    flaeche.scale.set(0.6, 1.0, 1); flaeche.position.y = -0.06;
+    hand.add(flaeche);
+    for (let k = 0; k < 4; k++) {
+      const lg = [0.06, 0.072, 0.068, 0.052][k];
+      const finger = teil(new THREE.CapsuleGeometry(0.021, lg, 4, 8), look.haut);
+      finger.position.set(-seite * 0.01, -0.13 - lg / 2 + 0.015, 0.054 - k * 0.036);
+      finger.rotation.z = -seite * 0.18;     // etwas zum Körper gebogen
+      hand.add(finger);
+    }
+    const daumen = teil(new THREE.CapsuleGeometry(0.024, 0.05, 4, 8), look.haut);
+    daumen.position.set(-seite * 0.03, -0.07, 0.08);
+    daumen.rotation.x = 0.6; daumen.rotation.z = -seite * 0.3;
+    hand.add(daumen);
     gelenk.add(hand);
     gelenk.rotation.z = seite * 0.08;
     figur.add(gelenk);
@@ -1962,16 +1986,23 @@ function baueFigur(look, ziel = scene) {
   } else {
     const oben = H(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47));
     oben.scale.set(1.0, 1.1, 1.02);
-    oben.rotation.x = -0.1;
+    // Bei langen glatten Haaren: Stirn frei (kein Pony), Haare fallen vom Scheitel zur Seite
+    oben.rotation.x = frisur === 'lang' ? -0.5 : -0.1;
     const hinten = H(new THREE.SphereGeometry(0.268, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.8));
     hinten.scale.set(1.0, 1.08, 1.04);
     kopf.add(oben, hinten);
     // Mittelscheitel mit zwei Haarwellen vorne
     for (const seite of [-1, 1]) {
       const welle = H(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2));
-      welle.scale.set(1, 0.5, 1.05);
-      welle.position.set(seite * 0.11, 0.17, 0.08);
-      welle.rotation.z = seite * -0.45;
+      if (frisur === 'lang') {          // Haare schwingen vom Scheitel über die Schläfe nach außen
+        welle.scale.set(1.05, 0.45, 1.1);
+        welle.position.set(seite * 0.135, 0.165, 0.07);
+        welle.rotation.set(0.25, 0, seite * -0.85);
+      } else {
+        welle.scale.set(1, 0.5, 1.05);
+        welle.position.set(seite * 0.11, 0.17, 0.08);
+        welle.rotation.z = seite * -0.45;
+      }
       kopf.add(welle);
     }
   }
