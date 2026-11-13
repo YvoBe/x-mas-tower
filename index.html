@@ -163,7 +163,7 @@
     top: calc(env(safe-area-inset-top, 0px) + 12px);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     right: max(16px, env(safe-area-inset-right, 0px));
-    width: min(320px, 42vw);
+    width: min(400px, 50vw);
     background: rgba(251, 248, 242, 0.95);
     border-radius: 22px;
     border: 3px solid var(--rosa);
@@ -171,7 +171,17 @@
     overflow: hidden;
   }
   .spalte h2 { margin: 0; padding: 14px 18px 4px; font-size: 24px; font-weight: 800; }
-  #optionen { flex: 1; overflow-y: auto; padding: 4px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
+  /* Links eine schmale Spalte mit den Bereichen (Make-up, Haare, Kleidung ...), rechts die Auswahl */
+  .bereichZeile { flex: 1; min-height: 0; display: flex; }
+  #bereiche { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px 12px; width: 92px; flex: none; overflow-y: auto; }
+  #bereiche button {
+    font: 800 14px var(--font); color: var(--ink); text-align: center;
+    background: #fff; border: 2px solid rgba(31, 42, 74, 0.2); border-radius: 14px;
+    padding: 10px 4px 7px; cursor: pointer; line-height: 1.15;
+  }
+  #bereiche button .symbol { display: block; font-size: 22px; margin-bottom: 2px; }
+  #bereiche button.an { background: var(--rosa); border-color: var(--rosa); }
+  #optionen { flex: 1; overflow-y: auto; padding: 4px 16px 12px 14px; display: flex; flex-direction: column; gap: 12px; }
   #optionen h3 { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6380; }
   .farben, .worte { display: flex; flex-wrap: wrap; gap: 8px; }
   .farben button {
@@ -195,7 +205,7 @@
     pointer-events: auto;
     position: absolute;
     left: max(16px, env(safe-area-inset-left, 0px));
-    right: calc(min(320px, 42vw) + 32px);
+    right: calc(min(400px, 50vw) + 32px);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
     display: flex; justify-content: center; align-items: center; gap: 12px;
     color: #fbf8f2; font-weight: 700; font-size: 15px;
@@ -208,8 +218,12 @@
     font-size: 24px; cursor: pointer;
   }
   @media (max-width: 640px) {
-    #editor .spalte { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; height: 46%; }
-    #editor .drehen { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(46% + 24px); }
+    #editor .spalte { left: max(16px, env(safe-area-inset-left, 0px)); width: auto; top: auto; height: 50%; }
+    .bereichZeile { flex-direction: column; }
+    #bereiche { flex-direction: row; width: auto; padding: 0 12px 8px; overflow-x: auto; }
+    #bereiche button { flex: 1; padding: 6px 4px 4px; }
+    #bereiche button .symbol { font-size: 18px; }
+    #editor .drehen { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(50% + 24px); }
     .tag p { display: none; }
   }
   /* Querformat auf dem Handy: alles etwas kleiner, damit mehr vom Spiel zu sehen ist */
@@ -223,7 +237,12 @@
     #sprint { width: 56px; height: 56px; right: calc(max(16px, env(safe-area-inset-right, 0px)) + 104px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
     .banner { font-size: 26px; }
     #codePanel { max-height: calc(100vh - 80px); overflow-y: auto; }
-    .spalte h2 { font-size: 20px; padding-top: 10px; }
+    .spalte h2 { display: none; }
+    .nameZeile { padding-top: 10px; }
+    #bereiche { gap: 5px; width: 80px; padding-bottom: 8px; }
+    #bereiche button { font-size: 12px; padding: 4px 2px 2px; border-radius: 10px; }
+    #bereiche button .symbol { font-size: 16px; margin-bottom: 0; }
+    #fertig { margin-bottom: 10px; padding: 6px 0 3px; font-size: 17px; }
   }
   /* Startbildschirm */
   #start {
@@ -352,7 +371,10 @@
     <label class="nameZeile" for="nameFeld">Name
       <input id="nameFeld" type="text" maxlength="16" autocomplete="off">
     </label>
-    <div id="optionen"></div>
+    <div class="bereichZeile">
+      <nav id="bereiche" aria-label="Bereiche"></nav>
+      <div id="optionen"></div>
+    </div>
     <button type="button" id="fertig">Fertig ✓</button>
   </aside>
   <div class="drehen">
@@ -2740,6 +2762,27 @@ const passt = (g) => {
   const [k, w] = g.nur, ist = AUSSEHEN[k] ?? STANDARD_AUSSEHEN[k];
   return typeof w === 'string' && w.startsWith('!') ? ist !== w.slice(1) : ist === w;
 };
+// Bereiche in der linken Spalte: jede Auswahl gehört zu einem Bereich
+const BEREICHE = [
+  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['figurTyp', 'haut'] },
+  { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'sommersprossen', 'mund'] },
+  { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'haare'] },
+  { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
+];
+const bereichVon = (g) => (BEREICHE.find((b) => b.keys && b.keys.includes(g.key)) || BEREICHE[BEREICHE.length - 1]).id;
+let aktiverBereich = 'figur';
+const bereichLeiste = document.getElementById('bereiche');
+function bereicheZeichnen() {
+  bereichLeiste.innerHTML = '';
+  for (const b of BEREICHE) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.innerHTML = `<span class="symbol" aria-hidden="true">${b.symbol}</span>${b.name}`;
+    if (b.id === aktiverBereich) { knopf.classList.add('an'); knopf.setAttribute('aria-current', 'true'); }
+    knopf.addEventListener('click', () => { aktiverBereich = b.id; bereicheZeichnen(); spalteZeichnen(); spalte.scrollTop = 0; });
+    bereichLeiste.appendChild(knopf);
+  }
+}
 const spalte = document.getElementById('optionen');
 const nameFeld = document.getElementById('nameFeld');
 nameFeld.value = spielerName;
@@ -2751,7 +2794,7 @@ nameFeld.addEventListener('keydown', (e) => e.stopPropagation());
 nameFeld.addEventListener('keyup', (e) => e.stopPropagation());
 function spalteZeichnen() {
   spalte.innerHTML = '';
-  for (const gruppe of AUSWAHL.filter(passt)) {
+  for (const gruppe of AUSWAHL.filter((g) => passt(g) && bereichVon(g) === aktiverBereich)) {
     const box = document.createElement('section');
     const h = document.createElement('h3'); h.textContent = gruppe.titel;
     const reihe = document.createElement('div'); reihe.className = gruppe.farben ? 'farben' : 'worte';
@@ -2784,6 +2827,7 @@ function editorOeffnen() {
   document.body.classList.add('editor-offen');
   document.getElementById('editor').hidden = false;
   editorFigurNeu();
+  bereicheZeichnen();
   spalteZeichnen();
   groesseAnpassen();
 }
@@ -3124,7 +3168,7 @@ function groesseAnpassen() {
   startKamera.aspect = w / h;
   startAusrichten(w, h);
   // Figur in den freien Platz neben (oder über) der Auswahl-Spalte schieben
-  if (w > 640) editorKamera.setViewOffset(w, h, Math.min(170, w * 0.2), 0, w, h);
+  if (w > 640) editorKamera.setViewOffset(w, h, Math.min(210, w * 0.25), 0, w, h);
   else editorKamera.setViewOffset(w, h, 0, h * 0.25, w, h);
   editorKamera.position.z = w / h < 0.8 ? 9.5 : 5.2;
   editorKamera.updateProjectionMatrix();
