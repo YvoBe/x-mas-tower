@@ -416,7 +416,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -2184,7 +2184,7 @@ function baueFigur(look, ziel = scene) {
   const haarMat = { roughness: 0.75, map: haarTextur };
   const frisur = look.frisur || 'lang';
   const H = (geo) => teil(geo, look.haare, haarMat);
-  const kurzHaar = frisur === 'junge';
+  const kurzHaar = ['junge', 'jglatt', 'jlocken'].includes(frisur);   // kurze Jungen-Frisuren
   if (frisur === 'locken') {
     // Weiche, echte Locken: Haube oben und viele gedrehte Korkenzieher-Strähnen, die bis zu den Schultern fallen
     const r = zufall(7);
@@ -2247,6 +2247,7 @@ function baueFigur(look, ziel = scene) {
       kot.position.set(seite * 0.235, 0.04, 0.07);
       kopf.add(kot);
     }
+    if (frisur === 'junge') {
     // Kurz und wuschelig (wie auf der Zeichnung): weiche Büschel, Stirn frei, hinten bis zum Nacken
     oben.rotation.x = -0.36;   // Haaransatz weiter oben, damit die Stirn frei bleibt
     const r = zufall(11);
@@ -2286,6 +2287,32 @@ function baueFigur(look, ziel = scene) {
       const ph = Math.PI * 0.55 + (k / 13) * Math.PI * 0.9, th = Math.PI * (0.45 + r() * 0.15);
       const dir = new THREE.Vector3(Math.sin(th) * Math.sin(ph), Math.cos(th), Math.sin(th) * Math.cos(ph));
       buesch(dir, 0.11 + r() * 0.03, 0.055, new THREE.Vector3(0, -1, 0), 0.02);
+    }
+    } else if (frisur === 'jglatt') {
+      // Kurz glatt: glatte Haube, vorne schräg zur Seite gekämmt (Stirn frei)
+      oben.rotation.x = -0.5;
+      const schale = new THREE.SphereGeometry(0.276, 40, 14, Math.PI / 2 - 1.15, 2.3, Math.PI * 0.06, Math.PI * 0.26);
+      const seitlich = H(schale);
+      seitlich.material.side = THREE.DoubleSide;
+      seitlich.scale.set(1.0, 1.08, 1.03);
+      seitlich.rotation.z = 0.28;          // schräge Kante: die Haare liegen zur Seite
+      kopf.add(seitlich);
+    } else {
+      // Kurz lockig: viele kleine Kringel überall auf dem Kopf, Stirn bleibt frei
+      oben.rotation.x = -0.5;
+      const r = zufall(31);
+      const kringel = [new THREE.TorusGeometry(0.028, 0.016, 8, 14), new THREE.TorusGeometry(0.034, 0.017, 8, 14)];
+      for (let i = 0; i < 90; i++) {
+        const th = Math.sqrt(r()) * Math.PI * 0.62, ph = r() * Math.PI * 2 - Math.PI;
+        if (Math.abs(ph) < 1.2 && th > Math.PI * 0.3) continue;            // nicht ins Gesicht
+        if (Math.abs(ph) < 1.9 && th > Math.PI * 0.45) continue;           // an den Seiten nur bis über die Ohren
+        const n = new THREE.Vector3(Math.sin(th) * Math.sin(ph), Math.cos(th), Math.sin(th) * Math.cos(ph));
+        const k = H(kringel[i % 2]);
+        k.position.copy(n).multiplyScalar(0.272); k.position.y *= 1.07;
+        k.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+        k.rotateZ(r() * 6.3); k.rotateX((r() - 0.5) * 0.7);
+        kopf.add(k);
+      }
     }
   } else {
     const oben = H(new THREE.SphereGeometry(0.27, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.47));
@@ -2332,7 +2359,7 @@ function baueFigur(look, ziel = scene) {
     }
   }
   // Pony (kann man im Editor an- und ausschalten): eine Haarschale über der Stirn mit weichen Spitzen unten
-  if (look.pony && frisur !== 'junge') {
+  if (look.pony && !kurzHaar) {
     const r = zufall(23);
     const schale = new THREE.SphereGeometry(0.283, 40, 14, Math.PI / 2 - 1.0, 2.0, Math.PI * 0.12, Math.PI * 0.265);
     const pony = teil(schale, look.haare, { ...haarMat, side: THREE.DoubleSide });
@@ -2784,8 +2811,8 @@ const AUSWAHL = [
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
-  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig']] },
-  { titel: 'Pony', key: 'pony', ohne: ['frisur', 'junge'], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
+  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jglatt', 'Kurz glatt'], ['jlocken', 'Kurz lockig']] },
+  { titel: 'Pony', key: 'pony', ohne: ['frisur', ['junge', 'jglatt', 'jlocken']], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
@@ -2802,7 +2829,10 @@ const AUSWAHL = [
 ];
 // Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
 const passt = (g) => {
-  if (g.ohne && (AUSSEHEN[g.ohne[0]] ?? STANDARD_AUSSEHEN[g.ohne[0]]) === g.ohne[1]) return false;   // z. B. kein Stern beim Rock
+  if (g.ohne) {   // z. B. kein Stern beim Rock, kein Pony bei kurzen Jungen-Frisuren
+    const ist = AUSSEHEN[g.ohne[0]] ?? STANDARD_AUSSEHEN[g.ohne[0]];
+    if (Array.isArray(g.ohne[1]) ? g.ohne[1].includes(ist) : ist === g.ohne[1]) return false;
+  }   // z. B. kein Stern beim Rock
   if (!g.nur) return true;
   const [k, w] = g.nur, ist = AUSSEHEN[k] ?? STANDARD_AUSSEHEN[k];
   return typeof w === 'string' && w.startsWith('!') ? ist !== w.slice(1) : ist === w;
@@ -2855,7 +2885,7 @@ function spalteZeichnen() {
         AUSSEHEN[gruppe.key] = w;
         // Beim Wechsel Mädchen/Junge passende Frisur vorschlagen
         if (gruppe.key === 'figurTyp' && w === 'junge' && ['lang', 'zopf', 'dutt'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'junge';
-        if (gruppe.key === 'figurTyp' && w === 'maedchen' && AUSSEHEN.frisur === 'junge') AUSSEHEN.frisur = 'lang';
+        if (gruppe.key === 'figurTyp' && w === 'maedchen' && ['junge', 'jglatt', 'jlocken'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'lang';
         try { localStorage.setItem('turmparkour-figur', JSON.stringify(AUSSEHEN)); } catch (e) {}
         editorFigurNeu();
         spalteZeichnen();
