@@ -1,0 +1,23 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "$code.matches(/^[a-z0-9]{3,12}$/)",
+        "info": {
+          "$id": {
+            ".write": "$id.matches(/^[a-z0-9]{6,20}$/)",
+            ".validate": "newData.hasChildren(['l', 'n']) && newData.child('n').isString() && newData.child('n').val().length <= 16"
+          }
+        },
+        "pos": {
+          "$id": {
+            ".write": "$id.matches(/^[a-z0-9]{6,20}$/)",
+            ".validate": "newData.hasChildren(['p', 'r', 'a'])"
+          }
+        }
+      }
+    }
+  }
+}

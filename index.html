@@ -1989,7 +1989,7 @@ if (!/^[a-z2-9]{5}$/.test(meinCode)) {
   meinCode = Array.from({ length: 5 }, () => CODE_ZEICHEN[Math.floor(Math.random() * CODE_ZEICHEN.length)]).join('');
   try { localStorage.setItem('turmparkour-code', meinCode); } catch (e) {}
 }
-const mehr = { room: null, gruppe: null, code: meinCode, andere: new Map(), sendeUhr: 0, lookGesendet: '' };
+const mehr = { netz: null, gruppe: null, code: meinCode, andere: new Map(), sendeUhr: 0, lookGesendet: '', posGesendet: '', listeText: '' };
 const codeKnopf = document.getElementById('codeKnopf');
 const codePanel = document.getElementById('codePanel');
 const codeFeld = document.getElementById('codeFeld');
@@ -2037,7 +2037,7 @@ function andereAktualisieren(peers) {
   const gesehen = new Set();
   // Höchstens 6 Spieler: du und 5 andere
   for (const p of [...peers].sort((x, y) => (x.peer < y.peer ? -1 : 1))) {
-    if (p.sameTab || p.kind !== 'viewer' || gesehen.size >= 5) continue;
+    if (gesehen.size >= 5) continue;
     const pr = p.presence || {};
     if (!Array.isArray(pr.p) || pr.p.length !== 3 || !pr.p.every(Number.isFinite)) continue;
     gesehen.add(p.peer);
@@ -2063,41 +2063,107 @@ function andereAktualisieren(peers) {
   for (const [peer, a] of mehr.andere) {
     if (!gesehen.has(peer)) { if (a.held) scene.remove(a.held.figur); mehr.andere.delete(peer); }
   }
-  // Liste der Mitspieler
+  // Liste der Mitspieler (nur neu malen, wenn sich etwas geändert hat)
+  const namen = [`${meinName()} (du)`, ...[...mehr.andere.values()].map((a) => a.name)];
+  if (namen.join('\n') === mehr.listeText) return;
+  mehr.listeText = namen.join('\n');
   spielerListe.innerHTML = '';
-  const ich = document.createElement('li'); ich.textContent = `${meinName()} (du)`;
-  spielerListe.appendChild(ich);
-  for (const a of mehr.andere.values()) {
-    const li = document.createElement('li'); li.textContent = a.name;
-    spielerListe.appendChild(li);
-  }
-  codeKnopf.querySelector('.anzahl').textContent = `👥 ${mehr.andere.size + 1}`;
+  for (const n of namen) { const li = document.createElement('li'); li.textContent = n; spielerListe.appendChild(li); }
+  codeKnopf.querySelector('.anzahl').textContent = `👥 ${namen.length}`;
+}
+
+// ---------- Verbindung über Firebase (funktioniert für alle, ohne Anmeldung) ----------
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyA8TPZPPqZSn4kVfnmxVgS6frrKEmhEKDA',
+  authDomain: 'x-mas-tower.firebaseapp.com',
+  databaseURL: 'https://x-mas-tower-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'x-mas-tower',
+  storageBucket: 'x-mas-tower.firebasestorage.app',
+  messagingSenderId: '329572675106',
+  appId: '1:329572675106:web:a8d114fb7fda400ae1a47b',
+};
+const meineId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+// In der Datenbank: rooms/<code>/info/<id> = Name + Aussehen, rooms/<code>/pos/<id> = Position
+async function firebaseNetz() {
+  const basis = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const [{ initializeApp }, db] = await Promise.all([import(basis + 'firebase-app.js'), import(basis + 'firebase-database.js')]);
+  const datenbank = db.getDatabase(initializeApp(FIREBASE_CONFIG));
+  return {
+    async beitreten(code, aufAenderung, aufFehler) {
+      const raum = db.ref(datenbank, 'rooms/' + code);
+      const schon = await db.get(db.child(raum, 'info'));
+      const anzahl = schon.exists() ? Object.keys(schon.val()).filter((k) => k !== meineId).length : 0;
+      if (anzahl >= 5) return null;   // voll
+      const posRef = db.child(raum, 'pos/' + meineId), infoRef = db.child(raum, 'info/' + meineId);
+      await db.onDisconnect(posRef).remove();   // Wer das Spiel schließt, verschwindet automatisch
+      await db.onDisconnect(infoRef).remove();
+      const pos = new Map(), info = new Map(), aus = [];
+      const melden = () => {
+        const liste = [];
+        for (const [id, i] of info) if (id !== meineId && pos.has(id)) liste.push({ peer: id, presence: { ...i, ...pos.get(id) } });
+        aufAenderung(liste);
+      };
+      const hoeren = (pfad, karte) => {
+        const r = db.child(raum, pfad);
+        const setzen = (snap) => { karte.set(snap.key, snap.val()); melden(); };
+        aus.push(db.onChildAdded(r, setzen, aufFehler), db.onChildChanged(r, setzen, aufFehler),
+          db.onChildRemoved(r, (snap) => { karte.delete(snap.key); melden(); }, aufFehler));
+      };
+      hoeren('info', info); hoeren('pos', pos);
+      return {
+        senden(patch) {
+          const { l, n, ...rest } = patch;
+          if (l) db.set(infoRef, { l, n }).catch(() => {});
+          db.set(posRef, rest).catch(() => {});
+        },
+        async verlassen() {
+          aus.forEach((f) => f());
+          await Promise.all([db.onDisconnect(posRef).cancel(), db.onDisconnect(infoRef).cancel(), db.remove(posRef), db.remove(infoRef)]).catch(() => {});
+        },
+      };
+    },
+  };
+}
+
+// Ersatz, wenn das Spiel auf claude.ai läuft (dort ist Firebase gesperrt)
+async function claudeNetz() {
+  const room = window.claude?.use ? await window.claude.use('room') : null;
+  if (!room) return null;
+  const nurAndere = (peers) => peers.filter((p) => !p.sameTab && p.kind === 'viewer').map((p) => ({ peer: p.peer, presence: p.presence || {} }));
+  return {
+    async beitreten(code, aufAenderung, aufFehler) {
+      const g = await room.join('tp-' + code);
+      g.onPeers((ch) => aufAenderung(nurAndere(ch.peers)), aufFehler);
+      aufAenderung(nurAndere(g.peers()));
+      return { senden: (patch) => g.presence(patch).catch(() => {}), verlassen: () => g.leave() };
+    },
+  };
 }
 
 async function codeBeitreten(code) {
-  if (!mehr.room) return;
-  code = code.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!mehr.netz) return;
+  code = code.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
   if (code.length < 3) { codeHinweis.textContent = 'Der Code ist zu kurz.'; return; }
   try {
-    if (mehr.gruppe) { await mehr.gruppe.leave(); }
+    if (mehr.gruppe) { const alt = mehr.gruppe; mehr.gruppe = null; await alt.verlassen(); }
     for (const a of mehr.andere.values()) if (a.held) scene.remove(a.held.figur);
     mehr.andere.clear();
-    mehr.gruppe = await mehr.room.join('tp-' + code);
+    andereAktualisieren([]);
+    const versuch = (mehr.versuch = (mehr.versuch || 0) + 1);   // nur Nachrichten vom neuesten Spiel zählen
+    const gruppe = await mehr.netz.beitreten(code, (liste) => { if (mehr.versuch === versuch) andereAktualisieren(liste); },
+      () => { codeHinweis.textContent = 'Verbindung verloren. Gib den Code nochmal ein.'; });
+    if (versuch !== mehr.versuch) { if (gruppe) gruppe.verlassen(); return; }
+    if (!gruppe) {
+      codeHinweis.textContent = 'Dieses Spiel ist schon voll (6 Spieler).';
+      if (code !== meinCode) await codeBeitreten(meinCode);
+      return;
+    }
+    mehr.gruppe = gruppe;
     mehr.code = code;
-    mehr.lookGesendet = '';
+    mehr.lookGesendet = ''; mehr.posGesendet = '';
     codeKnopf.querySelector('.code').textContent = code.toUpperCase();
     codeHinweis.textContent = code === meinCode ? 'Gib deinen Freunden diesen Code.' : `Du spielst im Spiel ${code.toUpperCase()}.`;
-    mehr.gruppe.onPeers((ch) => andereAktualisieren(ch.peers), () => { codeHinweis.textContent = 'Verbindung verloren. Gib den Code nochmal ein.'; });
-    andereAktualisieren(mehr.gruppe.peers());
-    // Ist das Spiel schon voll? Dann zurück zum eigenen Code.
-    setTimeout(async () => {
-      if (mehr.code !== code || !mehr.gruppe || code === meinCode) return;
-      const andere = mehr.gruppe.peers().filter((x) => !x.sameTab && x.kind === 'viewer').length;
-      if (andere > 5) {
-        await codeBeitreten(meinCode);
-        codeHinweis.textContent = 'Dieses Spiel ist schon voll (6 Spieler).';
-      }
-    }, 2000);
   } catch (e) {
     codeHinweis.textContent = 'Beitreten hat nicht geklappt. Versuch es gleich nochmal.';
   }
@@ -2125,21 +2191,23 @@ function mehrspielerUpdate(dt) {
       a.held.armL.rotation.x = -s; a.held.armR.rotation.x = s;
     }
   }
-  // Eigene Position etwa 15 Mal pro Sekunde schicken
+  // Eigene Position etwa 10 Mal pro Sekunde schicken (nur wenn sich etwas bewegt hat)
   if (!mehr.gruppe) return;
   mehr.sendeUhr -= dt;
   if (mehr.sendeUhr > 0) return;
-  mehr.sendeUhr = 1 / 15;
+  mehr.sendeUhr = 1 / 10;
   const s = spieler.pos, r2 = (v) => Math.round(v * 100) / 100;
   const patch = { p: [r2(s.x), r2(s.y), r2(s.z)], r: r2(spieler.blick), a: spieler.amBoden ? 0 : 1 };
+  const posText = JSON.stringify(patch);
   const lookText = JSON.stringify(AUSSEHEN) + meinName();
   if (lookText !== mehr.lookGesendet) {
     patch.l = { ...AUSSEHEN };
     delete patch.l.name;
     patch.n = meinName();
     mehr.lookGesendet = lookText;
-  }
-  mehr.gruppe.presence(patch).catch(() => {});
+  } else if (posText === mehr.posGesendet) return;
+  mehr.posGesendet = posText;
+  mehr.gruppe.senden(patch);
 }
 
 // Code-Knopf und Panel
@@ -2150,11 +2218,12 @@ codeFeld.addEventListener('keyup', (e) => e.stopPropagation());
 document.getElementById('meinCodeKnopf').addEventListener('click', () => codeBeitreten(meinCode));
 codeKnopf.querySelector('.code').textContent = meinCode.toUpperCase();
 
-// Verbinden (klappt nur im veröffentlichten Spiel auf claude.ai)
+// Verbinden: zuerst Firebase, sonst (auf claude.ai) der Claude-Raum
 (async () => {
-  try { mehr.room = window.claude?.use ? await window.claude.use('room') : null; } catch (e) { mehr.room = null; }
-  if (!mehr.room) {
-    codeHinweis.textContent = 'Mitspielen geht hier gerade nicht. Öffne das Spiel über den Link und melde dich an.';
+  try { mehr.netz = await firebaseNetz(); } catch (e) { mehr.netz = null; }
+  if (!mehr.netz) { try { mehr.netz = await claudeNetz(); } catch (e) { mehr.netz = null; } }
+  if (!mehr.netz) {
+    codeHinweis.textContent = 'Mitspielen geht gerade nicht. Prüfe das Internet und lade die Seite neu.';
     return;
   }
   codeBeitreten(meinCode);

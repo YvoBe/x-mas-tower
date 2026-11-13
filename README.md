@@ -7,7 +7,7 @@ Ein 3D-Parkour-Spiel im Browser: ein Adventskalender mit 24 Türmen im Schnee.
 - Verschiedene Blöcke: eckig, rund, drehend, hoch und runter fahrend, schiebend und kleine Trittsteine. Je höher die Turmnummer, desto mehr besondere Blöcke.
 - Figur-Editor (Knopf oben links): Name, Hautfarbe, Augen, Augenfarbe, Mund, Frisur (lang, Locken, Zopf, Dutt, kurz), Haarfarbe, Oberteil (Top, Pulli, Jacke mit T-Shirt), Hose (Jeans, Jogginghose, kurze Hose), Stern, Schuhe. Die Figur lässt sich drehen.
 - Die andere Seite (Knopf 🌀 oben links): ein normaler Dreh-Turm ohne Weihnachtsdeko mit 50 Sprüngen, den man immer spielen kann. Fast alle Plattformen drehen sich, mit Checkpoints.
-- Mit bis zu 6 Leuten spielen über einen Code oben rechts (klappt nur im veröffentlichten Spiel auf claude.ai).
+- Mit bis zu 6 Leuten spielen über einen Code oben rechts. Läuft über Firebase, also ohne Anmeldung (Spiel: https://yvobe.github.io/x-mas-tower/). Die Regeln für die Datenbank stehen in `database.rules.json`.
 - Am besten im Querformat spielen.
 - Steuerung: PC mit WASD + Leertaste, Handy mit Joystick + Sprung-Knopf.
 
