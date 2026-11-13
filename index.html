@@ -2062,15 +2062,15 @@ function baueFigur(look, ziel = scene) {
   if (frisur === 'locken') {
     // Weiche, echte Locken: Haube oben und viele gedrehte Korkenzieher-Strähnen, die bis zu den Schultern fallen
     const r = zufall(7);
-    const haube = H(new THREE.SphereGeometry(0.275, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.5));
-    haube.scale.set(1.04, 1.12, 1.05); haube.rotation.x = -0.5;   // nach hinten gekippt: Stirn frei, kein Pony
+    const haube = H(new THREE.SphereGeometry(0.285, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.5));
+    haube.scale.set(1.05, 1.13, 1.06); haube.rotation.x = -0.5;   // runde Kuppel oben   // nach hinten gekippt: Stirn frei, kein Pony
     // An den Seiten geht die Haube bis über die Ohren herunter (keine Lücke an den Schläfen)
     for (const seite of [-1, 1]) {
       const schlaefe = H(new THREE.SphereGeometry(0.2, 18, 14));
       schlaefe.scale.set(0.45, 1, 0.9); schlaefe.position.set(seite * 0.2, 0.05, 0.0);
       kopf.add(schlaefe);
     }
-    const hinten = H(new THREE.SphereGeometry(0.272, 28, 20, Math.PI, Math.PI, 0, Math.PI * 0.82));
+    const hinten = H(new THREE.SphereGeometry(0.282, 32, 20, Math.PI, Math.PI, 0, Math.PI * 0.82));
     hinten.scale.set(1.05, 1.08, 1.06);
     kopf.add(haube, hinten);
     // Eine Locke: ein Schlauch, der sich wie eine Feder nach unten dreht
@@ -2086,8 +2086,8 @@ function baueFigur(look, ziel = scene) {
     // Oben glatt: zwei Strähnen kommen vom Scheitel vorne und fallen links und rechts zur Seite
     for (const seite of [-1, 1]) {
       const welle = H(new THREE.SphereGeometry(0.15, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2));
-      welle.scale.set(1.05, 0.42, 1.1);
-      welle.position.set(seite * 0.1, 0.205, 0.06);
+      welle.scale.set(1.0, 0.36, 1.05);
+      welle.position.set(seite * 0.1, 0.2, 0.07);
       welle.rotation.set(0.3, 0, seite * -0.7);
       kopf.add(welle);
       // Die Strähne liegt auf dem Kopf: Punkte auf der Kopfform, vom Scheitel über die Schläfe nach unten
