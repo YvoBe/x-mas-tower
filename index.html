@@ -38,6 +38,31 @@
     gap: 12px;
     pointer-events: none;
   }
+  /* Leiste unten: Sachen, die man gewonnen hat (in die Hand nehmen oder weglegen) */
+  #leiste {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+    display: flex; gap: 8px; padding: 6px; border-radius: 18px; background: var(--panel); border: 3px solid var(--rosa);
+  }
+  #leiste button {
+    width: 54px; height: 54px; border-radius: 12px; border: 3px solid transparent; background: #fff; cursor: pointer;
+    font-size: 30px; line-height: 1; display: grid; place-items: center; padding: 0;
+  }
+  #leiste button[aria-pressed="true"] { border-color: var(--ink); background: #fff3d1; }
+  #leiste button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  body.editor-offen #leiste, body.start-offen #leiste { display: none !important; }
+  @media (max-height: 520px) { #leiste button { width: 44px; height: 44px; font-size: 24px; } }
+  /* Fortschritt im Turm: Checkpoints und Ziel */
+  #fortschritt {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 86px); left: 50%; transform: translateX(-50%);
+    width: min(440px, 48vw); pointer-events: none; background: var(--panel); border-radius: 14px; padding: 6px 12px 8px;
+  }
+  #fortschritt .zeile { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; color: var(--ink); margin-bottom: 4px; }
+  #fortschritt .balken { position: relative; height: 12px; border-radius: 999px; background: #e9e4ee; overflow: visible; }
+  #fortschritt .fuellung { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 999px; background: var(--rosa); transition: width 0.2s; }
+  #fortschritt .marke { position: absolute; top: -3px; width: 6px; height: 18px; margin-left: -3px; border-radius: 3px; background: #c9c2d3; }
+  #fortschritt .marke.erreicht { background: var(--gold); }
+  #fortschritt .ich { position: absolute; top: -6px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--ink); border: 3px solid #fff; transition: left 0.2s; }
+  @media (max-height: 520px) { #fortschritt { top: calc(env(safe-area-inset-top, 0px) + 62px); left: max(16px, env(safe-area-inset-left, 0px)); transform: none; width: min(340px, 44vw); padding: 4px 10px 6px; } #fortschritt .zeile { font-size: 12px; } }
   .rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
   .tag {
     background: var(--panel);
@@ -132,7 +157,7 @@
   .welten button[aria-pressed="true"] { background: var(--ink); color: #fff; }
   @media (max-height: 520px) { .welten button { font-size: 12px; padding: 4px 9px; } }
   .welten button:focus-visible, #figurKnopf:focus-visible, #editor button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-  body.editor-offen .hud, body.editor-offen .touch, body.editor-offen .banner { display: none !important; }
+  body.editor-offen .hud, body.editor-offen .touch, body.editor-offen .banner, body.editor-offen #fortschritt, body.start-offen #fortschritt { display: none !important; }
 
   /* Mitspielen */
   #codeKnopf { pointer-events: auto; border: 3px solid var(--rosa); cursor: pointer; font-family: var(--font); color: var(--ink); }
@@ -361,6 +386,11 @@
     <div class="tag zahl" id="tuerchen">🎁 0/24</div>
     <div class="tag zahl" id="height">Draußen</div>
   </div>
+</div>
+<div id="leiste" hidden role="toolbar" aria-label="Deine Sachen"></div>
+<div id="fortschritt" hidden aria-live="polite">
+  <div class="zeile"><span id="cpText">⭐ 0/0</span><span id="zielText">🏁 Ziel</span></div>
+  <div class="balken" id="cpBalken"><div class="fuellung" id="cpFuellung"></div><div class="ich" id="cpIch"></div></div>
 </div>
 <div id="drehHinweis">
   <div class="handy" aria-hidden="true">📱</div>
@@ -829,6 +859,7 @@ function bewegePlatten(dt) {
 }
 
 // --- Squishies: Butter (Stück mit Papier) und Käse (Ecke mit Löchern) ---
+const SQUISHIES = ['butter', 'kaese', 'marshmallow', 'donut', 'toast', 'erdbeere'];
 const butterMasse = (groesse) => [groesse * 1.25, groesse * 0.78];
 let _butterTextur = null;
 function butterTextur() {
@@ -853,7 +884,54 @@ function tonStart() {
   return tonKontext;
 }
 addEventListener('pointerdown', tonStart); addEventListener('keydown', tonStart); addEventListener('touchstart', tonStart);
+// Jeder Squishy hat sein eigenes Geräusch
 function squishTon(art) {
+  if (art === 'marshmallow') return pffTon();
+  if (art === 'donut') return boingTon();
+  if (art === 'toast') return knirschTon();
+  if (art === 'erdbeere') return ploppTon();
+  return schhTon(art);
+}
+function rauschQuelle(a, dauer) {
+  const n = a.createBuffer(1, Math.ceil(a.sampleRate * dauer), a.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const q = a.createBufferSource(); q.buffer = n; return q;
+}
+function pffTon() {   // Marshmallow: weiches, tiefes "pfff"
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t = a.currentTime, q = rauschQuelle(a, 0.5);
+  const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1400, t); f.frequency.exponentialRampToValueAtTime(250, t + 0.45);
+  const g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.8, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+  q.connect(f).connect(g).connect(a.destination); q.start(t); q.stop(t + 0.5);
+}
+function boingTon() {   // Donut: lustiges "boiiing"
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t = a.currentTime, o = a.createOscillator(), lfo = a.createOscillator(), lfoG = a.createGain(), g = a.createGain();
+  o.type = 'triangle'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.08); o.frequency.exponentialRampToValueAtTime(260, t + 0.45);
+  lfo.frequency.value = 18; lfoG.gain.setValueAtTime(40, t); lfoG.gain.linearRampToValueAtTime(0, t + 0.45);
+  lfo.connect(lfoG).connect(o.frequency);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  o.connect(g).connect(a.destination); o.start(t); lfo.start(t); o.stop(t + 0.5); lfo.stop(t + 0.5);
+}
+function knirschTon() {   // Toast: knuspriges "knirsch"
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t0 = a.currentTime;
+  for (let k = 0; k < 9; k++) {
+    const t = t0 + k * 0.03 + Math.random() * 0.02, q = rauschQuelle(a, 0.04);
+    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 1600; f.Q.value = 2;
+    const g = a.createGain(); g.gain.setValueAtTime(0.5 * (1 - k / 10), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+    q.connect(f).connect(g).connect(a.destination); q.start(t); q.stop(t + 0.04);
+  }
+}
+function ploppTon() {   // Erdbeere: "plopp" wie eine Blase
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(720, t + 0.07);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.18);
+  setTimeout(() => { if (tonKontext) { const t2 = a.currentTime, o2 = a.createOscillator(), g2 = a.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(260, t2); o2.frequency.exponentialRampToValueAtTime(900, t2 + 0.05); g2.gain.setValueAtTime(0.25, t2); g2.gain.exponentialRampToValueAtTime(0.0001, t2 + 0.1); o2.connect(g2).connect(a.destination); o2.start(t2); o2.stop(t2 + 0.12); } }, 110);
+}
+function schhTon(art) {
   // ASMR-Geräusch "sc-sc-schhhh-tt": zwei kurze Zischer, ein langes weiches Schhh und ein kleines t am Ende
   const a = tonKontext; if (!a || a.state !== 'running') return;
   const t = a.currentTime, kaese = art === 'kaese';
@@ -946,7 +1024,7 @@ function squishy(g, art, x, oben, z, groesse, rnd) {
     const paeckchen = new THREE.Mesh(new THREE.BoxGeometry(bb, H, bt), [seite, seite, schrift, seite, schrift, schrift]);
     paeckchen.position.y = H / 2;
     vis.add(paeckchen);
-  } else {
+  } else if (art === 'kaese') {
     // Käse-Stück mit Löchern oben und an den Seiten
     const kaese = new THREE.Group();
     const kb = groesse * 0.95, kt = groesse * 0.95;
@@ -963,6 +1041,55 @@ function squishy(g, art, x, oben, z, groesse, rnd) {
       kaese.add(loch);
     }
     vis.add(kaese);
+  } else if (art === 'marshmallow') {   // dicker, weicher Marshmallow in Rosa oder Weiß
+    const farbe = rnd() < 0.5 ? 0xf9c9d8 : 0xfffafc;
+    const m1 = new THREE.Mesh(new THREE.CylinderGeometry(groesse * 0.46, groesse * 0.47, H - 0.16, 28), M(farbe, weich));
+    m1.position.y = (H - 0.16) / 2;
+    const deckel = new THREE.Mesh(new THREE.TorusGeometry(groesse * 0.38, 0.08, 10, 28), M(farbe, weich));
+    deckel.rotation.x = Math.PI / 2; deckel.position.y = H - 0.16;
+    const oben = new THREE.Mesh(new THREE.CircleGeometry(groesse * 0.4, 28), M(farbe, weich));
+    oben.rotation.x = -Math.PI / 2; oben.position.y = H - 0.08;
+    vis.add(m1, deckel, oben);
+  } else if (art === 'donut') {   // Donut mit rosa Glasur und Streuseln
+    const R = groesse * 0.3, r = H / 2;
+    const teig = new THREE.Mesh(new THREE.TorusGeometry(R, r, 14, 30), M(0xe2b27a, weich));
+    teig.rotation.x = Math.PI / 2; teig.position.y = r;
+    const glasur = new THREE.Mesh(new THREE.TorusGeometry(R, r * 1.04, 14, 30), M(rnd() < 0.5 ? 0xf6a8c4 : 0xe6d6f2, { roughness: 0.3 }));
+    glasur.rotation.x = Math.PI / 2; glasur.scale.z = 0.55; glasur.position.y = r + 0.16;
+    vis.add(teig, glasur);
+    const streusel = [0xffffff, 0x8cc8ff, 0xfff1a8, 0xa8e6c8, 0xf27a9b];
+    for (let i = 0; i < 26; i++) {
+      const w = rnd() * Math.PI * 2, rr = R + (rnd() - 0.5) * r * 1.1;
+      const st = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 0.09, 2, 4), M(streusel[i % streusel.length]));
+      st.position.set(Math.cos(w) * rr, H + 0.03, Math.sin(w) * rr); st.rotation.set(Math.PI / 2, 0, rnd() * 6);
+      vis.add(st);
+    }
+  } else if (art === 'toast') {   // Toastbrot-Scheibe, flach liegend, mit Kruste und süßem Gesicht
+    const tb = groesse * 0.9, tt = groesse * 0.9;
+    const kruste = new THREE.Mesh(rundKlotz(tb, H, tt, 0.22), M(0xc98b4b, weich));
+    kruste.position.y = H / 2;
+    const innen = new THREE.Mesh(rundKlotz(tb - 0.22, 0.04, tt - 0.22, 0.02), M(0xf6e3bf, weich));
+    innen.position.y = H + 0.005;
+    vis.add(kruste, innen);
+    for (const sx of [-1, 1]) { const auge = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), M(0x3a2d2a)); auge.scale.y = 0.4; auge.position.set(sx * 0.3, H + 0.03, 0); vis.add(auge); }
+    const wange = new THREE.Mesh(new THREE.CircleGeometry(0.11, 12), M(0xf4a3b5)); wange.rotation.x = -Math.PI / 2; wange.position.set(0.5, H + 0.03, 0.15); vis.add(wange);
+  } else {   // Erdbeere: rot, mit gelben Kernen und grünen Blättern
+    const beere = new THREE.Mesh(new THREE.SphereGeometry(groesse * 0.45, 22, 16), M(0xe8576d, { roughness: 0.4 }));
+    beere.scale.set(1, (H / (groesse * 0.45)) * 0.5, 1); beere.position.y = H / 2;
+    vis.add(beere);
+    for (let i = 0; i < 18; i++) {
+      const w = rnd() * Math.PI * 2, h = 0.15 + rnd() * 0.6;
+      const kern = new THREE.Mesh(new THREE.SphereGeometry(0.035, 5, 4), M(0xfff1a8));
+      const rr = groesse * 0.45 * Math.sqrt(Math.max(0.05, 1 - Math.pow((h - 0.5) * 2, 2))) ;
+      kern.position.set(Math.cos(w) * rr * 0.98, h * H, Math.sin(w) * rr * 0.98);
+      vis.add(kern);
+    }
+    for (let k = 0; k < 5; k++) {
+      const blatt = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 4), M(0x7bbf6a));
+      const w = (k / 5) * Math.PI * 2;
+      blatt.position.set(Math.cos(w) * 0.25, H - 0.02, Math.sin(w) * 0.25); blatt.rotation.set(Math.sin(w) * 1.4, 0, -Math.cos(w) * 1.4);
+      vis.add(blatt);
+    }
   }
   vis.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
   g.add(vis);
@@ -1411,6 +1538,7 @@ function baueInnen(T) {
   const rnd = zufall(nr * 7919 + 13);
   const anteil = spezial ? 0.55 : Math.min(0.55, 0.12 + nr * 0.02);   // je höher die Nummer, desto mehr besondere Blöcke
   let vorherBesonders = false, vorherTrampolin = false, hBasis = 0;
+  T.cpHoehen = [];
   for (let i = 0; i < anzahl; i++) {
     hBasis += vorherTrampolin ? 3 : 1;   // nach einem Trampolin geht es 3 hoch statt 1
     const s = 1 + i * schritt;
@@ -1426,7 +1554,8 @@ function baueInnen(T) {
       art = w < 0.5 ? 'weg' : w < 0.68 ? 'schieben' : w < 0.84 ? 'dreh' : 'rund';
     } else if (T.welt === 'aesthetic' && !cp && i > 0) {   // Wolken-Turm: Squishies (Butter und Käse), die einsinken
       const w = rnd();
-      art = w < 0.32 ? 'butter' : w < 0.6 ? 'kaese' : w < 0.86 ? 'schoko' : w < 0.94 ? 'rund' : 'dreh';
+      art = w < 0.15 ? 'butter' : w < 0.29 ? 'kaese' : w < 0.44 ? 'schoko' : w < 0.57 ? 'marshmallow'
+        : w < 0.7 ? 'donut' : w < 0.82 ? 'toast' : w < 0.94 ? 'erdbeere' : 'rund';
     } else if (T.normal && !cp && i > 0) {      // Dreh-Turm: fast alles dreht sich
       const w = rnd();
       art = w < 0.7 ? 'dreh' : w < 0.85 ? 'rund' : 'hoch';
@@ -1440,6 +1569,7 @@ function baueInnen(T) {
     vorherTrampolin = art === 'trampolin';
     const x = cx + px, z = cz + pz, h = hBasis;
     if (cp) {
+      T.cpHoehen.push(h);
       klotz(platten, g, x, h, z, 3.6, 3.6, T.welt === 'aesthetic' ? 0xffffff : T.normal ? FARBEN.rosa : farbe, { checkpoint: true, turm: T });
       if (T.normal) {   // Fahne statt Stern
         deko(g, x + 1.3, h + 1.1, z + 1.3, 0.08, 2.2, 0.08, FARBEN.navy);
@@ -1461,7 +1591,7 @@ function baueInnen(T) {
       balken.scale.set(groesse * 1.1, 0.04, 0.25); balken.position.y = 0.52;
       k.mesh.add(balken);
       k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
-    } else if (art === 'butter' || art === 'kaese') {   // Squishy: sinkt weich ein, wenn man draufsteht
+    } else if (SQUISHIES.includes(art)) {   // Squishy: sinkt weich ein, wenn man draufsteht
       const [sb, st] = art === 'butter' ? butterMasse(groesse) : [groesse * 0.95, groesse * 0.95];
       const k = klotz(platten, g, x, h, z, sb, st, 0, { turm: T, unsichtbar: true });
       k.bew = { art: 'squishy', sorte: art, vis: squishy(g, art, x, h, z, groesse, rnd), oben0: h, s: 0 };
@@ -1500,6 +1630,7 @@ function baueInnen(T) {
   zx = Math.max(-innen + 2.1, Math.min(innen - 2.1, zx));
   zz = Math.max(-innen + 2.1, Math.min(innen - 2.1, zz));
   const zh = hBasis + 1;
+  T.zielHoehe = zh;
   klotz(platten, g, cx + zx, zh, cz + zz, 4, 4, spezial ? FARBEN.gold : T.welt === 'aesthetic' ? 0xf7c6d4 : FARBEN.rosa, { ziel: true, turm: T });
   if (T.normal) {   // Pokal auf dem Ziel
     const gold = { metalness: 0.7, roughness: 0.25 };
@@ -2857,6 +2988,92 @@ function zeigeBanner(text, ms = 3000) {
 }
 zeigeBanner('Lauf in einen Turm! 🎄', 3500);
 
+// Anzeige oben: wie viele Checkpoints es gibt, welche schon geschafft sind und wie weit es bis zum Ziel ist
+const fortschritt = document.getElementById('fortschritt');
+let fortschrittTurm = null, fortschrittText = '';
+function fortschrittZeigen(T, s) {
+  if (!T || !T.cpHoehen || !T.zielHoehe) { if (!fortschritt.hidden) fortschritt.hidden = true; fortschrittTurm = null; return; }
+  if (fortschrittTurm !== T) {   // Markierungen für diesen Turm neu setzen
+    fortschrittTurm = T;
+    const balken = document.getElementById('cpBalken');
+    balken.querySelectorAll('.marke').forEach((m) => m.remove());
+    for (const h of T.cpHoehen) {
+      const m = document.createElement('div'); m.className = 'marke'; m.style.left = (h / T.zielHoehe * 100) + '%';
+      balken.insertBefore(m, document.getElementById('cpIch'));
+    }
+    fortschritt.hidden = false;
+  }
+  const geschafftCp = T.cpHoehen.filter((h) => s.checkpoint.y >= h - 0.01).length;
+  const anteil = Math.max(0, Math.min(1, s.pos.y / T.zielHoehe));
+  const text = `⭐ ${geschafftCp}/${T.cpHoehen.length} Checkpoints`;
+  if (text !== fortschrittText) {
+    fortschrittText = text;
+    document.getElementById('cpText').textContent = text;
+    document.querySelectorAll('#cpBalken .marke').forEach((m, i) => m.classList.toggle('erreicht', i < geschafftCp));
+  }
+  document.getElementById('zielText').textContent = anteil > 0.97 ? '🏁 Gleich geschafft!' : `🏁 noch ${Math.max(0, Math.round(T.zielHoehe - s.pos.y))} m`;
+  document.getElementById('cpFuellung').style.width = (anteil * 100) + '%';
+  document.getElementById('cpIch').style.left = (anteil * 100) + '%';
+}
+
+// ---------- Sachen: Belohnungen, die man in der Hand halten kann ----------
+const SACHEN = {
+  butter: { emoji: '🧈', name: 'Squishy-Butter' },
+};
+let meineSachen = [];
+try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n]); } catch (e) { meineSachen = []; }
+let inDerHand = null;
+try { inDerHand = localStorage.getItem('turmparkour-hand'); } catch (e) {}
+if (!meineSachen.includes(inDerHand)) inDerHand = null;
+let handDing = null;
+function handDingBauen(name) {
+  if (name === 'butter') {
+    const seite = new THREE.MeshStandardMaterial({ color: 0xfbe9a6, roughness: 0.5 });
+    const schrift = new THREE.MeshStandardMaterial({ map: butterTextur(), roughness: 0.5 });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.17, 0.23), [seite, seite, schrift, seite, schrift, schrift]);
+    m.castShadow = true;
+    return m;
+  }
+  return null;
+}
+function handAktualisieren() {
+  if (handDing && handDing.parent) handDing.parent.remove(handDing);
+  handDing = null;
+  if (inDerHand) {
+    handDing = handDingBauen(inDerHand);
+    if (handDing) { handDing.position.set(0, -0.78, 0.1); handDing.rotation.y = Math.PI / 2; held.armR.add(handDing); }
+  }
+}
+function leisteZeigen() {
+  const leiste = document.getElementById('leiste');
+  leiste.replaceChildren();
+  for (const name of meineSachen) {
+    const k = document.createElement('button');
+    k.type = 'button'; k.textContent = SACHEN[name].emoji;
+    k.setAttribute('aria-label', SACHEN[name].name + (inDerHand === name ? ' weglegen' : ' in die Hand nehmen'));
+    k.title = SACHEN[name].name;
+    k.setAttribute('aria-pressed', String(inDerHand === name));
+    k.addEventListener('click', () => {
+      inDerHand = inDerHand === name ? null : name;   // antippen: in die Hand nehmen oder wieder weglegen
+      try { localStorage.setItem('turmparkour-hand', inDerHand || ''); } catch (e) {}
+      handAktualisieren(); leisteZeigen();
+      k.blur();
+    });
+    leiste.appendChild(k);
+  }
+  leiste.hidden = meineSachen.length === 0;
+}
+function sacheBekommen(name) {
+  if (!meineSachen.includes(name)) {
+    meineSachen.push(name);
+    try { localStorage.setItem('turmparkour-sachen', JSON.stringify(meineSachen)); } catch (e) {}
+  }
+  inDerHand = name;
+  try { localStorage.setItem('turmparkour-hand', name); } catch (e) {}
+  handAktualisieren(); leisteZeigen();
+}
+leisteZeigen(); handAktualisieren();
+
 function turmGeschafft(T) {
   if (spieler.feiert) return;
   spieler.feiert = true;
@@ -2868,7 +3085,8 @@ function turmGeschafft(T) {
     T.schild.material.needsUpdate = true;
     zeigeTuerchen();
   }
-  zeigeBanner(T.normal ? `${T.name} geschafft! 🌸` : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
+  if (T.welt === 'aesthetic') sacheBekommen('butter');
+  zeigeBanner(T.welt === 'aesthetic' ? 'Wolken-Turm geschafft! Du hast eine Squishy-Butter bekommen 🧈' : T.normal ? `${T.name} geschafft! 🌸` : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
   // Nach dem Feiern stehst du wieder vor dem Turm
   setTimeout(() => {
     spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
@@ -3015,6 +3233,7 @@ function update(dt) {
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
   hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : weltVon(s.pos) === 'aesthetic' ? 'Auf der Wolke' : 'Draußen';
+  fortschrittZeigen(T, s);
   const welt = weltVon(s.pos);
   if (welt !== zeigeWelt) weltZeigen(welt);
 }
@@ -3375,6 +3594,7 @@ function editorSchliessen() {
   document.getElementById('editor').hidden = true;
   scene.remove(held.figur);
   held = baueFigur(AUSSEHEN);
+  handAktualisieren();
   eigenesSchild();
   mehr.lookGesendet = '';
   if (mehr.gruppe) andereAktualisieren(mehr.gruppe.peers());
