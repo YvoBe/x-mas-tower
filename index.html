@@ -329,9 +329,9 @@ const FARBEN = {
 // ---------- Die 3D-Welt ----------
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6d8e6);
-scene.fog = new THREE.Fog(0xc6d8e6, 90, 460);
+scene.fog = new THREE.Fog(0xc6d8e6, 120, 700);
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 800);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1100);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
@@ -1041,29 +1041,90 @@ while (gepflanzt < 80) {
 }
 
 // ---------- Berge in der Ferne ----------
-const felsMat = new THREE.MeshStandardMaterial({ color: 0x6f7c8c, roughness: 1, flatShading: true });
-const gipfelMat = new THREE.MeshStandardMaterial({ color: 0xf7f9fc, roughness: 0.9, flatShading: true });
-for (let i = 0; i < 28; i++) {
-  const winkel = (i / 28) * Math.PI * 2 + Math.random() * 0.2;
-  const abstand = 290 + Math.random() * 90;
-  const hoch = 60 + Math.random() * 80, breit = 50 + Math.random() * 40;
-  const berg = new THREE.Group();
-  const fels = new THREE.Mesh(new THREE.ConeGeometry(breit, hoch, 7, 3), felsMat);
-  const pos = fels.geometry.attributes.position;
-  for (let k = 0; k < pos.count; k++) {
-    if (pos.getY(k) < hoch / 2 - 0.1) {
-      pos.setX(k, pos.getX(k) * (0.85 + Math.random() * 0.3));
-      pos.setZ(k, pos.getZ(k) * (0.85 + Math.random() * 0.3));
+// Ein großes Gebirge rundherum: Höhen aus "Rauschen" (wie echte Berge mit Graten und Tälern),
+// unten Wald, in der Mitte Felsen, oben Schnee.
+function rauschen(seed) {
+  const hash = (x, y) => {
+    let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  const glatt = (t) => t * t * (3 - 2 * t);
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), u = glatt(x - xi), v = glatt(y - yi);
+    const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+}
+{
+  const n1 = rauschen(11), n2 = rauschen(23);
+  const grate = (x, z) => {   // gezackte Bergrücken
+    let summe = 0, amp = 1, freq = 1, gewicht = 1;
+    for (let o = 0; o < 6; o++) {
+      let r = 1 - Math.abs(n1(x * freq, z * freq) * 2 - 1);
+      r = r * r * gewicht;
+      gewicht = Math.min(1, r * 2);
+      summe += r * amp; amp *= 0.5; freq *= 2.03;
     }
+    return summe;
+  };
+  const GROESSE = 1700, TEILE = 260;
+  const geo = new THREE.PlaneGeometry(GROESSE, GROESSE, TEILE, TEILE);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const hoehen = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
+    const t = Math.min(1, Math.max(0, (r - 280) / 140));
+    const rand = t * t * (3 - 2 * t);
+    const h = rand * (grate(x / 210, z / 210) * 150 + n2(x / 40, z / 40) * 14 + 10);
+    hoehen[i] = h;
+    pos.setY(i, h - 2.5);
   }
-  fels.geometry.computeVertexNormals();
-  fels.position.y = hoch / 2 - 2;
-  const gipfel = new THREE.Mesh(new THREE.ConeGeometry(breit * 0.36, hoch * 0.36, 7), gipfelMat);
-  gipfel.position.y = hoch - 2 - hoch * 0.18 + 0.5;
-  berg.add(fels, gipfel);
-  berg.position.set(Math.cos(winkel) * abstand, 0, Math.sin(winkel) * abstand);
-  berg.rotation.y = Math.random() * 3;
-  scene.add(berg);
+  geo.computeVertexNormals();
+  const nrm = geo.attributes.normal;
+  const farben = new Float32Array(pos.count * 3);
+  const fels = new THREE.Color(0x707b88), felsDunkel = new THREE.Color(0x4f5763), schnee = new THREE.Color(0xf4f7fb);
+  const wald = new THREE.Color(0x2c4a35), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const h = hoehen[i], steil = 1 - nrm.getY(i), x = pos.getX(i), z = pos.getZ(i);
+    const fleck = n2(x / 12, z / 12);
+    c.copy(fels).lerp(felsDunkel, fleck * 0.8);
+    const schneeGrenze = 55 + n2(x / 60, z / 60) * 35;
+    if (h > schneeGrenze && steil < 0.55) c.copy(schnee);
+    else if (h > schneeGrenze - 15 && steil < 0.35) c.lerp(schnee, 0.7);
+    else if (h < 30 && steil < 0.45 && fleck > 0.35) c.copy(wald).lerp(felsDunkel, fleck * 0.3);
+    else if (h < 6) c.copy(schnee);   // verschneiter Fuß der Berge
+    farben[i * 3] = c.r; farben[i * 3 + 1] = c.g; farben[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(farben, 3));
+  const gebirge = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
+  scene.add(gebirge);
+
+  // Viele kleine Tannen auf den unteren Hängen (als ein Bauteil, damit es auf dem Handy flüssig läuft)
+  const hoeheBei = (x, z) => {
+    const t = Math.min(1, Math.max(0, (Math.hypot(x, z) - 280) / 140));
+    return t * t * (3 - 2 * t) * (grate(x / 210, z / 210) * 150 + n2(x / 40, z / 40) * 14 + 10);
+  };
+  const rw = zufall(99), orte = [];
+  for (let v = 0; v < 9000 && orte.length < 900; v++) {
+    const w = rw() * Math.PI * 2, r = 300 + rw() * 330;
+    const x = Math.cos(w) * r, z = Math.sin(w) * r, h = hoeheBei(x, z);
+    if (h < 4 || h > 48) continue;
+    const steigung = Math.abs(hoeheBei(x + 2, z) - h) + Math.abs(hoeheBei(x, z + 2) - h);
+    if (steigung > 2.6 || n2(x / 25, z / 25) < 0.35) continue;   // nur flachere Stellen, in Gruppen
+    orte.push([x, h - 2.6, z, 2.2 + rw() * 2.4]);
+  }
+  const nadelGeo = new THREE.ConeGeometry(1, 2.6, 7); nadelGeo.translate(0, 1.6, 0);
+  const kappeGeo = new THREE.ConeGeometry(0.55, 1.1, 7); kappeGeo.translate(0, 2.55, 0);
+  const nadeln = new THREE.InstancedMesh(nadelGeo, new THREE.MeshStandardMaterial({ color: 0x2f4f3a, roughness: 0.9, flatShading: true }), orte.length);
+  const kappen = new THREE.InstancedMesh(kappeGeo, new THREE.MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.9, flatShading: true }), orte.length);
+  const mt = new THREE.Matrix4(), qt = new THREE.Quaternion(), st = new THREE.Vector3(), pt = new THREE.Vector3();
+  orte.forEach(([x, y, z, g], i) => {
+    mt.compose(pt.set(x, y, z), qt, st.set(g * 0.8, g, g * 0.8));
+    nadeln.setMatrixAt(i, mt); kappen.setMatrixAt(i, mt);
+  });
+  scene.add(nadeln, kappen);
 }
 
 // ---------- Weiche Wolken ----------
