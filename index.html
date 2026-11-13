@@ -390,7 +390,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'igel'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'gross', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'dutt', 'kurz', 'junge', 'igel'], oberteilTyp: ['pulli', 'top', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -1725,7 +1725,7 @@ function baueFigur(look, ziel = scene) {
   kopf.add(kinn);
 
   const augen = look.augen || 'rund';
-  const ag = augen === 'gross' ? 1.22 : 1;
+  const ag = 1;
   // Wie viele Wimpern: bei "Wimpern" lang und viele, sonst ein paar feine (beim Jungen keine)
   const wimpernZahl = augen === 'wimpern' ? 9 : junge ? 0 : 5;
   const wimpernLang = augen === 'wimpern' ? 0.03 : 0.018;
@@ -2007,6 +2007,8 @@ function baueFigur(look, ziel = scene) {
 }
 // Gespeichertes Aussehen laden (falls schon im Editor geändert)
 try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
+// Gespeicherte Werte, die es nicht mehr gibt (z. B. große Augen), auf Normal zurücksetzen
+for (const [k, w] of Object.entries(WAHL_WORTE)) if (!w.includes(AUSSEHEN[k])) AUSSEHEN[k] = STANDARD_AUSSEHEN[k];
 let held = baueFigur(AUSSEHEN);
 // ---------- Spieler-Zustand ----------
 const RADIUS = 0.4, GROESSE = 2.2;
@@ -2326,7 +2328,7 @@ function editorFigurNeu() {
 const AUSWAHL = [
   { titel: 'Figur', key: 'figurTyp', worte: [['maedchen', 'Mädchen'], ['junge', 'Junge']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
-  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['gross', 'Groß'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
+  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
