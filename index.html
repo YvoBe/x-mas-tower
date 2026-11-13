@@ -1567,6 +1567,143 @@ function stoff(art, rx, ry) {
   return t;
 }
 
+// ---------- Gesicht als Textur ----------
+// Malt Augen, Brauen, Nase, Mund, Wangen und Sommersprossen auf ein Bild,
+// das dann um die Kopf-Kugel gelegt wird. Gleiche Gesichter teilen sich ein Bild.
+const gesichtCache = new Map();
+function gesichtTextur(look, mass) {
+  const junge = look.figurTyp === 'junge';
+  const augen = look.augen || 'rund', mundArt = look.mund || 'laecheln';
+  const schluessel = [look.haut, look.haare, look.augenfarbe, augen, mundArt, junge, !!look.sommersprossen].join('|');
+  if (gesichtCache.has(schluessel)) return gesichtCache.get(schluessel);
+  const W = 2048, H = 1024;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = look.haut; g.fillRect(0, 0, W, H);
+  // Rechnet einen Punkt auf dem Gesicht (x nach rechts, y nach oben, wie im Kopf) in Bild-Pixel um
+  // und stellt den Pinsel so ein, dass man dort in "Kopf-Einheiten" malen kann (y zeigt dann nach unten).
+  const bei = (x, y, malen) => {
+    const ys = Math.max(-0.99, Math.min(0.99, y / (0.25 * mass[1])));
+    const th = Math.acos(ys), sin = Math.sin(th);
+    const d = Math.asin(Math.max(-1, Math.min(1, x / (0.25 * mass[0] * sin))));
+    g.save();
+    g.translate(W * (0.25 + d / (Math.PI * 2)), H * th / Math.PI);
+    g.scale(W / (Math.PI * 2) / (0.25 * mass[0] * sin), H / Math.PI / (0.25 * mass[1] * sin));
+    malen();
+    g.restore();
+  };
+  const linie = (farbe, breite) => { g.strokeStyle = farbe; g.lineWidth = breite; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke(); };
+  // Wangen: weicher rosa Schimmer
+  for (const s of [-1, 1]) bei(s * 0.13, -0.055, () => {
+    const v = g.createRadialGradient(0, 0, 0, 0, 0, 0.05);
+    v.addColorStop(0, junge ? 'rgba(231,163,183,0.28)' : 'rgba(231,150,170,0.55)'); v.addColorStop(1, 'rgba(231,163,183,0)');
+    g.fillStyle = v; g.beginPath(); g.ellipse(0, 0, 0.05, 0.035, 0, 0, Math.PI * 2); g.fill();
+  });
+  // Sommersprossen
+  if (look.sommersprossen) {
+    const r = zufall(17);
+    for (let i = 0; i < 26; i++) {
+      const s = i % 2 ? 1 : -1;
+      bei(s * (0.04 + r() * 0.11), -0.02 - r() * 0.055, () => {
+        g.fillStyle = 'rgba(160,100,70,0.75)'; g.beginPath(); g.arc(0, 0, 0.0035 + r() * 0.002, 0, Math.PI * 2); g.fill();
+      });
+    }
+  }
+  // Augenbrauen: geschwungen, Mädchen feiner, Jungen dicker und gerader
+  for (const s of [-1, 1]) bei(s * 0.088, 0.07, () => {
+    g.beginPath();
+    g.moveTo(-s * 0.045, 0.012); g.quadraticCurveTo(s * 0.0, junge ? -0.006 : -0.016, s * 0.048, 0.006);
+    linie(look.haare, junge ? 0.015 : 0.01);
+  });
+  // Augen
+  const rx = 0.046, ry = 0.03;
+  for (const s of [-1, 1]) bei(s * 0.085, 0.015, () => {
+    g.rotate(s * -0.06);              // außen etwas höher
+    if (augen === 'zu') {             // fröhlich zugekniffen
+      g.beginPath(); g.moveTo(-rx * 0.9, 0.006); g.quadraticCurveTo(0, -0.03, rx * 0.9, 0.006);
+      linie('#1d1612', 0.009);
+      if (!junge) for (let k = 0; k < 3; k++) {
+        const x = s * (rx * 0.55 + k * 0.012);
+        g.beginPath(); g.moveTo(x, -0.004 + k * 0.004); g.lineTo(x + s * 0.012, -0.014 + k * 0.004); linie('#1d1612', 0.004);
+      }
+      return;
+    }
+    // Mandelform: oben stärker gebogen als unten
+    const form = () => { g.beginPath(); g.moveTo(-rx, 0); g.bezierCurveTo(-rx * 0.6, -ry * 1.35, rx * 0.6, -ry * 1.35, rx, 0); g.bezierCurveTo(rx * 0.6, ry * 1.05, -rx * 0.6, ry * 1.05, -rx, 0); g.closePath(); };
+    form(); g.fillStyle = '#fbf7f2'; g.fill();
+    g.save(); form(); g.clip();
+    g.fillStyle = look.augenfarbe || '#4a3326'; g.beginPath(); g.arc(0, 0.001, 0.024, 0, Math.PI * 2); g.fill();
+    const tiefe = g.createRadialGradient(0, 0.001, 0.008, 0, 0.001, 0.024);
+    tiefe.addColorStop(0, 'rgba(255,255,255,0.15)'); tiefe.addColorStop(1, 'rgba(0,0,0,0.35)');
+    g.fillStyle = tiefe; g.fill();
+    g.fillStyle = '#0d0d0d'; g.beginPath(); g.arc(0, 0.001, 0.0105, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(0.008, -0.008, 0.0055, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(-0.007, 0.008, 0.0025, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(-rx, -ry * 1.4, rx * 2, ry * 0.55);   // Schatten vom Oberlid
+    g.restore();
+    // Wimpernkranz oben, feine Linie unten, Lidfalte
+    g.beginPath(); g.moveTo(-rx * 1.04, 0.002); g.bezierCurveTo(-rx * 0.6, -ry * 1.4, rx * 0.6, -ry * 1.4, rx * 1.06, -0.002);
+    linie('#1d1612', junge ? 0.006 : 0.008);
+    g.beginPath(); g.moveTo(-rx * 0.8, ry * 0.45); g.bezierCurveTo(-rx * 0.4, ry * 0.85, rx * 0.4, ry * 0.85, rx * 0.85, ry * 0.4);
+    linie('rgba(150,100,85,0.6)', 0.003);
+    g.beginPath(); g.moveTo(-rx * 0.85, -ry * 0.9); g.bezierCurveTo(-rx * 0.4, -ry * 1.75, rx * 0.4, -ry * 1.75, rx * 0.95, -ry * 0.85);
+    linie('rgba(170,110,90,0.45)', 0.003);
+    // Wimpern: außen länger (bei "Wimpern" mehr und länger, beim Jungen keine)
+    const zahl = augen === 'wimpern' ? 7 : junge ? 0 : 3;
+    for (let k = 0; k < zahl; k++) {
+      const t = zahl === 1 ? 1 : 0.45 + 0.55 * k / (zahl - 1);
+      const x = s * rx * (t * 1.0), y = -ry * 1.05 * Math.sqrt(Math.max(0, 1 - t * t)) - 0.001;
+      const lg = (augen === 'wimpern' ? 0.02 : 0.013) * (0.6 + t * 0.6);
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + s * lg * 0.3, y - lg * 0.8, x + s * lg * 0.9, y - lg);
+      linie('#1d1612', 0.0035);
+    }
+  });
+  // Nase: nur ein weicher Schatten und zwei kleine Nasenlöcher
+  bei(0, -0.045, () => {
+    const v = g.createRadialGradient(0, -0.01, 0, 0, -0.01, 0.035);
+    v.addColorStop(0, 'rgba(150,90,70,0.22)'); v.addColorStop(1, 'rgba(150,90,70,0)');
+    g.fillStyle = v; g.beginPath(); g.ellipse(0, -0.005, 0.03, 0.04, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(-0.016, 0.006); g.quadraticCurveTo(0, 0.016, 0.016, 0.006); linie('rgba(140,85,65,0.55)', 0.004);
+    g.fillStyle = 'rgba(120,70,55,0.6)';
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.011, 0.007, 0.0045, 0.003, 0, 0, Math.PI * 2); g.fill(); }
+  });
+  // Mund
+  const lippe = junge ? '#c98078' : '#d0697a';
+  bei(0, -0.105, () => {
+    g.scale(1.15, 1.15);
+    if (mundArt === 'laecheln' || mundArt === 'frech') {
+      g.beginPath();                                  // Oberlippe mit Amorbogen
+      g.moveTo(-0.045, -0.004); g.quadraticCurveTo(-0.02, -0.006, -0.01, -0.012); g.quadraticCurveTo(0, -0.006, 0.01, -0.012);
+      g.quadraticCurveTo(0.02, -0.006, 0.045, -0.004); g.quadraticCurveTo(0, 0.008, -0.045, -0.004);
+      g.fillStyle = lippe; g.fill();
+      g.beginPath();                                  // Unterlippe
+      g.moveTo(-0.04, -0.002); g.quadraticCurveTo(0, 0.006, 0.04, -0.002); g.quadraticCurveTo(0.025, 0.028, 0, 0.028); g.quadraticCurveTo(-0.025, 0.028, -0.04, -0.002);
+      g.fillStyle = junge ? '#d08a82' : '#de7d8c'; g.fill();
+      g.beginPath(); g.moveTo(-0.046, -0.006); g.quadraticCurveTo(0, 0.01, 0.046, -0.006); linie('#8e3c4a', 0.004);   // Mundlinie lächelt
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(0.006, 0.015, 0.012, 0.004, 0, 0, Math.PI * 2); g.fill();
+      if (mundArt === 'frech') {
+        g.fillStyle = '#e0707f'; g.beginPath(); g.ellipse(0.012, 0.026, 0.017, 0.02, 0, 0, Math.PI); g.fill();
+        g.beginPath(); g.moveTo(0.012, 0.028); g.lineTo(0.012, 0.04); linie('rgba(150,50,70,0.5)', 0.003);
+      }
+    } else if (mundArt === 'grinsen') {
+      const grinsForm = () => { g.beginPath(); g.moveTo(-0.055, -0.01); g.quadraticCurveTo(0, -0.002, 0.055, -0.01); g.quadraticCurveTo(0.04, 0.045, 0, 0.045); g.quadraticCurveTo(-0.04, 0.045, -0.055, -0.01); };
+      grinsForm(); g.fillStyle = '#6e1f30'; g.fill();
+      g.save(); g.clip();
+      g.fillStyle = '#ffffff'; g.fillRect(-0.06, -0.012, 0.12, 0.018);
+      g.fillStyle = '#e0707f'; g.beginPath(); g.ellipse(0, 0.045, 0.03, 0.016, 0, 0, Math.PI * 2); g.fill();
+      g.restore();
+      grinsForm(); linie(lippe, 0.006);
+    } else {                                          // staunen
+      g.beginPath(); g.ellipse(0, 0.006, 0.02, 0.026, 0, 0, Math.PI * 2);
+      g.fillStyle = '#6e1f30'; g.fill(); linie(lippe, 0.009);
+    }
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 4;
+  gesichtCache.set(schluessel, tex);
+  return tex;
+}
+
 function baueFigur(look, ziel = scene) {
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
@@ -1793,144 +1930,20 @@ function baueFigur(look, ziel = scene) {
   // Kopf mit Gesicht: Augen und Mund kann man aussuchen
   const kopf = new THREE.Group();
   kopf.position.y = 1.92;
-  const schaedel = teil(new THREE.SphereGeometry(0.25, 32, 24), look.haut);
-  schaedel.scale.set(junge ? 0.97 : 0.95, 1.08, 0.98);
+  // Das Gesicht ist ein Bild (Textur), das auf die Kopf-Kugel gemalt wird
+  const kopfMass = [junge ? 0.97 : 0.95, 1.08, 0.98];
+  const schaedel = new THREE.Mesh(new THREE.SphereGeometry(0.25, 48, 32),
+    new THREE.MeshStandardMaterial({ map: gesichtTextur(look, kopfMass), roughness: 0.7 }));
+  schaedel.castShadow = true;
+  schaedel.scale.set(...kopfMass);
   kopf.add(schaedel);
-  // Ein weiches Kinn gibt dem Gesicht Form
-  const kinn = teil(new THREE.SphereGeometry(0.075, 16, 12), look.haut);
-  kinn.scale.set(junge ? 1.25 : 1.1, 0.8, 0.8); kinn.position.set(0, -0.185, 0.122);
-  kopf.add(kinn);
 
-  const augen = look.augen || 'rund';
-  const ag = 1;
-  // Wie viele Wimpern: bei "Wimpern" lang und viele, sonst ein paar feine (beim Jungen keine)
-  const wimpernZahl = augen === 'wimpern' ? 9 : junge ? 0 : 5;
-  const wimpernLang = augen === 'wimpern' ? 0.03 : 0.018;
-  for (const seite of [-1, 1]) {
-    // Augenbraue als geschwungener Bogen (beim Jungen etwas dicker und gerader)
-    const braue = teil(new THREE.TorusGeometry(0.075, junge ? 0.011 : 0.008, 6, 14, junge ? 0.9 : 1.15), look.haare);
-    braue.scale.set(1, junge ? 0.45 : 0.6, 0.5);
-    braue.rotation.z = Math.PI / 2 - (junge ? 0.45 : 0.575) + seite * -0.12;
-    braue.position.set(seite * 0.085, 0.085 + (ag - 1) * 0.06 - 0.045 * (junge ? 0.45 : 0.6), 0.226);
-    const backe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), mat('#e7a3b7', { transparent: true, opacity: junge ? 0.2 : 0.45 }));
-    backe.scale.set(1, 0.7, 0.3);
-    backe.position.set(seite * 0.13, -0.06, 0.2);
-    kopf.add(braue, backe);
-    // Das Auge sitzt in einer eigenen Gruppe, leicht schräg wie echte Augen (außen etwas höher)
-    const auge = new THREE.Group();
-    auge.position.set(seite * 0.085, 0.017, 0.207);
-    auge.rotation.set(0, seite * 0.18, seite * 0.08);
-    kopf.add(auge);
-    const rx = 0.047 * ag, ry = 0.029 * ag;   // mandelförmig: breiter als hoch
-    if (augen === 'zu') {   // fröhlich zugekniffen: Bogen mit Wimpern
-      const bogen = teil(new THREE.TorusGeometry(0.036, 0.0075, 6, 16, Math.PI), '#1d2236');
-      bogen.scale.set(1.2, 0.8, 1); bogen.position.set(0, -0.004, 0.028);
-      auge.add(bogen);
-    } else {
-      const weiss = teil(new THREE.SphereGeometry(1, 22, 14), '#fbf7f2', { roughness: 0.35 });
-      weiss.scale.set(rx, ry, 0.022); weiss.position.z = 0.012;
-      const iris = teil(new THREE.CircleGeometry(0.0235 * ag, 24), look.augenfarbe || '#4a3326', { roughness: 0.3 });
-      iris.position.set(0, -0.001, 0.0345);
-      const ring = teil(new THREE.RingGeometry(0.0215 * ag, 0.0245 * ag, 24), '#241812');   // dunkler Rand um die Iris
-      ring.position.set(0, -0.001, 0.0347);
-      const pupille = teil(new THREE.CircleGeometry(0.0105 * ag, 18), '#0d0d0d');
-      pupille.position.set(0, -0.001, 0.035);
-      const glanz = teil(new THREE.CircleGeometry(0.0055 * ag, 10), '#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.6 });
-      glanz.position.set(0.008 * ag, 0.008 * ag, 0.0353);
-      // Oberlid: Haut über dem oberen Teil des Auges, so wird die Form mandelförmig
-      const lid = teil(new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.36), look.haut);
-      lid.scale.set(rx * 1.08, ry * 1.15, 0.03); lid.position.set(0, 0.003, 0.006); lid.rotation.x = 0.45;
-      auge.add(weiss, iris, ring, pupille, glanz, lid);
-    }
-    // Wimpernkranz oben (dunkle Linie) und feine Linie unten
-    const linie = teil(new THREE.TorusGeometry(1, 0.11, 6, 24, Math.PI), '#1d1612');
-    linie.scale.set(rx * 1.02, ry * 1.02, 0.05); linie.position.set(0, 0.001, 0.03);
-    const unten = teil(new THREE.TorusGeometry(1, 0.06, 6, 20, Math.PI), '#b98a76');
-    unten.scale.set(rx * 0.95, ry * 0.9, 0.04); unten.rotation.z = Math.PI; unten.position.set(0, -0.001, 0.029);
-    const falte = teil(new THREE.TorusGeometry(1, 0.06, 6, 20, Math.PI * 0.8), '#c99a82');   // Lidfalte
-    falte.scale.set(rx * 1.05, ry * 1.25, 0.04); falte.rotation.z = Math.PI * 0.1; falte.position.set(0, 0.012, 0.022);
-    auge.add(linie, falte);
-    if (augen !== 'zu') auge.add(unten);
-    // Einzelne Wimpern: dünn, gebogen nach oben und außen, außen länger
-    for (let k = 0; k < wimpernZahl; k++) {
-      const t = wimpernZahl === 1 ? 0.5 : k / (wimpernZahl - 1);   // 0 = innen, 1 = außen
-      const w = Math.PI * (0.85 - t * 0.75) * (seite > 0 ? 1 : -1) + (seite > 0 ? 0 : Math.PI);
-      const len = wimpernLang * (0.6 + t * 0.7);
-      const wimper = teil(new THREE.ConeGeometry(0.0022, len, 4), '#1d1612');
-      wimper.geometry.translate(0, len / 2, 0);
-      wimper.position.set(Math.cos(w) * rx, Math.sin(w) * ry * (augen === 'zu' ? 0.2 : 1), 0.031);
-      wimper.rotation.set(-0.5, 0, w - Math.PI / 2 + seite * -0.25);   // nach außen geneigt und nach vorne gebogen
-      auge.add(wimper);
-    }
-  }
   // Ohren
   for (const seite of [-1, 1]) {
     const ohr = teil(new THREE.SphereGeometry(0.05, 14, 10), look.haut);
     ohr.scale.set(0.45, 1, 0.75);
     ohr.position.set(seite * 0.238, 0.0, 0.0);
     kopf.add(ohr);
-  }
-  // Nase: Nasenrücken und Nasenspitze
-  const nasenRuecken = teil(new THREE.CapsuleGeometry(0.016, 0.06, 6, 10), look.haut);
-  nasenRuecken.position.set(0, -0.005, 0.24); nasenRuecken.rotation.x = 0.35;
-  const nase = teil(new THREE.SphereGeometry(0.027, 14, 10), look.haut);
-  nase.scale.set(1.15, 0.85, 0.9);
-  nase.position.set(0, -0.042, 0.248);
-  kopf.add(nasenRuecken, nase);
-  for (const seite of [-1, 1]) {
-    const loch = teil(new THREE.SphereGeometry(0.007, 8, 6), '#8a5a48');
-    loch.position.set(seite * 0.012, -0.055, 0.258);
-    kopf.add(loch);
-  }
-  // Sommersprossen
-  if (look.sommersprossen) {
-    const r = zufall(17);
-    for (let i = 0; i < 22; i++) {
-      const seite = i % 2 ? 1 : -1, x = seite * (0.05 + r() * 0.1), y = -0.02 - r() * 0.06;
-      const punkt = teil(new THREE.CircleGeometry(0.0035 + r() * 0.0025, 6), '#b98266');
-      punkt.position.set(x, y, Math.sqrt(Math.max(0, 0.06 - x * x)) * 0.98 + 0.016);
-      punkt.lookAt(punkt.position.clone().multiplyScalar(3));
-      kopf.add(punkt);
-    }
-  }
-  // Mund mit Lippen
-  const lippe = junge ? '#c98078' : '#c9606f';
-  const mundArt = look.mund || 'laecheln';
-  if (mundArt === 'laecheln' || mundArt === 'frech') {
-    const oben = teil(new THREE.TorusGeometry(0.045, 0.011, 8, 18, Math.PI), lippe);
-    oben.position.set(0, -0.098, 0.226); oben.rotation.z = Math.PI; oben.scale.set(1, 0.55, 1);
-    for (const sx of [-1, 1]) {   // Amorbogen: zwei kleine Wölbungen der Oberlippe
-      const bogen = teil(new THREE.SphereGeometry(0.01, 10, 8), lippe);
-      bogen.scale.set(1.3, 0.55, 0.5); bogen.position.set(sx * 0.012, -0.093, 0.233);
-      kopf.add(bogen);
-    }
-    const unten = teil(new THREE.SphereGeometry(0.03, 14, 10), lippe);
-    unten.scale.set(1.15, 0.42, 0.55); unten.position.set(0, -0.128, 0.226);
-    kopf.add(oben, unten);
-    for (const seite of [-1, 1]) {   // Grübchen in den Mundwinkeln
-      const w = teil(new THREE.SphereGeometry(0.008, 8, 6), '#b4475f');
-      w.position.set(seite * 0.046, -0.1, 0.222);
-      kopf.add(w);
-    }
-    if (mundArt === 'frech') {
-      const zunge = teil(new THREE.SphereGeometry(0.024, 12, 10), '#e0707f');
-      zunge.scale.set(1, 1.25, 0.5); zunge.position.set(0.012, -0.145, 0.232);
-      kopf.add(zunge);
-    }
-  } else if (mundArt === 'grinsen') {
-    const innen = teil(new THREE.SphereGeometry(0.058, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#6e1f30');
-    innen.scale.set(1.1, 0.75, 0.35); innen.position.set(0, -0.09, 0.224);
-    const zaehne = teil(new THREE.BoxGeometry(0.085, 0.017, 0.01), '#ffffff');
-    zaehne.position.set(0, -0.097, 0.244);
-    const oben = teil(new THREE.TorusGeometry(0.062, 0.009, 8, 20, Math.PI), lippe);
-    oben.position.set(0, -0.09, 0.228); oben.rotation.z = Math.PI; oben.scale.set(1.05, 0.75, 1);
-    kopf.add(innen, zaehne, oben);
-  } else {   // staunen
-    const mund = teil(new THREE.TorusGeometry(0.024, 0.012, 10, 20), lippe);
-    mund.scale.set(1, 1.25, 1); mund.position.set(0, -0.112, 0.228);
-    const innen = teil(new THREE.CircleGeometry(0.022, 16), '#6e1f30');
-    innen.position.set(0, -0.112, 0.226); innen.scale.set(1, 1.25, 1);
-    kopf.add(mund, innen);
   }
 
   // Haare mit feinen Strähnen
