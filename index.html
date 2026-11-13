@@ -2050,8 +2050,8 @@ function baueFigur(look, ziel = scene) {
     }
   } else {                          // Taschen hinten mit Naht
     for (const sx of [-1, 1]) {
-      const tasche = teil(new THREE.BoxGeometry(0.13, 0.12, 0.01), look.hose, hoseM(2, 2)); tasche.position.set(sx * 0.13, 0.85, -0.176);
-      const tn = teil(new THREE.BoxGeometry(0.135, 0.008, 0.012), naht); tn.position.set(sx * 0.13, 0.91, -0.178);
+      const tasche = teil(new THREE.BoxGeometry(0.13, 0.12, 0.01), look.hose, hoseM(2, 2)); tasche.position.set(sx * 0.12, 0.765, -(junge ? 0.29 : 0.27) / 2 - 0.007);   // unter dem Bund vom Oberteil, direkt auf der Hose
+      const tn = teil(new THREE.BoxGeometry(0.135, 0.008, 0.012), naht); tn.position.set(sx * 0.12, 0.815, -(junge ? 0.29 : 0.27) / 2 - 0.009);
       figur.add(tasche, tn);
     }
   }
@@ -2152,8 +2152,11 @@ function baueFigur(look, ziel = scene) {
     kugel.position.y = -0.02;
     gelenk.add(kugel);
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
-      const a = teil(new THREE.CapsuleGeometry(0.085 * ar, 0.5, 8, 16), look.haut);
-      a.position.y = -0.3;
+      // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
+      const profil = [[0.001, 0.06], [0.05, 0.05], [0.08, 0.0], [0.085, -0.08], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
+        .map(([r, y]) => new THREE.Vector2(r * ar, y));
+      const a = teil(new THREE.LatheGeometry(profil, 20), look.haut);
+      a.scale.z = 1.08;
       gelenk.add(a);
       if (oberteilTyp === 'tshirt') {   // kurzer Ärmel bis knapp über den Ellbogen
         const aermel = teil(new THREE.CylinderGeometry(0.104 * ar, 0.112 * ar, 0.24, 16), look.pulli, { map: stoff('weich', 6, 2) });
@@ -2186,7 +2189,8 @@ function baueFigur(look, ziel = scene) {
     // Flache Handfläche (dünn von der Seite), die Finger wachsen direkt unten heraus
     const flaeche = teil(new THREE.SphereGeometry(0.085, 20, 14), look.haut);
     flaeche.scale.set(0.4, 0.85, 0.75); flaeche.position.y = -0.07;
-    hand.add(handgelenk, flaeche);
+    hand.add(flaeche);
+    if (oberteilTyp !== 'top' && oberteilTyp !== 'tshirt') hand.add(handgelenk);   // bei freien Armen geht der Arm selbst bis zur Hand
     for (let k = 0; k < 4; k++) {
       const lg = [0.06, 0.072, 0.068, 0.052][k];
       const finger = teil(new THREE.CapsuleGeometry(0.018, lg, 4, 8), look.haut);
