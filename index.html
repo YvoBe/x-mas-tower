@@ -1807,31 +1807,37 @@ function gesichtTextur(look, mass) {
       linie('#1d1612', 0.0025);
     }
   });
-  // Nase: nur ein weicher Schatten und zwei kleine Nasenlöcher
+  // Nase wie auf der Zeichnung: feiner Nasenrücken, runde Nasenflügel und zwei Nasenlöcher
   bei(0, -0.045, () => {
     const v = g.createRadialGradient(0, -0.01, 0, 0, -0.01, 0.035);
-    v.addColorStop(0, 'rgba(150,90,70,0.22)'); v.addColorStop(1, 'rgba(150,90,70,0)');
+    v.addColorStop(0, 'rgba(150,90,70,0.18)'); v.addColorStop(1, 'rgba(150,90,70,0)');
     g.fillStyle = v; g.beginPath(); g.ellipse(0, -0.005, 0.03, 0.04, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.moveTo(-0.016, 0.006); g.quadraticCurveTo(0, 0.016, 0.016, 0.006); linie('rgba(140,85,65,0.55)', 0.004);
-    g.fillStyle = 'rgba(120,70,55,0.6)';
-    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.011, 0.007, 0.0045, 0.003, 0, 0, Math.PI * 2); g.fill(); }
+    const strich = 'rgba(130,78,60,0.6)';
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(s * 0.009, -0.04); g.quadraticCurveTo(s * 0.011, -0.015, s * 0.012, -0.004); linie('rgba(150,90,70,0.25)', 0.0025);   // Nasenrücken
+      g.beginPath(); g.moveTo(s * 0.012, -0.004); g.bezierCurveTo(s * 0.024, -0.002, s * 0.026, 0.012, s * 0.014, 0.012); linie(strich, 0.0035);   // Nasenflügel
+    }
+    g.beginPath(); g.moveTo(-0.008, 0.013); g.quadraticCurveTo(0, 0.018, 0.008, 0.013); linie(strich, 0.003);   // Nasenspitze unten
+    g.fillStyle = 'rgba(110,62,50,0.65)';
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.0085, 0.009, 0.0045, 0.0028, s * 0.3, 0, Math.PI * 2); g.fill(); }
   });
   // Mund
   const lippe = junge ? '#c98078' : '#d0697a';
   bei(0, -0.105, () => {
     g.scale(1.15, 1.15);
     if (mundArt === 'laecheln' || mundArt === 'frech') {
-      g.beginPath();                                  // Oberlippe mit Amorbogen
-      g.moveTo(-0.045, -0.004); g.quadraticCurveTo(-0.02, -0.006, -0.01, -0.012); g.quadraticCurveTo(0, -0.006, 0.01, -0.012);
-      g.quadraticCurveTo(0.02, -0.006, 0.045, -0.004); g.quadraticCurveTo(0, 0.008, -0.045, -0.004);
+      // Volle Lippen wie auf der Zeichnung: Oberlippe mit deutlichem Amorbogen, runde Unterlippe
+      g.beginPath();                                  // Oberlippe
+      g.moveTo(-0.048, -0.001); g.bezierCurveTo(-0.035, -0.012, -0.018, -0.02, -0.008, -0.017); g.quadraticCurveTo(0, -0.011, 0.008, -0.017);
+      g.bezierCurveTo(0.018, -0.02, 0.035, -0.012, 0.048, -0.001); g.quadraticCurveTo(0, 0.006, -0.048, -0.001);
       g.fillStyle = lippe; g.fill();
       g.beginPath();                                  // Unterlippe
-      g.moveTo(-0.04, -0.002); g.quadraticCurveTo(0, 0.006, 0.04, -0.002); g.quadraticCurveTo(0.025, 0.028, 0, 0.028); g.quadraticCurveTo(-0.025, 0.028, -0.04, -0.002);
+      g.moveTo(-0.044, 0.0); g.quadraticCurveTo(0, 0.006, 0.044, 0.0); g.bezierCurveTo(0.032, 0.03, -0.032, 0.03, -0.044, 0.0);
       g.fillStyle = junge ? '#d08a82' : '#de7d8c'; g.fill();
-      g.beginPath(); g.moveTo(-0.046, -0.006); g.quadraticCurveTo(0, 0.01, 0.046, -0.006); linie('#8e3c4a', 0.004);   // Mundlinie lächelt
+      g.beginPath(); g.moveTo(-0.05, -0.003); g.quadraticCurveTo(-0.02, 0.006, 0, 0.003); g.quadraticCurveTo(0.02, 0.006, 0.05, -0.003); linie('#8e3c4a', 0.0035);   // Mundlinie, leicht gewellt
       g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(0.006, 0.015, 0.012, 0.004, 0, 0, Math.PI * 2); g.fill();
       if (mundArt === 'frech') {
-        g.fillStyle = '#e0707f'; g.beginPath(); g.ellipse(0.012, 0.026, 0.017, 0.02, 0, 0, Math.PI); g.fill();
+        g.fillStyle = '#e0707f'; g.beginPath(); g.ellipse(0.012, 0.018, 0.017, 0.022, 0, 0, Math.PI); g.fill();
         g.beginPath(); g.moveTo(0.012, 0.028); g.lineTo(0.012, 0.04); linie('rgba(150,50,70,0.5)', 0.003);
       }
     } else if (mundArt === 'grinsen') {
