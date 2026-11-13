@@ -3438,12 +3438,12 @@ const startFiguren = [];
     });
   }
 }
-const START_FLUG = [
+const START_FLUG = [   // Reihenfolge: Aesthetic ASMR, dann Weihnachten, dann Sommer
+  { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
   { welt: 'winter', figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
   { welt: 'sommer', figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
-  { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
 ];
-const FLUG_DAUER = 16;
+const FLUG_DAUER = 9;    // Sekunden pro Welt
 let startFlugZeit = 0, startFlugWelt = -1;
 const _blick = new THREE.Vector3();
 function startFlug(dt) {
@@ -3616,7 +3616,7 @@ if (!/^[a-z2-9]{5}$/.test(meinCode)) {
   meinCode = Array.from({ length: 5 }, () => CODE_ZEICHEN[Math.floor(Math.random() * CODE_ZEICHEN.length)]).join('');
   try { localStorage.setItem('turmparkour-code', meinCode); } catch (e) {}
 }
-const mehr = { netz: null, gruppe: null, code: meinCode, andere: new Map(), sendeUhr: 0, lookGesendet: '', posGesendet: '', listeText: '' };
+const mehr = { netz: null, gruppe: null, code: meinCode, andere: new Map(), sendeUhr: 0, zuletztGesendet: 0, weg: null, lookGesendet: '', posGesendet: '', listeText: '' };
 const codeKnopf = document.getElementById('codeKnopf');
 const codePanel = document.getElementById('codePanel');
 const codeFeld = document.getElementById('codeFeld');
@@ -3725,15 +3725,21 @@ async function firebaseNetz() {
       const posRef = db.child(raum, 'pos/' + meineId), infoRef = db.child(raum, 'info/' + meineId);
       await db.onDisconnect(posRef).remove();   // Wer das Spiel schließt, verschwindet automatisch
       await db.onDisconnect(infoRef).remove();
-      const pos = new Map(), info = new Map(), aus = [];
+      const pos = new Map(), info = new Map(), zuletzt = new Map(), aus = [];
+      // Wer 15 Sekunden lang nichts mehr schickt, ist weg (z. B. Handy aus) und wird nicht mehr gezeigt
       const melden = () => {
-        const liste = [];
-        for (const [id, i] of info) if (id !== meineId && pos.has(id)) liste.push({ peer: id, presence: { ...i, ...pos.get(id) } });
+        const liste = [], jetzt = Date.now();
+        for (const [id, i] of info) {
+          if (id === meineId || !pos.has(id) || jetzt - (zuletzt.get(id) || 0) > 15000) continue;
+          liste.push({ peer: id, presence: { ...i, ...pos.get(id) } });
+        }
         aufAenderung(liste);
       };
+      const pruefUhr = setInterval(melden, 3000);
+      aus.push(() => clearInterval(pruefUhr));
       const hoeren = (pfad, karte) => {
         const r = db.child(raum, pfad);
-        const setzen = (snap) => { karte.set(snap.key, snap.val()); melden(); };
+        const setzen = (snap) => { karte.set(snap.key, snap.val()); zuletzt.set(snap.key, Date.now()); melden(); };
         aus.push(db.onChildAdded(r, setzen, aufFehler), db.onChildChanged(r, setzen, aufFehler),
           db.onChildRemoved(r, (snap) => { karte.delete(snap.key); melden(); }, aufFehler));
       };
@@ -3832,10 +3838,30 @@ function mehrspielerUpdate(dt) {
     delete patch.l.name;
     patch.n = meinName();
     mehr.lookGesendet = lookText;
-  } else if (posText === mehr.posGesendet) return;
+  } else if (posText === mehr.posGesendet && performance.now() - mehr.zuletztGesendet < 4000) return;   // alle 4 s ein "ich bin noch da"
   mehr.posGesendet = posText;
+  mehr.zuletztGesendet = performance.now();
   mehr.gruppe.senden(patch);
 }
+
+// Wer die Seite verlässt (Tab zu, andere App, Handy aus), geht automatisch aus dem gemeinsamen Spiel raus.
+// Kommt man zurück, ist man wieder im selben Spiel.
+function seiteWeg() {
+  if (!mehr.gruppe) return;
+  mehr.weg = mehr.code;
+  const alt = mehr.gruppe; mehr.gruppe = null;
+  mehr.versuch = (mehr.versuch || 0) + 1;
+  alt.verlassen();
+  for (const a of mehr.andere.values()) if (a.held) scene.remove(a.held.figur);
+  mehr.andere.clear();
+  andereAktualisieren([]);
+}
+addEventListener('pagehide', seiteWeg);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) seiteWeg();
+  else if (mehr.weg && !mehr.gruppe) { const code = mehr.weg; mehr.weg = null; codeBeitreten(code); }
+});
+addEventListener('pageshow', (e) => { if (e.persisted && mehr.weg && !mehr.gruppe) { const code = mehr.weg; mehr.weg = null; codeBeitreten(code); } });
 
 // Code-Knopf und Panel
 codeKnopf.addEventListener('click', () => { codePanel.hidden = !codePanel.hidden; });
