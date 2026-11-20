@@ -42,7 +42,9 @@
   #leiste {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
     display: flex; gap: 8px; padding: 6px; border-radius: 18px; background: var(--panel); border: 3px solid var(--rosa);
+    max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: thin;
   }
+  #leiste button { flex: none; }
   #leiste button {
     width: 54px; height: 54px; border-radius: 12px; border: 3px solid transparent; background: #fff; cursor: pointer;
     font-size: 30px; line-height: 1; display: grid; place-items: center; padding: 0;
@@ -75,6 +77,7 @@
   .tag p { margin: 0; font-size: 13px; font-weight: 600; }
   .zahl { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+  .banner .klein { font-size: 0.5em; margin: 2px 0 6px; }
   .banner {
     position: fixed;
     left: 50%;
@@ -371,14 +374,21 @@
   <div class="karte">
     <h2 class="logo">
       <span class="sr">Tower World</span>
-      <!-- Logo nach der Zeichnung: wellige Form mit doppeltem Rand, TOWER im Bogen, darunter World -->
-      <svg viewBox="0 0 360 170" aria-hidden="true">
-        <path d="M38 52 C70 22 120 40 160 30 C205 18 250 36 300 26 C335 20 352 52 338 84 C326 112 350 132 322 150 C290 168 240 146 190 156 C140 166 90 150 52 158 C20 164 10 132 26 110 C38 92 12 74 38 52 Z" fill="#fbf8f2" stroke="#1f2a4a" stroke-width="5"/>
-        <path d="M50 62 C78 38 122 52 160 43 C204 32 248 49 296 40 C324 35 336 60 325 85 C316 108 334 126 312 139 C284 153 238 134 190 143 C142 152 94 138 58 145 C34 150 26 126 38 110 C48 95 28 78 50 62 Z" fill="none" stroke="#e7a3b7" stroke-width="4"/>
-        <path id="towerBogen" d="M110 86 Q180 46 250 86" fill="none"/>
-        <text font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="26" letter-spacing="6" fill="#c9607a"><textPath href="#towerBogen" startOffset="50%" text-anchor="middle">TOWER</textPath></text>
-        <text x="180" y="128" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="54" fill="#1f2a4a">World</text>
-        <text x="62" y="58" font-size="20" fill="#f2c230">★</text><text x="290" y="58" font-size="16" fill="#f2c230">★</text>
+      <!-- Logo: olivgrünes Band mit TOWER, darunter großes World, dahinter rosa Türme -->
+      <svg viewBox="0 0 520 220" aria-hidden="true">
+        <g fill="#e7a3b7" opacity=".4">
+          <rect x="96" y="100" width="34" height="110" rx="3"/><path d="M90 100 L113 84 L136 100Z"/>
+          <rect x="150" y="80" width="40" height="130" rx="3"/><path d="M144 80 L170 62 L196 80Z"/>
+          <rect x="330" y="86" width="40" height="124" rx="3"/><path d="M324 86 L350 68 L376 86Z"/>
+          <rect x="390" y="108" width="34" height="100" rx="3"/><path d="M384 108 L407 92 L430 108Z"/>
+        </g>
+        <path d="M70 38 L110 22 L110 76 L70 92 L86 62 Z" fill="#6f7a3d"/>
+        <path d="M450 38 L410 22 L410 76 L450 92 L434 62 Z" fill="#6f7a3d"/>
+        <path d="M100 20 Q260 2 420 20 L420 72 Q260 54 100 72 Z" fill="#8f9b52" stroke="#1f2a4a" stroke-width="4"/>
+        <text x="260" y="56" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="36" letter-spacing="14" fill="#fbf8f2">TOWER</text>
+        <text x="264" y="192" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#e7a3b7">World</text>
+        <text x="260" y="186" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#1f2a4a">World</text>
+        <text x="62" y="150" font-size="22" fill="#f2c230">★</text><text x="452" y="168" font-size="18" fill="#f2c230">★</text>
       </svg>
     </h2>
     <p class="unter">Springe über Plattformen und habe Spaß mit Freunden!</p>
@@ -3158,7 +3168,10 @@ const zeigeTuerchen = () => { tuerchenAnzeige.textContent = `🎁 ${geschafft.le
 zeigeTuerchen();
 let bannerTimer;
 function zeigeBanner(text, ms = 3000) {
-  banner.textContent = text; banner.hidden = false;
+  const [oben, unten] = text.split('\n');
+  banner.textContent = oben;
+  if (unten) { const k = document.createElement('div'); k.className = 'klein'; k.textContent = unten; banner.appendChild(k); }
+  banner.hidden = false;
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => { banner.hidden = true; }, ms);
 }
@@ -3195,7 +3208,46 @@ function fortschrittZeigen(T, s) {
 // ---------- Sachen: Belohnungen, die man in der Hand halten kann ----------
 const SACHEN = {
   butter: { emoji: '🧈', name: 'Squishy-Butter' },
+  zuckerstange: { emoji: '🍭', name: 'Zuckerstange' },
+  lebkuchen: { emoji: '🍪', name: 'Lebkuchenmann' },
+  zimtstern: { emoji: '🌟', name: 'Zimtstern' },
+  schneekugel: { emoji: '🔮', name: 'Schneekugel' },
+  stiefel: { emoji: '👢', name: 'Nikolaus-Stiefel' },
+  glocke: { emoji: '🔔', name: 'Glöckchen' },
+  kakao: { emoji: '☕', name: 'Tasse Kakao' },
+  teddy: { emoji: '🧸', name: 'Teddy' },
+  laterne: { emoji: '🏮', name: 'Laterne' },
+  kerze: { emoji: '🕯️', name: 'Kerze' },
+  kugel: { emoji: '🔴', name: 'Christbaumkugel' },
+  geschenk: { emoji: '🎁', name: 'Geschenk' },
+  schneemann: { emoji: '⛄', name: 'Mini-Schneemann' },
+  mandarine: { emoji: '🍊', name: 'Mandarine' },
+  herz: { emoji: '💗', name: 'Lebkuchenherz' },
+  mistel: { emoji: '🌿', name: 'Mistelzweig' },
+  rentier: { emoji: '🦌', name: 'Plüsch-Rentier' },
+  baeumchen: { emoji: '🎄', name: 'Mini-Tannenbaum' },
+  zauberstab: { emoji: '🪄', name: 'Sternen-Zauberstab' },
 };
+// Adventskalender: hinter jedem Türchen ein Geschenk. sache = zum In-die-Hand-Nehmen, kleid = neu in der Umkleide
+const GESCHENKE = {
+  1: { sache: 'zuckerstange' }, 2: { sache: 'lebkuchen' }, 3: { sache: 'zimtstern' },
+  4: { kleid: 'schal', name: 'Schal' },
+  5: { sache: 'schneekugel' }, 6: { sache: 'stiefel' }, 7: { sache: 'glocke' },
+  8: { kleid: 'weihnachtsmuetze', name: 'Weihnachtsmütze' },
+  9: { sache: 'kakao' }, 10: { sache: 'teddy' }, 11: { sache: 'laterne' },
+  12: { kleid: 'rentierreif', name: 'Rentier-Haarreif' },
+  13: { sache: 'kerze' }, 14: { sache: 'kugel' }, 15: { sache: 'geschenk' },
+  16: { kleid: 'ohrenschuetzer', name: 'Ohrenschützer' },
+  17: { sache: 'schneemann' }, 18: { sache: 'mandarine' }, 19: { sache: 'herz' },
+  20: { kleid: 'weihnachtspulli', name: 'Weihnachtspulli' },
+  21: { sache: 'mistel' }, 22: { sache: 'rentier' }, 23: { sache: 'baeumchen' },
+  24: { sache: 'zauberstab', kleid: 'sternkrone', name: 'Sternen-Krone' },
+};
+// Für die Umkleide: ist dieses Kleidungsstück schon freigeschaltet?
+function kleidFrei(id) {
+  for (const nr in GESCHENKE) if (GESCHENKE[nr].kleid === id) return geschafft.includes(Number(nr));
+  return true;
+}
 let meineSachen = [];
 try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n]); } catch (e) { meineSachen = []; }
 let inDerHand = null;
@@ -3210,7 +3262,165 @@ function handDingBauen(name) {
     m.castShadow = true;
     return m;
   }
-  return null;
+  const g = new THREE.Group();
+  const M = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.55, ...extra });
+  const teil = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  const ku = (r, mat, x, y, z) => teil(new THREE.SphereGeometry(r, 16, 12), mat, x, y, z);
+  const zy = (r1, r2, h, mat, x, y, z, n = 20) => teil(new THREE.CylinderGeometry(r1, r2, h, n), mat, x, y, z);
+  const sternForm = (aussen, innen, zacken = 5) => {
+    const f = new THREE.Shape();
+    for (let i = 0; i <= zacken * 2; i++) {
+      const w = Math.PI / 2 + i * Math.PI / zacken, r = i % 2 ? innen : aussen;
+      if (i === 0) f.moveTo(Math.cos(w) * r, Math.sin(w) * r); else f.lineTo(Math.cos(w) * r, Math.sin(w) * r);
+    }
+    return f;
+  };
+  const herzForm = (s) => {
+    const f = new THREE.Shape();
+    f.moveTo(0, -s); f.bezierCurveTo(-s * 1.6, -s * 0.1, -s * 0.9, s * 1.1, 0, s * 0.45);
+    f.bezierCurveTo(s * 0.9, s * 1.1, s * 1.6, -s * 0.1, 0, -s);
+    return f;
+  };
+  const platt = (form, dicke, mat) => { const geo = new THREE.ExtrudeGeometry(form, { depth: dicke, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.008, bevelSegments: 2 }); geo.center(); return teil(geo, mat); };
+  const weiss = M(0xfbf8f2), rot = M(0xc0394a), braun = M(0xa8652f), gold = M(0xf2c230, { metalness: 0.5, roughness: 0.3 }), gruen = M(0x5d7a3a), navy = M(0x1f2a4a), rosa = M(0xe7a3b7);
+  switch (name) {
+    case 'zuckerstange': {
+      const weg = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.12, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.02, 0.4, 0), new THREE.Vector3(0.09, 0.44, 0), new THREE.Vector3(0.15, 0.4, 0), new THREE.Vector3(0.16, 0.33, 0)]);
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
+      x.fillStyle = '#fbf8f2'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#c9364a';
+      for (let i = -64; i < 128; i += 22) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 10, 0); x.lineTo(i + 10 + 64, 64); x.lineTo(i + 64, 64); x.fill(); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 1);
+      teil(new THREE.TubeGeometry(weg, 40, 0.032, 12), M(0xffffff, { map: t, roughness: 0.3 }));
+      break;
+    }
+    case 'lebkuchen': {
+      ku(0.075, braun, 0, 0.27, 0).scale.z = 0.45;
+      const k = zy(0.07, 0.08, 0.17, braun, 0, 0.13, 0); k.scale.z = 0.45;
+      for (const sx of [-1, 1]) { const a = zy(0.028, 0.028, 0.12, braun, sx * 0.1, 0.17, 0); a.rotation.z = sx * 1.1; a.scale.z = 0.8; const b2 = zy(0.03, 0.03, 0.13, braun, sx * 0.04, 0.01, 0); b2.rotation.z = sx * 0.3; }
+      for (const y of [0.18, 0.12, 0.06]) ku(0.012, rosa, 0, y, 0.035);
+      ku(0.01, weiss, -0.025, 0.285, 0.033); ku(0.01, weiss, 0.025, 0.285, 0.033);
+      break;
+    }
+    case 'zimtstern': { const st = platt(sternForm(0.15, 0.07), 0.04, M(0xc98a4b)); st.position.y = 0.14; const g2 = platt(sternForm(0.12, 0.055), 0.01, weiss); g2.position.set(0, 0.14, 0.026); break; }
+    case 'schneekugel': {
+      zy(0.11, 0.13, 0.08, navy, 0, 0.0, 0);
+      teil(new THREE.SphereGeometry(0.13, 24, 18), M(0xdff2ff, { transparent: true, opacity: 0.35, roughness: 0.05 }), 0, 0.15, 0);
+      zy(0, 0.06, 0.12, gruen, 0, 0.13, 0, 10); ku(0.012, gold, 0, 0.2, 0);
+      for (let i = 0; i < 14; i++) ku(0.008, weiss, (Math.random() - 0.5) * 0.17, 0.08 + Math.random() * 0.16, (Math.random() - 0.5) * 0.17);
+      break;
+    }
+    case 'stiefel': {
+      zy(0.07, 0.07, 0.22, rot, 0, 0.12, 0); const f = teil(new THREE.BoxGeometry(0.1, 0.07, 0.17), rot, 0, 0.035, 0.05); f.geometry.translate(0, 0, 0);
+      teil(new THREE.TorusGeometry(0.075, 0.03, 10, 20), weiss, 0, 0.24, 0).rotation.x = Math.PI / 2;
+      ku(0.03, gold, 0, 0.3, 0);
+      break;
+    }
+    case 'glocke': {
+      const pkt = [[0, 0.24], [0.03, 0.235], [0.05, 0.2], [0.06, 0.12], [0.1, 0.03], [0.11, 0.0]].map(([x, y]) => new THREE.Vector2(x, y));
+      teil(new THREE.LatheGeometry(pkt, 24), M(0xf2c230, { metalness: 0.6, roughness: 0.3, side: THREE.DoubleSide }), 0, 0, 0);
+      ku(0.03, gold, 0, 0.0, 0);
+      for (const sx of [-1, 1]) { const sl = zy(0, 0.04, 0.08, rot, sx * 0.04, 0.26, 0, 8); sl.rotation.z = sx * Math.PI / 2; }
+      ku(0.02, rot, 0, 0.26, 0);
+      break;
+    }
+    case 'kakao': {
+      zy(0.08, 0.07, 0.15, rosa, 0, 0.07, 0); zy(0.072, 0.072, 0.01, M(0x6b3b22), 0, 0.14, 0);
+      teil(new THREE.TorusGeometry(0.045, 0.014, 8, 16), rosa, 0.085, 0.075, 0);
+      for (const [x, z] of [[-0.02, 0.01], [0.025, -0.02], [0.01, 0.03]]) teil(new THREE.BoxGeometry(0.03, 0.025, 0.03), weiss, x, 0.155, z);
+      break;
+    }
+    case 'teddy': {
+      const bt = M(0xa0703f), hell = M(0xe2c49b);
+      ku(0.1, bt, 0, 0.1, 0); ku(0.075, bt, 0, 0.25, 0); ku(0.03, hell, 0, 0.24, 0.065);
+      ku(0.03, bt, -0.06, 0.31, 0); ku(0.03, bt, 0.06, 0.31, 0);
+      for (const sx of [-1, 1]) { ku(0.04, bt, sx * 0.1, 0.12, 0.02); ku(0.042, bt, sx * 0.06, 0.01, 0.04); }
+      ku(0.012, navy, -0.025, 0.27, 0.065); ku(0.012, navy, 0.025, 0.27, 0.065);
+      teil(new THREE.TorusGeometry(0.05, 0.012, 8, 16), rosa, 0, 0.19, 0).rotation.x = Math.PI / 2;
+      break;
+    }
+    case 'laterne': {
+      teil(new THREE.BoxGeometry(0.13, 0.17, 0.13), M(0xffe08a, { emissive: 0xffc14d, emissiveIntensity: 0.8, transparent: true, opacity: 0.85 }), 0, 0.1, 0);
+      for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) teil(new THREE.BoxGeometry(0.016, 0.19, 0.016), navy, x * 0.065, 0.1, z * 0.065);
+      zy(0.01, 0.1, 0.06, navy, 0, 0.22, 0, 4).rotation.y = Math.PI / 4;
+      teil(new THREE.TorusGeometry(0.03, 0.008, 6, 12), navy, 0, 0.27, 0);
+      zy(0.09, 0.09, 0.02, navy, 0, 0.005, 0, 4).rotation.y = Math.PI / 4;
+      break;
+    }
+    case 'kerze': {
+      zy(0.05, 0.05, 0.22, M(0xd9474f), 0, 0.11, 0); zy(0.004, 0.004, 0.03, navy, 0, 0.235, 0);
+      const fl = ku(0.022, M(0xffd36b, { emissive: 0xffa31a, emissiveIntensity: 1.2 }), 0, 0.27, 0); fl.scale.y = 1.7;
+      zy(0.08, 0.08, 0.015, gold, 0, 0.0, 0);
+      break;
+    }
+    case 'kugel': {
+      ku(0.11, M(0xc0394a, { metalness: 0.4, roughness: 0.15 }), 0, 0.1, 0);
+      zy(0.025, 0.025, 0.04, gold, 0, 0.22, 0); teil(new THREE.TorusGeometry(0.018, 0.005, 6, 12), gold, 0, 0.25, 0);
+      teil(new THREE.TorusGeometry(0.11, 0.008, 6, 24), gold, 0, 0.1, 0).rotation.x = Math.PI / 2;
+      break;
+    }
+    case 'geschenk': {
+      teil(new THREE.BoxGeometry(0.2, 0.17, 0.2), rosa, 0, 0.085, 0);
+      teil(new THREE.BoxGeometry(0.21, 0.175, 0.04), navy, 0, 0.085, 0); teil(new THREE.BoxGeometry(0.04, 0.175, 0.21), navy, 0, 0.085, 0);
+      for (const sx of [-1, 1]) { const sl = teil(new THREE.TorusGeometry(0.035, 0.012, 8, 14), navy, sx * 0.035, 0.19, 0); sl.rotation.y = Math.PI / 2; sl.rotation.x = sx * 0.6; }
+      break;
+    }
+    case 'schneemann': {
+      ku(0.09, weiss, 0, 0.08, 0); ku(0.065, weiss, 0, 0.2, 0); ku(0.048, weiss, 0, 0.3, 0);
+      const n = zy(0, 0.012, 0.06, M(0xe58a2e), 0, 0.3, 0.06, 8); n.rotation.x = Math.PI / 2;
+      ku(0.008, navy, -0.018, 0.315, 0.043); ku(0.008, navy, 0.018, 0.315, 0.043);
+      teil(new THREE.TorusGeometry(0.05, 0.014, 8, 16), rot, 0, 0.255, 0).rotation.x = Math.PI / 2;
+      zy(0.035, 0.035, 0.05, navy, 0, 0.36, 0); zy(0.055, 0.055, 0.008, navy, 0, 0.338, 0);
+      break;
+    }
+    case 'mandarine': {
+      const m = ku(0.09, M(0xf28a1e, { roughness: 0.8 }), 0, 0.09, 0); m.scale.y = 0.85;
+      const b2 = ku(0.035, gruen, 0.03, 0.17, 0); b2.scale.set(1.4, 0.3, 0.7);
+      zy(0.006, 0.006, 0.03, braun, 0, 0.17, 0);
+      break;
+    }
+    case 'herz': {
+      const h = platt(herzForm(0.13), 0.03, braun); h.position.y = 0.13;
+      const r2 = platt(herzForm(0.1), 0.005, rosa); r2.position.set(0, 0.135, 0.02);
+      teil(new THREE.TorusGeometry(0.03, 0.006, 6, 12), rot, 0, 0.27, 0);
+      break;
+    }
+    case 'mistel': {
+      zy(0.008, 0.008, 0.22, M(0x6f7a3d), 0, 0.1, 0);
+      for (let i = 0; i < 6; i++) { const b2 = ku(0.04, gruen, Math.cos(i) * 0.05, 0.16 + (i % 3) * 0.03, Math.sin(i) * 0.05); b2.scale.set(1.8, 0.35, 0.8); b2.rotation.y = i; }
+      for (let i = 0; i < 4; i++) ku(0.014, weiss, Math.cos(i * 1.6) * 0.025, 0.2, Math.sin(i * 1.6) * 0.025);
+      for (const sx of [-1, 1]) { const sl = zy(0, 0.035, 0.07, rot, sx * 0.035, 0.08, 0, 8); sl.rotation.z = sx * Math.PI / 2; }
+      break;
+    }
+    case 'rentier': {
+      const bt = M(0x9a6a3e), hell = M(0xe2c49b);
+      const k = ku(0.09, bt, 0, 0.1, 0); k.scale.set(1, 0.9, 1.2);
+      ku(0.065, bt, 0, 0.23, 0.06); ku(0.035, hell, 0, 0.21, 0.115); ku(0.016, M(0xd62e3a, { emissive: 0x801010 }), 0, 0.22, 0.15);
+      ku(0.01, navy, -0.025, 0.25, 0.11); ku(0.01, navy, 0.025, 0.25, 0.11);
+      for (const sx of [-1, 1]) {
+        const g1 = zy(0.007, 0.009, 0.1, M(0x6b4423), sx * 0.04, 0.32, 0.04, 6); g1.rotation.z = -sx * 0.4;
+        const g2 = zy(0.006, 0.007, 0.05, M(0x6b4423), sx * 0.07, 0.34, 0.04, 6); g2.rotation.z = -sx * 1.2;
+        for (const z of [-0.05, 0.05]) zy(0.025, 0.025, 0.08, bt, sx * 0.05, 0.02, z);
+      }
+      break;
+    }
+    case 'baeumchen': {
+      zy(0.02, 0.02, 0.05, braun, 0, 0.025, 0);
+      zy(0, 0.11, 0.14, gruen, 0, 0.11, 0, 12); zy(0, 0.085, 0.12, gruen, 0, 0.19, 0, 12); zy(0, 0.06, 0.1, gruen, 0, 0.26, 0, 12);
+      const st = platt(sternForm(0.04, 0.018), 0.012, gold); st.position.y = 0.33;
+      for (const [x, y, z, f] of [[0.06, 0.09, 0.05, rot], [-0.05, 0.16, 0.05, weiss], [0.03, 0.22, 0.04, rosa], [-0.07, 0.08, -0.03, gold]]) ku(0.014, f, x, y, z);
+      break;
+    }
+    case 'zauberstab': {
+      zy(0.012, 0.012, 0.36, navy, 0, 0.08, 0);
+      const st = platt(sternForm(0.09, 0.04), 0.03, M(0xf2c230, { metalness: 0.5, roughness: 0.25, emissive: 0x7a5a00, emissiveIntensity: 0.4 })); st.position.y = 0.3;
+      for (const sx of [-1, 1]) { const b2 = teil(new THREE.BoxGeometry(0.008, 0.12, 0.004), rosa, sx * 0.03, 0.2, 0); b2.rotation.z = sx * 0.35; }
+      break;
+    }
+    default: return null;
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  g.rotation.y = -Math.PI / 2;   // die Vorderseite zeigt nach vorne (die Hand ist um 90° gedreht)
+  return g;
 }
 function handAktualisieren() {
   if (handDing && handDing.parent) handDing.parent.remove(handDing);
@@ -3248,6 +3458,12 @@ function sacheBekommen(name) {
   try { localStorage.setItem('turmparkour-hand', name); } catch (e) {}
   handAktualisieren(); leisteZeigen();
 }
+// Wer schon Türchen geschafft hat (vor dieser Neuerung), bekommt die Geschenke nachträglich
+for (const nr of geschafft) {
+  const g = GESCHENKE[nr];
+  if (g && g.sache && !meineSachen.includes(g.sache)) meineSachen.push(g.sache);
+}
+try { localStorage.setItem('turmparkour-sachen', JSON.stringify(meineSachen)); } catch (e) {}
 leisteZeigen(); handAktualisieren();
 
 function turmGeschafft(T) {
@@ -3262,7 +3478,15 @@ function turmGeschafft(T) {
     zeigeTuerchen();
   }
   if (T.welt === 'aesthetic') sacheBekommen('butter');
-  zeigeBanner(T.welt === 'aesthetic' ? 'Wolken-Turm geschafft! Du hast eine Squishy-Butter bekommen 🧈' : T.normal ? `${T.name} geschafft! 🌸` : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`, 3500);
+  let text = T.welt === 'aesthetic' ? 'Wolken-Turm geschafft! Du hast eine Squishy-Butter bekommen 🧈' : T.normal ? `${T.name} geschafft! 🌸` : T.nr === 24 ? 'Frohe Weihnachten! ⭐' : `Türchen ${T.nr} geschafft! 🎄`;
+  const g = !T.normal && !T.welt ? GESCHENKE[T.nr] : null;
+  if (g) {
+    const teile = [];
+    if (g.sache) { sacheBekommen(g.sache); teile.push(`${SACHEN[g.sache].name} ${SACHEN[g.sache].emoji}`); }
+    if (g.kleid) teile.push(`${g.name} (neu in der Umkleide 👗)`);
+    text += `\n🎁 Geschenk: ${teile.join(' und ')}`;
+  }
+  zeigeBanner(text, g ? 5000 : 3500);
   // Nach dem Feiern stehst du wieder vor dem Turm
   setTimeout(() => {
     spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
@@ -3629,6 +3853,10 @@ function startFlug(dt) {
   if (n !== startFlugWelt) {               // Welt wechseln: Himmel und Schnee anpassen
     startFlugWelt = n;
     weltZeigen(F.welt);
+    // Durchsichtige Türme (Sommer, Wolken-Turm): Plattformen innen schon im Startvideo zeigen
+    let neu = false;
+    for (const T of TUERME) if (T.normal && !T.gruppe && Math.hypot(T.cx - F.mitte.x, T.cz - F.mitte.z) < 300) { baueInnen(T); neu = true; }
+    if (neu) alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
   }
   const t = (startFlugZeit % FLUG_DAUER) / FLUG_DAUER;
   const e = t < 0.15 ? 0 : Math.min(1, (t - 0.15) / 0.6);
