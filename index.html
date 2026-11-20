@@ -2581,6 +2581,23 @@ function baueFigur(look, ziel = scene) {
     koerper.add(zipper);
   }
   figur.add(koerper);
+  // Schulterlinie wie auf der Zeichnung: vom Hals schräg runter bis in den Ärmel, ohne Stufe oder Spalte
+  if (oberteilTyp !== 'top') {
+    const ar = junge ? 1 : 0.88;
+    const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
+    const mat = oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : { map: stoff('weich', 3, 3) };
+    const gx = junge ? 0.385 : 0.34, gy = (junge ? 1.5 : 1.475) - 0.05;   // Mitte der runden Ärmelkappe
+    for (const seite of [-1, 1]) {
+      const von = new THREE.Vector2(0.11, 1.585), bis = new THREE.Vector2(gx, gy);
+      const lg = von.distanceTo(bis);
+      const joch = teil(new THREE.CapsuleGeometry(0.1 * ar, lg, 8, 16), farbe, mat);
+      joch.scale.set(1, 1, 0.9);
+      joch.scale.x = 0.62;                              // flach: liegt oben auf der Schulter
+      joch.position.set(seite * (von.x + bis.x) / 2, (von.y + bis.y) / 2 - 0.035, 0);
+      joch.rotation.z = seite * (Math.PI / 2 - Math.atan2(von.y - bis.y, bis.x - von.x));
+      figur.add(joch);
+    }
+  }
 
   // Hals
   const hals = teil(new THREE.CylinderGeometry(0.075, 0.085, 0.14, 12), look.haut);
