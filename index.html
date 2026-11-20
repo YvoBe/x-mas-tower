@@ -276,6 +276,8 @@
     #bereiche button .symbol { font-size: 16px; margin-bottom: 0; }
     #fertig { margin-bottom: 10px; padding: 6px 0 3px; font-size: 17px; }
   }
+  /* Emojis gedämpft: nicht so bunt und knallig */
+  .emo { filter: saturate(0.35) brightness(1.08) contrast(0.92); }
   /* Startbildschirm */
   #start {
     position: fixed; inset: 0; z-index: 15;
@@ -4724,4 +4726,42 @@ function groesseAnpassen() {
   renderer.setSize(w, h);
 }
 addEventListener('resize', groesseAnpassen);
+
+// ---------- Bunte Emojis ruhiger machen (passend zu Weiß, Oliv, Rosa, Marine) ----------
+// Jedes Emoji im Text bekommt eine Hülle <span class="emo">, die die Farben dämpft.
+const EMOJI = /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?/gu;
+function emojisDaempfen(wurzel) {
+  const weg = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      const el = n.parentElement;
+      if (!el || el.closest('script, style, svg, textarea, input, .emo')) return NodeFilter.FILTER_REJECT;
+      EMOJI.lastIndex = 0;
+      return EMOJI.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const liste = [];
+  while (weg.nextNode()) liste.push(weg.currentNode);
+  for (const n of liste) {
+    const teile = document.createDocumentFragment(), text = n.nodeValue;
+    let rest = 0;
+    EMOJI.lastIndex = 0;
+    for (const m of text.matchAll(EMOJI)) {
+      if (m.index > rest) teile.append(text.slice(rest, m.index));
+      const sp = document.createElement('span'); sp.className = 'emo'; sp.textContent = m[0];
+      teile.append(sp); rest = m.index + m[0].length;
+    }
+    if (rest < text.length) teile.append(text.slice(rest));
+    n.replaceWith(teile);
+  }
+}
+emojisDaempfen(document.body);
+new MutationObserver((aenderungen) => {
+  for (const a of aenderungen) {
+    if (a.type === 'characterData') { if (a.target.parentElement) emojisDaempfen(a.target.parentElement); }
+    else for (const n of a.addedNodes) {
+      if (n.nodeType === 1 && !n.classList.contains('emo')) emojisDaempfen(n);
+      else if (n.nodeType === 3 && n.parentElement) emojisDaempfen(n.parentElement);
+    }
+  }
+}).observe(document.body, { childList: true, subtree: true, characterData: true });
 </script>
