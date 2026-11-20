@@ -3266,15 +3266,29 @@ function baueFigur(look, ziel = scene) {
   const kopfSchmuck = look.kopf || 'ohne';
   const gold = { metalness: 0.55, roughness: 0.3 };
   if (kopfSchmuck === 'weihnachtsmuetze') {
+    // Weiche Mütze: sitzt eng auf dem Kopf, die Spitze knickt um und fällt zur Seite, Bommel am Ende
     const muetze = new THREE.Group();
-    const spitze = teil(new THREE.ConeGeometry(0.27, 0.42, 24, 1, true), '#c8323c', { side: THREE.DoubleSide, map: stoff('weich', 4, 2) });
-    spitze.position.y = 0.21; spitze.rotation.z = 0.25;
-    const rand = teil(new THREE.TorusGeometry(0.265, 0.055, 12, 32), '#f5f3ee', { map: stoff('strick', 8, 1) });
-    rand.rotation.x = Math.PI / 2;
-    const bommel = teil(new THREE.SphereGeometry(0.06, 14, 10), '#f5f3ee', { map: stoff('strick', 2, 2) });
-    bommel.position.set(-0.1, 0.42, 0);
-    muetze.add(spitze, rand, bommel);
-    muetze.position.set(0, 0.17, -0.02); muetze.rotation.x = -0.28;
+    const pfad = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.14, -0.01), new THREE.Vector3(0.03, 0.25, -0.03),
+      new THREE.Vector3(0.12, 0.3, -0.05), new THREE.Vector3(0.22, 0.24, -0.06), new THREE.Vector3(0.27, 0.12, -0.05)]);
+    const seg = 48, rad = 24, geo = new THREE.TubeGeometry(pfad, seg, 1, rad, false);
+    const pos = geo.attributes.position;
+    for (let a = 0; a <= seg; a++) {
+      const t = a / seg, c = pfad.getPointAt(t);
+      const r = 0.29 * Math.pow(1 - t, 1.25) + 0.012;                 // unten so weit wie der Kopf, oben spitz
+      for (let b = 0; b <= rad; b++) {
+        const v = a * (rad + 1) + b;
+        pos.setXYZ(v, c.x + (pos.getX(v) - c.x) * r, c.y + (pos.getY(v) - c.y) * r, c.z + (pos.getZ(v) - c.z) * r);
+      }
+    }
+    geo.computeVertexNormals();
+    const stoffTeil = teil(geo, '#b8323c', { side: THREE.DoubleSide, map: stoff('weich', 4, 2) });
+    const rand = teil(new THREE.TorusGeometry(0.278, 0.048, 14, 40), '#f5f3ee', { map: stoff('strick', 10, 1) });
+    rand.rotation.x = Math.PI / 2; rand.scale.set(1, 1.04, 1);
+    const bommel = teil(new THREE.SphereGeometry(0.058, 16, 12), '#f5f3ee', { map: stoff('strick', 2, 2) });
+    bommel.position.copy(pfad.getPointAt(1)).add(new THREE.Vector3(0.01, -0.03, 0));
+    muetze.add(stoffTeil, rand, bommel);
+    muetze.position.set(0, 0.13, -0.03); muetze.rotation.x = -0.32;   // sitzt etwas nach hinten, Stirn frei
     kopf.add(muetze);
   } else if (kopfSchmuck === 'rentierreif' || kopfSchmuck === 'ohrenschuetzer') {
     // Bügel über den Kopf, von Ohr zu Ohr
