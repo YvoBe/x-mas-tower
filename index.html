@@ -292,11 +292,24 @@
     box-shadow: 0 10px 0 var(--ink);
   }
   #start .logo { margin: 0; }
+  #start .girlande { display: block; width: calc(100% + 24px); height: 22px; margin: -12px -12px 4px; }
+  #start .girlande circle { animation: lichtchen 1.8s ease-in-out infinite; }
+  #start .girlande circle:nth-child(2n) { animation-delay: 0.9s; }
+  @keyframes lichtchen { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @media (prefers-reduced-motion: reduce) { #start .girlande circle { animation: none; } }
+  #start .schneehaube { position: absolute; left: 14px; right: 14px; top: -3px; height: 12px; pointer-events: none; z-index: 1; }
   #start .logo svg { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto; }
   #start .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  @media (max-height: 520px) { #start .logo svg { max-width: 250px; } }
+  @media (max-height: 520px) { #start .logo svg { max-width: 215px; } #start .girlande { height: 16px; } }
   #start .unter { margin: 6px 0 16px; font-size: 15px; font-weight: 600; }
   #start .knoepfe { display: grid; gap: 10px; }
+  #start .erklaerung { margin: -6px 0 14px; text-align: left; border: 2px dashed var(--rosa); border-radius: 16px; background: #fff; }
+  #start .erklaerung summary { cursor: pointer; list-style: none; padding: 6px 12px 3px; font-weight: 800; font-size: 16px; text-align: center; color: #c9607a; }
+  #start .erklaerung summary::-webkit-details-marker { display: none; }
+  #start .erklaerung summary:focus-visible { outline: 3px solid var(--rosa); outline-offset: 2px; border-radius: 12px; }
+  #start .erklaerung ul { margin: 0; padding: 0 14px 10px 30px; font-size: 14px; font-weight: 600; line-height: 1.35; }
+  #start .erklaerung li { margin: 5px 0; }
+  #start .erklaerung b { color: var(--ink); }
   #start button {
     font: 800 20px var(--font); border-radius: 16px; padding: 10px 14px 6px; cursor: pointer;
     border: 3px solid var(--ink); background: #fff; color: var(--ink);
@@ -340,6 +353,8 @@
   #start button.haupt:active { transform: translateY(4px); box-shadow: 0 2px 0 #10172e, 0 4px 8px rgba(31, 42, 74, 0.3); }
   #start button.haupt:focus-visible { outline: 3px solid var(--rosa); outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { #start .haupt .funkel { animation: none; opacity: 0.8; } #start button.haupt { transition: none; } }
+  #start #startFigur { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  #start .figurIcon { width: 30px; height: 32px; flex: none; margin-top: -4px; }
   #start .zwei { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   #start .zwei button { font-size: 16px; padding-left: 6px; padding-right: 6px; }
   #start button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
@@ -348,6 +363,9 @@
   @media (max-height: 520px) {
     #start .karte { padding: 12px 18px 12px; }
     #start .unter { margin-bottom: 10px; }
+    #start .erklaerung { margin-bottom: 10px; }
+    #start .erklaerung summary { font-size: 14px; padding: 4px 10px 2px; }
+    #start .erklaerung ul { font-size: 12.5px; }
     #start button { font-size: 17px; padding: 7px 12px 4px; }
     #start button.haupt { font-size: 22px; padding: 8px 14px 6px; gap: 10px; }
     #start .haupt .play { width: 34px; height: 34px; }
@@ -374,28 +392,72 @@
 
 <div id="start" role="dialog" aria-label="Startbildschirm">
   <div class="karte">
+    <svg class="girlande" viewBox="0 0 400 26" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 4 Q50 22 100 6 Q150 22 200 6 Q250 22 300 6 Q350 22 400 4" fill="none" stroke="#5d7a3a" stroke-width="3"/>
+      <g stroke="#1f2a4a" stroke-width="1"><circle cx="25" cy="12" r="4" fill="#f2c230"/><circle cx="50" cy="15" r="4" fill="#d9474f"/><circle cx="75" cy="12" r="4" fill="#e7a3b7"/>
+      <circle cx="125" cy="12" r="4" fill="#fbf8f2"/><circle cx="150" cy="15" r="4" fill="#f2c230"/><circle cx="175" cy="12" r="4" fill="#d9474f"/>
+      <circle cx="225" cy="12" r="4" fill="#e7a3b7"/><circle cx="250" cy="15" r="4" fill="#fbf8f2"/><circle cx="275" cy="12" r="4" fill="#f2c230"/>
+      <circle cx="325" cy="12" r="4" fill="#d9474f"/><circle cx="350" cy="15" r="4" fill="#e7a3b7"/><circle cx="375" cy="12" r="4" fill="#fbf8f2"/></g>
+    </svg>
     <h2 class="logo">
       <span class="sr">Tower World</span>
       <!-- Logo: olivgrünes Band mit TOWER, darunter großes World, dahinter rosa Türme -->
-      <svg viewBox="0 0 520 220" aria-hidden="true">
-        <g fill="#e7a3b7" opacity=".4">
-          <rect x="96" y="100" width="34" height="110" rx="3"/><path d="M90 100 L113 84 L136 100Z"/>
-          <rect x="150" y="80" width="40" height="130" rx="3"/><path d="M144 80 L170 62 L196 80Z"/>
-          <rect x="330" y="86" width="40" height="124" rx="3"/><path d="M324 86 L350 68 L376 86Z"/>
-          <rect x="390" y="108" width="34" height="100" rx="3"/><path d="M384 108 L407 92 L430 108Z"/>
+      <svg viewBox="0 0 520 230" aria-hidden="true">
+        <!-- Hintergrund: Weihnachtstürme mit Lichtern und Tannen -->
+        <g opacity=".45">
+          <g fill="#e7a3b7">
+            <rect x="96" y="100" width="34" height="110" rx="3"/><rect x="150" y="80" width="40" height="130" rx="3"/>
+            <rect x="330" y="86" width="40" height="124" rx="3"/><rect x="390" y="108" width="34" height="100" rx="3"/>
+          </g>
+          <g fill="#c9607a"><path d="M88 100 L113 82 L138 100Z"/><path d="M142 80 L170 60 L198 80Z"/><path d="M322 86 L350 66 L378 86Z"/><path d="M382 108 L407 90 L432 108Z"/></g>
+          <g fill="#fff"><path d="M88 100 Q113 92 138 100 L136 104 Q113 97 90 104Z"/><path d="M142 80 Q170 72 198 80 L196 84 Q170 77 144 84Z"/><path d="M322 86 Q350 78 378 86 L376 90 Q350 83 324 90Z"/><path d="M382 108 Q407 100 432 108 L430 112 Q407 105 384 112Z"/></g>
         </g>
+        <g fill="#8f9b52" opacity=".55"><path d="M40 210 L58 160 L76 210Z"/><path d="M46 186 L58 150 L70 186Z"/><path d="M444 210 L462 156 L480 210Z"/><path d="M450 184 L462 146 L474 184Z"/></g>
+        <!-- Band mit Schnee, Stechpalme und Lichterkette -->
         <path d="M70 38 L110 22 L110 76 L70 92 L86 62 Z" fill="#6f7a3d"/>
         <path d="M450 38 L410 22 L410 76 L450 92 L434 62 Z" fill="#6f7a3d"/>
         <path d="M100 20 Q260 2 420 20 L420 72 Q260 54 100 72 Z" fill="#8f9b52" stroke="#1f2a4a" stroke-width="4"/>
-        <text x="260" y="56" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="36" letter-spacing="14" fill="#fbf8f2">TOWER</text>
-        <text x="264" y="192" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#e7a3b7">World</text>
-        <text x="260" y="186" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#1f2a4a">World</text>
-        <text x="62" y="150" font-size="22" fill="#f2c230">★</text><text x="452" y="168" font-size="18" fill="#f2c230">★</text>
+        <path d="M100 22 Q260 4 420 22 L420 26 Q408 34 396 27 Q380 22 366 30 Q350 36 336 26 Q316 16 300 26 Q284 34 268 24 Q250 14 232 26 Q214 34 198 26 Q180 18 164 28 Q148 36 134 27 Q118 22 100 30 Z" fill="#fff" stroke="#1f2a4a" stroke-width="2.5" stroke-linejoin="round"/>
+        <text x="260" y="58" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="34" letter-spacing="14" fill="#fbf8f2">TOWER</text>
+        <path d="M112 70 Q260 54 408 70" fill="none" stroke="#1f2a4a" stroke-width="1.5"/>
+        <g stroke="#1f2a4a" stroke-width="1.2">
+          <circle cx="140" cy="68" r="4.5" fill="#f2c230"/><circle cx="176" cy="64" r="4.5" fill="#e7a3b7"/><circle cx="212" cy="62" r="4.5" fill="#d9474f"/><circle cx="248" cy="61" r="4.5" fill="#fbf8f2"/>
+          <circle cx="284" cy="61" r="4.5" fill="#f2c230"/><circle cx="320" cy="63" r="4.5" fill="#e7a3b7"/><circle cx="356" cy="65" r="4.5" fill="#d9474f"/><circle cx="388" cy="68" r="4.5" fill="#fbf8f2"/>
+        </g>
+        <g transform="translate(96 30)">
+          <path d="M0 0 C-14 -10 -30 -6 -34 4 C-26 2 -24 10 -16 8 C-14 14 -6 12 0 0Z" fill="#5d7a3a" stroke="#1f2a4a" stroke-width="2"/>
+          <path d="M0 0 C-6 -14 -2 -28 8 -32 C6 -24 14 -22 12 -14 C18 -12 16 -4 0 0Z" fill="#6f7a3d" stroke="#1f2a4a" stroke-width="2"/>
+          <circle cx="2" cy="2" r="6" fill="#d9474f" stroke="#1f2a4a" stroke-width="1.5"/><circle cx="-8" cy="-2" r="5" fill="#d9474f" stroke="#1f2a4a" stroke-width="1.5"/><circle cx="-2" cy="-10" r="5" fill="#d9474f" stroke="#1f2a4a" stroke-width="1.5"/>
+        </g>
+        <!-- World mit Schneehauben -->
+        <text x="264" y="194" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#e7a3b7">World</text>
+        <text x="260" y="188" text-anchor="middle" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800" font-size="104" fill="#1f2a4a">World</text>
+        <path d="M120 200 Q180 192 260 198 Q340 204 400 196 L400 206 Q330 214 260 208 Q180 202 120 210Z" fill="#fff" stroke="#1f2a4a" stroke-width="2" stroke-linejoin="round"/>
+        <!-- Zuckerstange und Schneeflocken -->
+        <g transform="translate(470 120) rotate(12)">
+          <path d="M0 80 L0 14 A14 14 0 0 0 -28 14 L-28 20" fill="none" stroke="#1f2a4a" stroke-width="13" stroke-linecap="round"/>
+          <path d="M0 80 L0 14 A14 14 0 0 0 -28 14 L-28 20" fill="none" stroke="#fbf8f2" stroke-width="8" stroke-linecap="round"/>
+          <path d="M0 80 L0 14 A14 14 0 0 0 -28 14 L-28 20" fill="none" stroke="#d9474f" stroke-width="8" stroke-dasharray="5 6"/>
+        </g>
+        <g fill="#9fb3d1" font-size="20"><text x="36" y="128">❄</text><text x="62" y="96" font-size="14">❄</text><text x="486" y="100" font-size="14">❄</text></g>
+        <text x="236" y="16" font-size="18" fill="#f2c230">★</text>
       </svg>
     </h2>
     <p class="unter">Springe über Plattformen und habe Spaß mit Freunden!</p>
+    <details class="erklaerung">
+      <summary>❓ Worum geht's?</summary>
+      <ul>
+        <li><b>Klettere nach oben:</b> In jedem Turm springst du von Plattform zu Plattform bis ganz nach oben. Fällst du runter, geht es beim letzten ⭐ Checkpoint weiter.</li>
+        <li><b>🎄 Weihnachten:</b> 24 Türme sind wie ein Adventskalender. Für jedes geschaffte Türchen bekommst du ein 🎁 Geschenk.</li>
+        <li><b>🌸 Sommer:</b> Drei sonnige Türme mit Plattformen, die sich drehen, hüpfen und wackeln.</li>
+        <li><b>☁️ Aesthetic ASMR:</b> Ein riesiger Wolken-Turm voller Squishies, die beim Draufspringen Geräusche machen.</li>
+        <li><b>👥 Zusammen spielen:</b> Gib Freunden deinen Code oben rechts, dann seid ihr in derselben Welt.</li>
+        <li><b>👤 Umkleide:</b> Mach dir deine Figur so, wie du willst.</li>
+      </ul>
+    </details>
     <div class="knoepfe">
       <button type="button" class="haupt" id="startLos" aria-label="Spielen">
+        <svg class="schneehaube" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 H300 V3 Q290 11 280 5 Q268 0 256 7 Q242 12 230 5 Q214 0 200 8 Q186 12 172 4 Q158 0 146 7 Q130 12 116 5 Q102 0 88 8 Q74 12 60 4 Q46 0 34 7 Q18 12 8 5 Q4 3 0 4Z" fill="#fff"/></svg>
         <span class="play" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M3 1.5 L16 9 L3 16.5 Z" fill="#fbf8f2" stroke="#fbf8f2" stroke-width="2" stroke-linejoin="round"/></svg></span>
         <span class="wort" aria-hidden="true">Spielen<small>Los geht's!</small></span>
         <svg class="turm" viewBox="0 0 30 44" aria-hidden="true">
@@ -412,7 +474,16 @@
         <button type="button" id="startSommer">🌸 Sommer</button>
         <button type="button" id="startAesthetic">☁️ Aesthetic ASMR</button>
       </div>
-      <button type="button" id="startFigur">👤 Figur ändern</button>
+      <button type="button" id="startFigur"><svg class="figurIcon" viewBox="0 0 34 36" aria-hidden="true">
+        <path d="M17 3 C8 3 6 10 7 18 L8 24 L26 24 L27 18 C28 10 26 3 17 3Z" fill="#7a4a2a"/>
+        <circle cx="17" cy="12" r="7" fill="#f3d2b8" stroke="#1f2a4a" stroke-width="1.6"/>
+        <path d="M10 10 C12 4 22 4 24 10 C20 7 14 7 10 10Z" fill="#7a4a2a"/>
+        <circle cx="14.4" cy="12.6" r="1.1" fill="#1f2a4a"/><circle cx="19.6" cy="12.6" r="1.1" fill="#1f2a4a"/>
+        <path d="M14.8 15.6 Q17 17.2 19.2 15.6" fill="none" stroke="#c9607a" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M5 35 C5 25 10 21 17 21 C24 21 29 25 29 35Z" fill="#fbf8f2" stroke="#1f2a4a" stroke-width="1.8"/>
+        <path d="M6.3 27 H27.7 M5.4 31 H28.6" stroke="#e7a3b7" stroke-width="2.4"/>
+        <path d="M24 3.5 l1.1 2.3 2.5.3-1.8 1.7.5 2.5L24 9.1l-2.3 1.2.5-2.5-1.8-1.7 2.5-.3z" fill="#f2c230" stroke="#1f2a4a" stroke-width=".6"/>
+      </svg>Figur ändern</button>
     </div>
     <p class="tipp keys-hint">WASD laufen · Shift sprinten · Leertaste springen</p>
     <p class="tipp touch-hint">Joystick laufen · RENN sprinten · Knopf springen</p>
@@ -4053,20 +4124,34 @@ const startFiguren = [];
     { frisur: 'zopf', haare: '#e6c27a', oberteilTyp: 'jacke', jacke: '#e7a3b7', hoseTyp: 'jeans', augen: 'wimpern', sommersprossen: true },
   ];
   const SOMMER_START = new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8);
-  for (const mitte of [START, SOMMER_START, new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20)]) {
-    looks.forEach((l, i) => {
-      const w = (i / looks.length) * Math.PI * 2 + 0.3, r = 2.4;
-      const f = baueFigur({ ...STANDARD_AUSSEHEN, ...l }, scene);
-      f.figur.position.set(mitte.x + Math.sin(w) * r, 0, mitte.z + Math.cos(w) * r);
-      f.figur.rotation.y = w;   // schauen nach außen
-      if (i % 2) f.armR.rotation.x = -2.6;   // winken
+  const AE_START = new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20);
+  // Die Figuren stehen verteilt in jeder Welt: zwei quatschen am Start, die anderen vor Türmen, am Baum, auf der Wiese ...
+  const vorTuer = (T, dx) => [T.cx + dx, T.cz - T.innen - 3, Math.PI];   // vor der Tür, Blick nach vorne
+  const turm = (nr) => TUERME.find((t) => t.nr === nr);
+  // Zwei Figuren, die sich anschauen und dabei halb zur ersten Kamera (Winkel c) gedreht sind
+  const PAAR = (m, c) => {
+    const dx = Math.sin(c), dz = Math.cos(c), px = Math.cos(c), pz = -Math.sin(c);
+    return [[m.x - px * 1.2, m.z - pz * 1.2, Math.atan2(px + dx, pz + dz)], [m.x + px * 1.2, m.z + pz * 1.2, Math.atan2(-px + dx, -pz + dz)]];
+  };
+  const ORTE = [
+    [...PAAR(START, Math.PI), vorTuer(turm(12), 1.6), vorTuer(turm(3), -1.4), [PLATZ.x + 4.5, PLATZ.z - 4.5, Math.PI - 0.6]],
+    [...PAAR(SOMMER_START, 18 * 0.12 + 4),   // Kamerawinkel, wenn der Sommer-Flug beginnt
+    vorTuer(HUEPF_TURM, 1.4), vorTuer(WEG_TURM, -1.4), [SOMMER.x - 38, SOMMER.z - 26, Math.PI - 0.9]],
+    [...PAAR(AE_START, 0), [AESTHETIC.x - 24, AESTHETIC.z - 34, Math.PI + 0.5], [AESTHETIC.x + 26, AESTHETIC.z - 12, Math.PI - 0.7], [AESTHETIC.x + 14, AESTHETIC.z - 44, Math.PI]],
+  ];
+  for (const orte of ORTE) {
+    orte.forEach(([x, z, blick], i) => {
+      const f = baueFigur({ ...STANDARD_AUSSEHEN, ...looks[i % looks.length] }, scene);
+      f.figur.position.set(x, 0, z);
+      f.figur.rotation.y = blick;
+      if (i >= 2 && i % 2 === 0) f.armR.rotation.x = -2.6;   // ein paar winken
       startFiguren.push(f);
     });
   }
 }
 const START_FLUG = [   // Reihenfolge: Aesthetic ASMR, dann Weihnachten, dann Sommer
   { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
-  { welt: 'winter', figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
+  { welt: 'winter', vorne: true, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
   { welt: 'sommer', figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
 ];
 const FLUG_DAUER = 9;    // Sekunden pro Welt
@@ -4087,7 +4172,8 @@ function startFlug(dt) {
   const t = (startFlugZeit % FLUG_DAUER) / FLUG_DAUER;
   const e = t < 0.15 ? 0 : Math.min(1, (t - 0.15) / 0.6);
   const s = e * e * (3 - 2 * e);          // weich hochfliegen
-  const winkel = startFlugZeit * 0.12 + n * 2;
+  // Weihnachten: die Kamera bleibt vorne, wo die Türen und Nummern sind (sonst sieht man die Rückseiten)
+  const winkel = F.vorne ? Math.PI + Math.sin(startFlugZeit * 0.35) * 0.4 : startFlugZeit * 0.12 + n * 2;
   const weit = 9 + (F.weit - 9) * s, hoch = 2.6 + (F.hoch - 2.6) * s;
   const ziel = _blick.copy(F.figuren).lerp(F.mitte, s);
   ziel.y = 1.2 * (1 - s) + (F.blick || 18) * s;
