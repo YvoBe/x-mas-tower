@@ -224,6 +224,8 @@
     border-radius: 999px; padding: 4px 14px 2px; cursor: pointer;
   }
   .worte button.an { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .worte button.zu { opacity: 0.55; border-style: dashed; cursor: not-allowed; display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .worte button.zu small { font-size: 0.72em; font-weight: 600; opacity: 0.8; }
   #fertig {
     margin: 0 18px 16px; padding: 10px 0 6px;
     font: 800 20px var(--font); color: #fff;
@@ -510,9 +512,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln' };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'weihnachtspulli'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'sternkrone'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -2382,6 +2384,47 @@ function ringelTextur(grund, streifen, baender, rx, ry) {
   RINGEL[key] = t;
   return t;
 }
+// Weihnachtspulli: Strick in der Grundfarbe, ein Band mit Zickzack, Tannenbäumen und Schneeflocken
+const WEIHNACHT_TEX = {};
+function weihnachtsTextur(grund, v0, v1, gross) {
+  const key = [grund, v0.toFixed(3), v1.toFixed(3), gross].join('|');
+  if (WEIHNACHT_TEX[key]) return WEIHNACHT_TEX[key];
+  stoff('strick', 1, 1);
+  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = grund; g.fillRect(0, 0, W, H);
+  const hell = parseInt(grund.slice(1, 3), 16) + parseInt(grund.slice(3, 5), 16) + parseInt(grund.slice(5, 7), 16) > 560;
+  const muster = hell ? '#c8323c' : '#f5f3ee', gruen = '#3f6b3a';
+  const yO = (1 - v1) * H, yU = (1 - v0) * H, hb = yU - yO;
+  const zick = (y, a) => { g.beginPath(); for (let x = 0; x <= W; x += a * 2) { g.lineTo(x, y); g.lineTo(x + a, y + a); } g.lineWidth = a * 0.6; g.strokeStyle = muster; g.stroke(); };
+  zick(yO - hb * 0.18, hb * 0.08); zick(yU + hb * 0.06, hb * 0.08);
+  const anzahl = gross ? 12 : 6;
+  for (let i = 0; i < anzahl; i++) {
+    const x = (i + 0.5) * W / anzahl, m = yO + hb / 2;
+    if (i % 2 === 0) {                                   // Tannenbaum
+      g.fillStyle = hell ? gruen : muster;
+      g.beginPath(); g.moveTo(x, m - hb * 0.42); g.lineTo(x + hb * 0.3, m + hb * 0.3); g.lineTo(x - hb * 0.3, m + hb * 0.3); g.fill();
+      g.fillRect(x - hb * 0.06, m + hb * 0.3, hb * 0.12, hb * 0.12);
+    } else {                                             // Schneeflocke
+      g.strokeStyle = muster; g.lineWidth = hb * 0.06; g.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        const w = k * Math.PI / 3, r = hb * 0.32;
+        g.beginPath(); g.moveTo(x - Math.cos(w) * r, m - Math.sin(w) * r); g.lineTo(x + Math.cos(w) * r, m + Math.sin(w) * r); g.stroke();
+      }
+    }
+  }
+  g.fillStyle = muster;                                  // kleine Punkte über das ganze Pulli verteilt
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 157) % W, y = (i * 263) % H;
+    if (y > yO - hb * 0.35 && y < yU + hb * 0.25) continue;
+    g.beginPath(); g.arc(x, y, gross ? 4 : 6, 0, Math.PI * 2); g.fill();
+  }
+  g.globalCompositeOperation = 'multiply';
+  const tw = W / (gross ? 40 : 10), th = H / (gross ? 12 : 8);
+  for (let x = 0; x < W; x += tw) for (let y = 0; y < H; y += th) g.drawImage(STOFF.strick, x, y, tw, th);
+  g.globalCompositeOperation = 'source-over';
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; WEIHNACHT_TEX[key] = t; return t;
+}
 function baueFigur(look, ziel = scene) {
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
@@ -2393,7 +2436,8 @@ function baueFigur(look, ziel = scene) {
   const hosenStoff = hoseTyp === 'jeans' ? 'jeans' : 'weich';
   const hoseM = (rx, ry) => ({ map: stoff(hosenStoff, rx, ry) });
   const naht = '#c9a25a';   // goldene Jeans-Naht
-  const oberteilTyp = look.oberteilTyp || 'pulli';
+  const weihnachtsPulli = look.oberteilTyp === 'weihnachtspulli';   // baut sich wie der Pulli, nur mit Weihnachtsmuster
+  const oberteilTyp = weihnachtsPulli ? 'pulli' : (look.oberteilTyp || 'pulli');
 
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const bein = (seite) => {
@@ -2513,7 +2557,7 @@ function baueFigur(look, ziel = scene) {
     const yVon = -0.44, yBis = 0.3, n = Math.max(2, Math.round((yBis - yVon) / 0.03));
     const vVon = (y) => ((y - yVon) / (yBis - yVon) * n + 1) / (n + 2);   // so verteilt LatheGeometry das Bild
     const baender = [0.2, 0.08, -0.04, -0.16, -0.28].map((y) => [vVon(y - 0.0225), vVon(y + 0.0225)]);
-    const pulli = teil(rumpf(yVon, yBis), '#ffffff', { map: ringelTextur(look.pulli, look.streifen, baender, 40, 12) });
+    const pulli = teil(rumpf(yVon, yBis), '#ffffff', { map: weihnachtsPulli ? weihnachtsTextur(look.pulli, vVon(-0.2), vVon(0.0), 1) : ringelTextur(look.pulli, look.streifen, baender, 40, 12) });
     koerper.add(pulli);
     const bund = teil(rumpf(-0.46, -0.38, 0.012), look.buendchen, { map: stoff('rippe', 14, 1) });
     const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen, { map: stoff('rippe', 1, 12) });
@@ -2646,7 +2690,7 @@ function baueFigur(look, ziel = scene) {
       if (oberteilTyp === 'pulli') {   // Ärmel mit aufgemalten Streifen (Textur)
         const v = (y) => (y + 0.55) / 0.5;
         const baender = [-0.12, -0.26, -0.4].map((y) => [v(y - 0.02), v(y + 0.02)]);
-        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.1 * ar, 0.5, 20), '#ffffff', { map: ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
+        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.1 * ar, 0.5, 20), '#ffffff', { map: weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
         aermel.position.y = -0.3;
       } else {
         aermel = teil(new THREE.CapsuleGeometry(0.1 * ar, 0.5, 8, 16), farbe, { map: stoff('weich', 6, 6) });
@@ -3028,7 +3072,71 @@ function baueFigur(look, ziel = scene) {
       }
     }
   }
+  // Kopfschmuck aus dem Adventskalender
+  const kopfSchmuck = look.kopf || 'ohne';
+  const gold = { metalness: 0.55, roughness: 0.3 };
+  if (kopfSchmuck === 'weihnachtsmuetze') {
+    const muetze = new THREE.Group();
+    const spitze = teil(new THREE.ConeGeometry(0.27, 0.42, 24, 1, true), '#c8323c', { side: THREE.DoubleSide, map: stoff('weich', 4, 2) });
+    spitze.position.y = 0.21; spitze.rotation.z = 0.25;
+    const rand = teil(new THREE.TorusGeometry(0.265, 0.055, 12, 32), '#f5f3ee', { map: stoff('strick', 8, 1) });
+    rand.rotation.x = Math.PI / 2;
+    const bommel = teil(new THREE.SphereGeometry(0.06, 14, 10), '#f5f3ee', { map: stoff('strick', 2, 2) });
+    bommel.position.set(-0.1, 0.42, 0);
+    muetze.add(spitze, rand, bommel);
+    muetze.position.set(0, 0.17, -0.02); muetze.rotation.x = -0.28;
+    kopf.add(muetze);
+  } else if (kopfSchmuck === 'rentierreif' || kopfSchmuck === 'ohrenschuetzer') {
+    // Bügel über den Kopf, von Ohr zu Ohr
+    const buegel = teil(new THREE.TorusGeometry(0.3, 0.018, 8, 32, Math.PI), kopfSchmuck === 'rentierreif' ? '#6b4329' : '#e7a3b7');
+    buegel.position.y = 0.0; buegel.scale.y = 1.07; buegel.rotation.x = -0.15;
+    kopf.add(buegel);
+    if (kopfSchmuck === 'rentierreif') {
+      for (const seite of [-1, 1]) {                    // Geweih: Stange mit zwei Zacken
+        const geweih = new THREE.Group();
+        const stange = teil(new THREE.CylinderGeometry(0.014, 0.022, 0.2, 8), '#8a5a33'); stange.position.y = 0.1;
+        const zacke1 = teil(new THREE.CylinderGeometry(0.01, 0.015, 0.09, 8), '#8a5a33'); zacke1.position.set(seite * 0.04, 0.12, 0); zacke1.rotation.z = -seite * 0.9;
+        const zacke2 = teil(new THREE.CylinderGeometry(0.01, 0.014, 0.08, 8), '#8a5a33'); zacke2.position.set(-seite * 0.03, 0.17, 0); zacke2.rotation.z = seite * 0.8;
+        geweih.add(stange, zacke1, zacke2);
+        geweih.position.set(seite * 0.17, 0.25, -0.04); geweih.rotation.z = -seite * 0.35;
+        const ohr = teil(new THREE.SphereGeometry(0.05, 12, 8), '#a8774a'); ohr.scale.set(1.4, 0.6, 0.5);
+        ohr.position.set(seite * 0.26, 0.15, -0.03); ohr.rotation.z = -seite * 0.6;
+        kopf.add(geweih, ohr);
+      }
+    } else {
+      for (const seite of [-1, 1]) {                    // flauschige Kugeln auf den Ohren
+        const puschel = teil(new THREE.SphereGeometry(0.1, 18, 14), '#f5f3ee', { map: stoff('strick', 3, 3) });
+        puschel.scale.set(0.6, 1, 1); puschel.position.set(seite * 0.29, -0.02, 0);
+        kopf.add(puschel);
+      }
+    }
+  } else if (kopfSchmuck === 'sternkrone') {
+    const krone = new THREE.Group();
+    const reif = teil(new THREE.TorusGeometry(0.2, 0.02, 8, 32), '#e2b84a', gold);
+    reif.rotation.x = Math.PI / 2;
+    krone.add(reif);
+    for (let i = 0; i < 5; i++) {
+      const w = (i / 5) * Math.PI * 2;
+      const stern = teil(sternForm(i === 0 ? 0.075 : 0.05, i === 0 ? 0.032 : 0.022), '#f2c230', gold);
+      stern.scale.z = 0.4;
+      stern.position.set(Math.sin(w) * 0.2, i === 0 ? 0.08 : 0.055, Math.cos(w) * 0.2);
+      stern.rotation.y = w;
+      krone.add(stern);
+    }
+    krone.position.set(0, 0.27, -0.02); krone.rotation.x = -0.2;
+    kopf.add(krone);
+  }
   figur.add(kopf);
+  if (look.schal === 'schal') {                          // Schal um den Hals, ein Ende hängt vorne runter
+    const schalFarbe = '#c8323c', schalMat = { map: stoff('strick', 10, 2) };
+    const ring = teil(new THREE.TorusGeometry(0.115, 0.055, 12, 28), schalFarbe, schalMat);
+    ring.rotation.x = Math.PI / 2; ring.position.y = 1.6; ring.scale.set(1, 0.9, 1);
+    const ende = teil(new THREE.BoxGeometry(0.09, 0.3, 0.035), schalFarbe, { map: stoff('strick', 2, 6) });
+    ende.position.set(0.07, 1.43, 0.15); ende.rotation.set(-0.2, 0, 0.12);
+    const fransen = teil(new THREE.BoxGeometry(0.09, 0.03, 0.035), '#f5f3ee');
+    fransen.position.set(0.088, 1.28, 0.18); fransen.rotation.set(-0.2, 0, 0.12);
+    figur.add(ring, ende, fransen);
+  }
 
   ziel.add(figur);
   return { figur, beinL, beinR, armL, armR, knieL, knieR };
@@ -3900,7 +4008,7 @@ const AUSWAHL = [
   { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['flechtzopf', 'Lang mit Flechtzopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jglatt', 'Kurz glatt'], ['jlocken', 'Kurz lockig']] },
   { titel: 'Pony', key: 'pony', ohne: ['frisur', ['junge', 'jglatt', 'jlocken']], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
-  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt']] },
+  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['weihnachtspulli', 'Weihnachtspulli']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
   { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'pulli'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
   { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
@@ -3911,6 +4019,8 @@ const AUSWAHL = [
   { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
   { titel: 'Stern auf der Hose', key: 'sternAn', ohne: ['hoseTyp', 'rock'], worte: [[true, 'Ja'], [false, 'Nein']] },
   { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', 'rock'], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
+  { titel: 'Kopfschmuck', key: 'kopf', worte: [['ohne', 'Nichts'], ['weihnachtsmuetze', 'Weihnachtsmütze'], ['rentierreif', 'Rentier-Haarreif'], ['ohrenschuetzer', 'Ohrenschützer'], ['sternkrone', 'Sternen-Krone']] },
+  { titel: 'Schal', key: 'schal', worte: [['ohne', 'Ohne'], ['schal', 'Schal']] },
   { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
 ];
 // Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
@@ -3967,6 +4077,13 @@ function spalteZeichnen() {
       if (gruppe.farben) { knopf.style.background = w; knopf.setAttribute('aria-label', `${gruppe.titel} ${w}`); }
       else knopf.textContent = text;
       if (w === aktuell) knopf.classList.add('an');
+      if (typeof w === 'string' && typeof kleidFrei === 'function' && !kleidFrei(w)) {   // Adventskalender-Geschenk: noch gesperrt
+        const nr = Object.keys(GESCHENKE).find((n) => GESCHENKE[n].kleid === w);
+        knopf.classList.add('zu');
+        knopf.disabled = true;
+        knopf.innerHTML = `🔒 ${text}<small>Türchen ${nr}</small>`;
+        knopf.title = `Schaffe Türchen ${nr}, dann bekommst du das!`;
+      }
       knopf.addEventListener('click', () => {
         AUSSEHEN[gruppe.key] = w;
         // Beim Wechsel Mädchen/Junge passende Frisur vorschlagen
