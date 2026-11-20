@@ -1455,25 +1455,27 @@ function themaDeko(T, g, platten) {
 function nummerTextur(nr, fertig) {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d');
-  // Schild in Wolken-/Blumenform (wie auf der Zeichnung)
-  const wolke = (rand) => {
+  // Schild in Sternform mit blauem Rand
+  const stern = (aussen, innen) => {
     g.beginPath();
-    for (let i = 0; i <= 240; i++) {
-      const a = (i / 240) * Math.PI * 2, rr = 98 - rand + 16 * Math.abs(Math.sin(a * 3.5));
-      const x = 128 + Math.cos(a) * rr, y = 128 + Math.sin(a) * rr;
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? innen : aussen;
+      const x = 128 + Math.cos(a) * r, y = 136 + Math.sin(a) * r;
       i ? g.lineTo(x, y) : g.moveTo(x, y);
     }
     g.closePath();
   };
+  g.lineJoin = 'round';
   g.fillStyle = fertig || nr === 24 ? '#f2c230' : '#fbf8f2';
-  wolke(-6); g.fill();
-  g.lineWidth = 12; g.strokeStyle = nr === 24 ? '#c8323c' : '#e7a3b7';
-  wolke(0); g.stroke();
+  g.strokeStyle = '#1f2a4a'; g.lineWidth = 14;
+  stern(118, 62); g.fill(); g.stroke();
+  g.strokeStyle = '#e7a3b7'; g.lineWidth = 4;   // feine rosa Linie innen
+  stern(98, 51); g.stroke();
   g.fillStyle = '#1f2a4a';
-  g.font = '800 140px "Baloo 2", "Trebuchet MS", sans-serif';
+  g.font = `800 ${nr >= 10 ? 74 : 88}px "Baloo 2", "Trebuchet MS", sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(nr === 25 ? '★' : String(nr), 128, 142);
-  if (fertig) { g.font = '800 54px sans-serif'; g.fillText('✓', 196, 60); }
+  g.fillText(nr === 25 ? '★' : String(nr), 128, 150);
+  if (fertig) { g.font = '800 46px sans-serif'; g.fillText('✓', 206, 52); }
   return new THREE.CanvasTexture(c);
 }
 
@@ -1612,7 +1614,7 @@ function baueHuelle(T) {
   }
 
   // Große Nummer vorne
-  T.schild = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6), new THREE.MeshBasicMaterial({ map: nummerTextur(T.nr, geschafft.includes(T.nr)), transparent: true }));
+  T.schild = new THREE.Mesh(new THREE.PlaneGeometry(7, 7), new THREE.MeshBasicMaterial({ map: nummerTextur(T.nr, geschafft.includes(T.nr)), transparent: true }));
   T.schild.position.set(cx, Math.max(TUER_HOCH + 4.5, hoehe * 0.48), cz - r - 0.45);
   if (T.normal) { if (!T.welt) fassade(T, r); T.schild.visible = false; }
   T.schild.rotation.y = Math.PI;
