@@ -3862,7 +3862,8 @@ function update(dt) {
     if (T) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
   }
   // Runtergefallen? Zurück zum Checkpoint
-  if (s.pos.y < -15 || (T && s.amBoden && s.pos.y < 0.1 && s.checkpoint.y > 1)) {
+  // Auch wer im Turm auf eine tiefere Ebene fällt (unter den letzten Checkpoint), kommt zurück zum Checkpoint
+  if (s.pos.y < -15 || (T && s.amBoden && s.pos.y < s.checkpoint.y - 1.5)) {
     // Sicherheitsnetz: Wer kurz nach dem Zurücksetzen gleich wieder fällt, kommt an den Eingang
     // (so gibt es nie eine Endlosschleife)
     if (T && zeit - (s.letzterNeustart || -9) < 1.5) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
