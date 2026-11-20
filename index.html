@@ -359,7 +359,7 @@
   @media (prefers-reduced-motion: reduce) { #start .haupt .funkel { animation: none; opacity: 0.8; } #start button.haupt { transition: none; } }
   #start #startFigur { display: flex; align-items: center; justify-content: center; gap: 10px; }
   #start .figurIcon { width: 30px; height: 32px; flex: none; margin-top: -4px; }
-  #start .zwei { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #start .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #start .zwei button { font-size: 16px; padding-left: 6px; padding-right: 6px; }
   #start button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   #start .tipp { margin: 14px 0 0; font-size: 13px; font-weight: 600; opacity: 0.8; }
@@ -453,7 +453,6 @@
       <ul>
         <li><b>Klettere nach oben:</b> In jedem Turm springst du von Plattform zu Plattform bis ganz nach oben. Fällst du runter, geht es beim letzten ⭐ Checkpoint weiter.</li>
         <li><b>🎄 Weihnachten:</b> 24 Türme sind wie ein Adventskalender. Für jedes geschaffte Türchen bekommst du ein 🎁 Geschenk.</li>
-        <li><b>🌸 Sommer:</b> Drei sonnige Türme mit Plattformen, die sich drehen, hüpfen und wackeln.</li>
         <li><b>☁️ Aesthetic ASMR:</b> Ein riesiger Wolken-Turm voller Squishies, die beim Draufspringen Geräusche machen.</li>
         <li><b>👥 Zusammen spielen:</b> Gib Freunden deinen Code oben rechts, dann seid ihr in derselben Welt.</li>
         <li><b>👤 Umkleide:</b> Mach dir deine Figur so, wie du willst.</li>
@@ -475,7 +474,6 @@
       </button>
       <div class="zwei">
         <button type="button" id="startWinter">🎄 Weihnachten</button>
-        <button type="button" id="startSommer">🌸 Sommer</button>
         <button type="button" id="startAesthetic">☁️ Aesthetic ASMR</button>
       </div>
       <button type="button" id="startFigur"><svg class="figurIcon" viewBox="0 0 34 36" aria-hidden="true">
@@ -507,7 +505,6 @@
   <div class="rechts">
     <div class="welten" role="group" aria-label="Welt aussuchen">
       <button type="button" id="weltWinter" aria-pressed="true">🎄 Weihnachten</button>
-      <button type="button" id="weltSommer" aria-pressed="false">🌸 Sommer</button>
       <button type="button" id="weltAesthetic" aria-pressed="false">☁️ Aesthetic ASMR</button>
     </div>
     <button type="button" class="tag zahl" id="codeKnopf" aria-label="Mit Freunden spielen">
@@ -1512,14 +1509,16 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
 // Die andere Seite: ein normaler Turm, den man immer spielen kann, mit drehenden Plattformen
 // Die Sommerwelt liegt weit weg von der Weihnachtswelt, damit man sie nicht sieht
 const SOMMER = { x: 0, z: 2400 };
-klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x6b8a3e, { dicke: 1 });   // grüne Wiese
+// Die Sommerwelt ist ausgeschaltet (die Spielerin wollte sie löschen). Auf true setzen, um sie zurückzuholen.
+const MIT_SOMMER = false;
+if (MIT_SOMMER) klotz(statisch, scene, SOMMER.x, 0, SOMMER.z, 1200, 1200, 0x6b8a3e, { dicke: 1 });   // grüne Wiese
 const DREH_TURM = { nr: 25, normal: true, spezial: false, anzahl: 50, cx: SOMMER.x, cz: SOMMER.z, innen: 10, hoehe: 56, gruppe: null, platten: [] };
 DREH_TURM.name = 'Dreh-Turm'; DREH_TURM.sommerArt = 'dreh';
 // Zwei weitere Türme in der Sommerwelt, jeder mit anderen Sachen zum Machen
 const HUEPF_TURM = { nr: 26, name: 'Hüpf-Turm', sommerArt: 'huepf', normal: true, spezial: false, anzahl: 40, cx: SOMMER.x - 120, cz: SOMMER.z + 75, innen: 10, hoehe: 72, gruppe: null, platten: [] };
 const WEG_TURM = { nr: 27, name: 'Wackel-Turm', sommerArt: 'weg', normal: true, spezial: false, anzahl: 44, cx: SOMMER.x + 115, cz: SOMMER.z + 40, innen: 10, hoehe: 50, gruppe: null, platten: [] };
 const SOMMER_TUERME = [DREH_TURM, HUEPF_TURM, WEG_TURM];
-for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
+if (MIT_SOMMER) for (const T of SOMMER_TUERME) { baueHuelle(T); TUERME.push(T); }
 // Dritte Welt "Aesthetic": ein super langer, durchsichtiger Turm auf einer riesigen Wolke im Sonnenuntergang
 const AESTHETIC = { x: 0, z: -2600 };
 const WOLKEN_TURM = { nr: 28, name: 'Wolken-Turm', welt: 'aesthetic', normal: true, spezial: false, anzahl: 110, cx: AESTHETIC.x, cz: AESTHETIC.z, innen: 10, hoehe: 120, gruppe: null, platten: [] };
@@ -1902,7 +1901,7 @@ while (gepflanzt < 80) {
 }
 
 // ---------- Sommerwelt: Blumenwiese um den Dreh-Turm ----------
-{
+if (MIT_SOMMER) {
   const cx = SOMMER.x, cz = SOMMER.z, R = 255;
   const rw = zufall(4242);
   const ort = (min) => { for (;;) { const w = rw() * Math.PI * 2, r = Math.sqrt(rw()) * (R - 1);
@@ -2053,7 +2052,7 @@ function baueGebirge(mx, mz, sommer) {
   scene.add(nadeln, kappen); WELT_TEILE.winter.push(nadeln, kappen);
 }
 baueGebirge(0, 0, false);
-baueGebirge(SOMMER.x, SOMMER.z, true);
+if (MIT_SOMMER) baueGebirge(SOMMER.x, SOMMER.z, true);
 
 // ---------- Aesthetic-ASMR-Welt: riesige Wolke im Sonnenuntergang ----------
 const aestheticHimmel = new THREE.Group();   // nur sichtbar, wenn man in dieser Welt ist
@@ -2137,7 +2136,7 @@ for (let i = 0; i < 34; i++) {
     wolke.add(s);
   }
   const winkel = Math.random() * Math.PI * 2, abstand = 80 + Math.random() * 160;
-  wolke.position.set(Math.cos(winkel) * abstand, 70 + Math.random() * 40, Math.sin(winkel) * abstand + (i % 2 ? SOMMER.z : 0));   // halb Weihnachts-, halb Sommerwelt
+  wolke.position.set(Math.cos(winkel) * abstand, 70 + Math.random() * 40, Math.sin(winkel) * abstand + (i % 2 && MIT_SOMMER ? SOMMER.z : 0));   // halb Weihnachts-, halb Sommerwelt
   wolke.userData.tempo = 0.3 + Math.random() * 0.4;
   scene.add(wolke);
   wolken.push(wolke);
@@ -4143,6 +4142,7 @@ const startFiguren = [];
     vorTuer(HUEPF_TURM, 1.4), vorTuer(WEG_TURM, -1.4), [SOMMER.x - 38, SOMMER.z - 26, Math.PI - 0.9]],
     [...PAAR(AE_START, 0), [AESTHETIC.x - 24, AESTHETIC.z - 34, Math.PI + 0.5], [AESTHETIC.x + 26, AESTHETIC.z - 12, Math.PI - 0.7], [AESTHETIC.x + 14, AESTHETIC.z - 44, Math.PI]],
   ];
+  if (!MIT_SOMMER) ORTE.splice(1, 1);
   for (const orte of ORTE) {
     orte.forEach(([x, z, blick], i) => {
       const f = baueFigur({ ...STANDARD_AUSSEHEN, ...looks[i % looks.length] }, scene);
@@ -4158,6 +4158,7 @@ const START_FLUG = [   // Reihenfolge: Aesthetic ASMR, dann Weihnachten, dann So
   { welt: 'winter', vorne: true, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
   { welt: 'sommer', figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
 ];
+if (!MIT_SOMMER) START_FLUG.splice(START_FLUG.findIndex((f) => f.welt === 'sommer'), 1);
 const FLUG_DAUER = 9;    // Sekunden pro Welt
 let startFlugZeit = 0, startFlugWelt = -1;
 const _blick = new THREE.Vector3();
@@ -4644,7 +4645,7 @@ function startSchliessen(sommer) {
 }
 document.getElementById('startLos').addEventListener('click', () => startSchliessen());
 document.getElementById('startWinter').addEventListener('click', () => startSchliessen(false));
-document.getElementById('startSommer').addEventListener('click', () => startSchliessen(true));
+document.getElementById('startSommer')?.addEventListener('click', () => startSchliessen(true));
 document.getElementById('startAesthetic').addEventListener('click', () => startSchliessen('aesthetic'));
 document.getElementById('startFigur').addEventListener('click', () => { startSchliessen(); editorOeffnen(); });
 addEventListener('keydown', (e) => { if (startOffen && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); startSchliessen(); } });
@@ -4659,7 +4660,7 @@ const WELT_FARBEN = { winter: [0xc6d8e6, 0xc6d8e6], sommer: [0xa9cfe8, 0xb8d6ea]
 function weltZeigen(welt) {
   zeigeWelt = welt;
   weltWinter.setAttribute('aria-pressed', String(welt === 'winter'));
-  weltSommer.setAttribute('aria-pressed', String(welt === 'sommer'));
+  weltSommer?.setAttribute('aria-pressed', String(welt === 'sommer'));
   weltAesthetic.setAttribute('aria-pressed', String(welt === 'aesthetic'));
   schneeFall.visible = welt === 'winter';
   aestheticHimmel.visible = welt === 'aesthetic';
@@ -4677,7 +4678,7 @@ function weltWechseln(welt) {
   tuermeNachladen(spieler.pos);
 }
 weltWinter.addEventListener('click', () => weltWechseln(false));
-weltSommer.addEventListener('click', () => weltWechseln(true));
+weltSommer?.addEventListener('click', () => weltWechseln(true));
 weltAesthetic.addEventListener('click', () => weltWechseln('aesthetic'));
 weltZeigen('winter');
 
