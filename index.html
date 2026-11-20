@@ -4252,6 +4252,7 @@ const ICONS = {
   makeup: ICON('<path d="M9.5 10h5v11h-5z"/><path d="M10 10V6.5L14 3v7"/><path d="M8.5 14h7"/>'),
   haare: ICON('<path d="M6 13c0-5 2.5-8.5 6-8.5s6 3.5 6 8.5v7"/><path d="M6 13v7"/><path d="M9 9.5c2 .3 4.5-.5 6.5-2.5"/><circle cx="12" cy="13" r="3.3"/>'),
   kleidung: ICON('<path d="M9 3.5 4 6l1.8 4.2L8 9.4V21h8V9.4l2.2.8L20 6l-5-2.5c-.4 1.5-1.6 2.4-3 2.4s-2.6-.9-3-2.4z"/>'),
+  geschenk: ICON('<rect x="4" y="9" width="16" height="11.5" rx="1.5"/><path d="M3 9h18M12 9v11.5"/><path d="M12 9C10.5 5.5 6.5 5 7 7.5 7.3 9 12 9 12 9zM12 9c1.5-3.5 5.5-4 5-1.5-.3 1.5-5 1.5-5 1.5z"/>'),
   schloss: ICON('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'),
 };
 const BEREICHE = [
@@ -4285,7 +4286,9 @@ nameFeld.addEventListener('keydown', (e) => e.stopPropagation());
 nameFeld.addEventListener('keyup', (e) => e.stopPropagation());
 function spalteZeichnen() {
   spalte.innerHTML = '';
-  for (const gruppe of AUSWAHL.filter((g) => passt(g) && bereichVon(g) === aktiverBereich)) {
+  // Gruppen, in denen alles außer „ohne“ noch ein Adventskalender-Geheimnis ist (z. B. Handschuhe), bleiben ganz versteckt
+  const geheim = (g) => g.worte && g.worte.some(([w]) => w === 'ohne') && g.worte.every(([w]) => w === 'ohne' || (typeof w === 'string' && !kleidFrei(w)));
+  for (const gruppe of AUSWAHL.filter((g) => passt(g) && bereichVon(g) === aktiverBereich && !geheim(g))) {
     const box = document.createElement('section');
     const h = document.createElement('h3'); h.textContent = gruppe.titel;
     const reihe = document.createElement('div'); reihe.className = gruppe.farben ? 'farben' : 'worte';
@@ -4301,8 +4304,9 @@ function spalteZeichnen() {
         const nr = Object.keys(GESCHENKE).find((n) => GESCHENKE[n].kleid === w);
         knopf.classList.add('zu');
         knopf.disabled = true;
-        knopf.innerHTML = `<span class="schloss" aria-hidden="true">${ICONS.schloss}</span>${text}<small>Türchen ${nr}</small>`;
-        knopf.title = `Schaffe Türchen ${nr}, dann bekommst du das!`;
+        knopf.innerHTML = `<span class="schloss" aria-hidden="true">${ICONS.geschenk}</span>Überraschung<small>aus dem Adventskalender</small>`;   // Name und Türchen bleiben geheim
+        knopf.title = 'Schaffe Türme im Adventskalender, dann siehst du, was es ist!';
+        knopf.setAttribute('aria-label', 'Überraschung aus dem Adventskalender, noch gesperrt');
       }
       knopf.addEventListener('click', () => {
         AUSSEHEN[gruppe.key] = w;
