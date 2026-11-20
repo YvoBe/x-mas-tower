@@ -586,7 +586,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -2798,11 +2798,11 @@ function baueFigur(look, ziel = scene) {
     if (kapuzenJacke) {
       // Echte Kapuze, nach hinten umgelegt: dicker Stoffwulst um den Nacken und ein flacher Beutel, der auf dem Rücken liegt
       const tiefe = rumpfBreite(0.1) * 0.56;
-      const wulst = teil(new THREE.TorusGeometry(0.15, 0.045, 12, 28, Math.PI * 1.25), look.jacke, { map: stoff('weich', 6, 2) });
-      wulst.rotation.set(Math.PI / 2, 0, Math.PI * 0.125 + Math.PI);   // Bogen läuft hinten um den Hals
-      wulst.scale.set(1.15, 0.85, 1); wulst.position.set(0, 0.3, -0.02);
-      const kante = teil(new THREE.TorusGeometry(0.15, 0.012, 8, 28, Math.PI * 1.25), look.buendchen);
-      kante.rotation.copy(wulst.rotation); kante.scale.copy(wulst.scale); kante.position.set(0, 0.335, -0.02);
+      const wulst = teil(new THREE.TorusGeometry(0.13, 0.045, 12, 28, Math.PI), look.jacke, { map: stoff('weich', 6, 2) });
+      wulst.rotation.set(Math.PI / 2, 0, Math.PI);   // Bogen läuft hinten um den Hals
+      wulst.scale.set(1.1, 0.9, 1); wulst.position.set(0, 0.28, -0.02);
+      const kante = teil(new THREE.TorusGeometry(0.13, 0.012, 8, 28, Math.PI), look.buendchen);
+      kante.rotation.copy(wulst.rotation); kante.scale.copy(wulst.scale); kante.position.set(0, 0.315, -0.02);
       const beutel = teil(new THREE.SphereGeometry(0.17, 24, 16), look.jacke, { map: stoff('weich', 4, 4) });
       beutel.scale.set(1.05, 1.0, 0.32); beutel.position.set(0, 0.14, -tiefe - 0.01); beutel.rotation.x = 0.12;
       koerper.add(wulst, kante, beutel);
@@ -2810,17 +2810,17 @@ function baueFigur(look, ziel = scene) {
   }
   figur.add(koerper);
   // Schulterlinie wie auf der Zeichnung: vom Hals schräg runter bis in den Ärmel, ohne Stufe oder Spalte
-  if (oberteilTyp !== 'top') {
+  {
     const ar = junge ? 1 : 0.88;
-    const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
-    const mat = oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : { map: stoff('weich', 3, 3) };
+    const farbe = oberteilTyp === 'top' ? look.haut : oberteilTyp === 'jacke' ? look.jacke : look.pulli;
+    const mat = oberteilTyp === 'pulli' ? { map: pyjama ? lebkuchenTextur(look.pulli, 1, 1) : stoff('strick', 3, 3) } : oberteilTyp === 'top' ? {} : { map: stoff('weich', 3, 3) };
     const gx = junge ? 0.385 : 0.34, gy = (junge ? 1.5 : 1.475) - 0.05;   // Mitte der runden Ärmelkappe
     for (const seite of [-1, 1]) {
-      const von = new THREE.Vector2(0.11, 1.585), bis = new THREE.Vector2(gx, gy);
+      const von = new THREE.Vector2(0.1, 1.585), bis = new THREE.Vector2(gx + 0.015, gy);
       const lg = von.distanceTo(bis);
-      const joch = teil(new THREE.CapsuleGeometry(0.1 * ar, lg, 8, 16), farbe, mat);
+      const joch = teil(new THREE.CapsuleGeometry((oberteilTyp === 'top' ? 0.085 : 0.1) * ar, lg, 8, 16), farbe, mat);
       joch.scale.set(1, 1, 0.9);
-      joch.scale.x = 0.62;                              // flach: liegt oben auf der Schulter
+      joch.scale.x = 0.68;                              // flach: liegt oben auf der Schulter
       joch.position.set(seite * (von.x + bis.x) / 2, (von.y + bis.y) / 2 - 0.035, 0);
       joch.rotation.z = seite * (Math.PI / 2 - Math.atan2(von.y - bis.y, bis.x - von.x));
       figur.add(joch);
@@ -2844,13 +2844,13 @@ function baueFigur(look, ziel = scene) {
     const schulterMat = oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : oberteilTyp === 'top' ? {} : { map: stoff('weich', 3, 3) };
     // Runde Schulter = genau die obere Hälfte vom Ärmel (gleich dick, sitzt direkt auf dem Ärmel), dadurch kein extra Kreis
     const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.085 : 0.1) * ar, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), schulterFarbe, schulterMat);
-    kugel.position.y = -0.05;
+    kugel.position.y = -0.05; kugel.scale.y = 0.55;   // flach, damit sie nicht über die Schulterlinie hinausschaut
     if (oberteilTyp !== 'top') gelenk.add(kugel);   // beim Top ist der Arm selbst oben rund
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
       // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
-      const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), -0.05 + 0.085 * Math.cos(w)]; }), [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
+      const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), -0.05 + 0.047 * Math.cos(w)]; }), [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
         .map(([r, y]) => new THREE.Vector2(r * ar, y));
-      const a = teil(new THREE.LatheGeometry(profil, 20), look.haut);
+      const a = teil(new THREE.LatheGeometry(profil.reverse(), 24), look.haut);   // von unten nach oben, sonst zeigt die Fläche nach innen und man sieht durch den Arm
       a.scale.z = 1.08;
       gelenk.add(a);
       if (oberteilTyp === 'tshirt') {   // kurzer Ärmel bis knapp über den Ellbogen
@@ -3331,6 +3331,7 @@ function baueFigur(look, ziel = scene) {
 }
 // Gespeichertes Aussehen laden (falls schon im Editor geändert)
 try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
+if (AUSSEHEN.frisur === 'jglatt') AUSSEHEN.frisur = 'junge';   // „Kurz glatt“ gibt es nicht mehr
 // Gespeicherte Werte, die es nicht mehr gibt (z. B. große Augen), auf Normal zurücksetzen
 for (const [k, w] of Object.entries(WAHL_WORTE)) if (!w.includes(AUSSEHEN[k])) AUSSEHEN[k] = STANDARD_AUSSEHEN[k];
 let held = baueFigur(AUSSEHEN);
@@ -4215,7 +4216,7 @@ const AUSWAHL = [
   { titel: 'Augenbrauen', key: 'brauen', worte: [['bogen', 'Geschwungen'], ['gerade', 'Gerade'], ['hoch', 'Hoher Bogen'], ['buschig', 'Buschig'], ['fein', 'Fein']] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['linie', 'Strich-Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
-  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['flechtzopf', 'Lang mit Flechtzopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jglatt', 'Kurz glatt'], ['jlocken', 'Kurz lockig']] },
+  { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['flechtzopf', 'Lang mit Flechtzopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jlocken', 'Kurz lockig']] },
   { titel: 'Pony', key: 'pony', ohne: ['frisur', ['junge', 'jglatt', 'jlocken']], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
