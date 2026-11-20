@@ -2347,9 +2347,7 @@ function baueFigur(look, ziel = scene) {
       const o = teil(new THREE.CylinderGeometry(0.15, 0.16, 0.44, 18), look.hose, hoseM(10, 4)); o.position.y = -0.21;
       const u = teil(new THREE.CylinderGeometry(0.16, 0.175, 0.36, 18), look.hose, hoseM(10, 3)); u.position.y = -0.17;
       const umschlag = teil(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 18), look.umschlag, hoseM(10, 1)); umschlag.position.y = -0.28;
-      const n1 = teil(new THREE.BoxGeometry(0.012, 0.44, 0.012), naht); n1.position.set(seite * 0.155, -0.21, 0);
-      const n2 = teil(new THREE.BoxGeometry(0.012, 0.26, 0.012), naht); n2.position.set(seite * 0.168, -0.1, 0);
-      gelenk.add(o, n1); knie.add(u, umschlag, n2);
+      gelenk.add(o); knie.add(u, umschlag);
     } else if (hoseTyp === 'jogging') { // Jogginghose: schmal, Bündchen am Knöchel, Streifen an der Seite
       const o = teil(new THREE.CylinderGeometry(0.15, 0.145, 0.44, 18), look.hose, hoseM(10, 4)); o.position.y = -0.21;
       const u = teil(new THREE.CylinderGeometry(0.145, 0.12, 0.34, 18), look.hose, hoseM(10, 3)); u.position.y = -0.16;
@@ -2397,7 +2395,18 @@ function baueFigur(look, ziel = scene) {
   }
 
   // Hüfte
-  const huefte = teil(prisma(junge ? 0.52 : 0.46, 0.24, junge ? 0.29 : 0.27, 0.1), look.hose, hoseM(14, 14));
+  // Hüfte: rund wie der Körper (kein flaches Viereck vorne), gleicher Stoff wie die Hosenbeine
+  const hb = junge ? 0.26 : 0.23, ht = junge ? 0.145 : 0.135;
+  const hProfil = [[0.001, -0.17], [hb * 0.35, -0.165], [hb * 0.7, -0.13], [hb * 0.93, -0.07], [hb, 0.0], [hb, 0.12], [0.001, 0.12]].map(([r, y]) => new THREE.Vector2(r, y));
+  const hGeo = new THREE.LatheGeometry(hProfil, 32);
+  { const pos = hGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i), w = Math.atan2(z, x);
+      const f = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), 2.8) + Math.pow(Math.abs(Math.sin(w)), 2.8), 1 / 2.8);
+      pos.setX(i, x * f); pos.setZ(i, z * f * ht / hb);
+    }
+    hGeo.computeVertexNormals(); }
+  const huefte = teil(hGeo, look.hose, hoseM(10, 2));
   huefte.position.y = 0.84;
   figur.add(huefte);
   if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
@@ -2455,10 +2464,21 @@ function baueFigur(look, ziel = scene) {
     koerper.add(top, haut, saum);
     for (const seite of [-1, 1]) {
       // Runder Träger: ein Schlauch, der vorne hochgeht, über die Schulter läuft und hinten wieder runter
-      const tx = seite * (junge ? 0.16 : 0.15);
-      const bogen = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(tx, 0.1, 0.17), new THREE.Vector3(tx, 0.24, 0.15), new THREE.Vector3(tx * 1.02, 0.315, 0.06),
-        new THREE.Vector3(tx * 1.02, 0.325, -0.02), new THREE.Vector3(tx * 1.02, 0.31, -0.1), new THREE.Vector3(tx, 0.22, -0.16), new THREE.Vector3(tx, 0.1, -0.17)]);
+      // Die Punkte liegen genau auf der Haut: vorne hoch, über die Schulter, hinten runter
+      const tx = seite * (junge ? 0.16 : 0.15), d = 0.014;
+      const flaeche = (y) => {                         // Tiefe der Haut bei x = tx (gleiche Form wie rumpf())
+        const R = rumpfBreite(y) - 0.02, q = Math.min(0.999, Math.abs(tx) / R);
+        return R * (0.56 - 0.012) * Math.pow(1 - Math.pow(q, 2.8), 1 / 2.8);
+      };
+      let yTop = 0.1;
+      while (yTop < 0.3 && rumpfBreite(yTop + 0.01) - 0.02 > Math.abs(tx) + 0.01) yTop += 0.01;
+      const vorn = [], hint = [];
+      for (let y = 0.1; y <= yTop + 0.001; y += 0.03) {
+        const z = flaeche(Math.min(y, yTop)) + d;
+        vorn.push(new THREE.Vector3(tx, y, z)); hint.unshift(new THREE.Vector3(tx, y, -z));
+      }
+      const zt = flaeche(yTop) * 0.6;
+      const bogen = new THREE.CatmullRomCurve3([...vorn, new THREE.Vector3(tx, yTop + d * 0.9, zt), new THREE.Vector3(tx, yTop + d, 0), new THREE.Vector3(tx, yTop + d * 0.9, -zt), ...hint]);
       const traeger = teil(new THREE.TubeGeometry(bogen, 30, 0.016, 8, false), look.pulli);
       koerper.add(traeger);
     }
@@ -2505,9 +2525,7 @@ function baueFigur(look, ziel = scene) {
     }
     const zipper = teil(new THREE.BoxGeometry(0.02, 0.045, 0.012), '#c9c9c9', { metalness: 0.7, roughness: 0.3 });
     zipper.position.set(Math.sin(offen) * (rumpfBreite(-0.05) + dick), -0.05, vorne(-0.05, dick) * Math.cos(offen) + 0.012);
-    const kapuze = teil(new THREE.TorusGeometry(0.17, 0.06, 10, 20, Math.PI), look.jacke);   // Kapuze hinten
-    kapuze.rotation.set(-0.5, 0, Math.PI); kapuze.position.set(0, 0.3, -0.16);
-    koerper.add(zipper, kapuze);
+    koerper.add(zipper);
   }
   figur.add(koerper);
 
@@ -2528,6 +2546,13 @@ function baueFigur(look, ziel = scene) {
       oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : {});
     kugel.position.y = -0.02;
     gelenk.add(kugel);
+    if (oberteilTyp === 'top') {   // freie Schulter: Haut geht vom Körper rund bis zum Arm, ohne Lücke
+      const schulter = teil(new THREE.CapsuleGeometry(0.07 * ar, 0.16, 6, 12), look.haut);
+      schulter.rotation.z = Math.PI / 2 + seite * 0.18;   // fällt leicht zum Arm hin ab
+      schulter.scale.set(0.85, 1, 0.9);
+      schulter.position.set(-seite * 0.1, 0.0, 0);
+      gelenk.add(schulter);
+    }
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
       // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
       const profil = [[0.001, 0.06], [0.05, 0.05], [0.08, 0.0], [0.085, -0.08], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
@@ -2724,19 +2749,32 @@ function baueFigur(look, ziel = scene) {
       seitlich.rotation.z = 0.28;          // schräge Kante: die Haare liegen zur Seite
       kopf.add(seitlich);
     } else {
-      // Kurz lockig: viele kleine Kringel überall auf dem Kopf, Stirn bleibt frei
+      // Kurz lockig: viele kurze gedrehte Locken (kleine Spiralen), die am Kopf entlang nach unten fallen
       oben.rotation.x = -0.5;
       const r = zufall(31);
-      const kringel = [new THREE.TorusGeometry(0.028, 0.016, 8, 14), new THREE.TorusGeometry(0.034, 0.017, 8, 14)];
-      for (let i = 0; i < 90; i++) {
-        const th = Math.sqrt(r()) * Math.PI * 0.62, ph = r() * Math.PI * 2 - Math.PI;
-        if (Math.abs(ph) < 1.2 && th > Math.PI * 0.3) continue;            // nicht ins Gesicht
-        if (Math.abs(ph) < 1.9 && th > Math.PI * 0.45) continue;           // an den Seiten nur bis über die Ohren
+      const kringelLocke = (laenge, weite, dicke, windungen, phase) => {
+        const punkte = [];
+        for (let i = 0; i <= 24; i++) {
+          const t = i / 24, w = phase + t * windungen * Math.PI * 2, rr = weite * (0.7 + t * 0.5);
+          punkte.push(new THREE.Vector3(Math.cos(w) * rr, -t * laenge, Math.sin(w) * rr));
+        }
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 30, dicke, 6, false);
+      };
+      const lockenArten = [kringelLocke(0.1, 0.02, 0.016, 1.7, 0), kringelLocke(0.13, 0.022, 0.017, 2.1, 1.2), kringelLocke(0.085, 0.018, 0.015, 1.5, 2.4)];
+      const runter = new THREE.Vector3(0, -1, 0), achseY = new THREE.Vector3(0, -1, 0);
+      for (let i = 0; i < 160; i++) {
+        const th = Math.sqrt(r()) * Math.PI * 0.6, ph = r() * Math.PI * 2 - Math.PI;
+        if (Math.abs(ph) < 1.2 && th > Math.PI * 0.27) continue;            // nicht ins Gesicht
+        if (Math.abs(ph) < 1.9 && th > Math.PI * 0.43) continue;            // an den Seiten nur bis über die Ohren
         const n = new THREE.Vector3(Math.sin(th) * Math.sin(ph), Math.cos(th), Math.sin(th) * Math.cos(ph));
-        const k = H(kringel[i % 2]);
-        k.position.copy(n).multiplyScalar(0.272); k.position.y *= 1.07;
-        k.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        k.rotateZ(r() * 6.3); k.rotateX((r() - 0.5) * 0.7);
+        // Richtung: am Kopf entlang nach unten (oben auf dem Kopf nach vorne/außen), etwas zufällig
+        let d = runter.clone().sub(n.clone().multiplyScalar(runter.dot(n)));
+        if (d.length() < 0.3) d = new THREE.Vector3(Math.sin(ph), 0, Math.cos(ph)).sub(n.clone().multiplyScalar(0));
+        d.normalize().add(new THREE.Vector3((r() - 0.5) * 0.6, 0, (r() - 0.5) * 0.6)).addScaledVector(n, 0.25).normalize();
+        const k = H(lockenArten[i % 3]);
+        k.position.copy(n).multiplyScalar(0.262); k.position.y *= 1.07;
+        k.quaternion.setFromUnitVectors(achseY, d);
+        k.rotateY(r() * 6.3);
         kopf.add(k);
       }
     }
