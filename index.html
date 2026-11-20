@@ -4014,7 +4014,7 @@ function baueKabine() {
       pos.setX(i, x * (1 - 0.25 * Math.sin(t * Math.PI)));   // in der Mitte etwas zusammengerafft
     }
     geo.computeVertexNormals();
-    const vorhang = new THREE.Mesh(geo, M(0xe7a3b7, { side: THREE.DoubleSide, roughness: 0.9, map: stoff('weich', 3, 8) }));
+    const vorhang = new THREE.Mesh(geo, M(0x34497a, { side: THREE.DoubleSide, roughness: 0.9, map: stoff('weich', 3, 8) }));
     vorhang.position.set(sx * (2.3 - breite / 2 + 0.05), hoch / 2 + 0.03, 0.15);
     vorhang.castShadow = true;
     const band = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 8, 24), M(0xc9a85a, { metalness: 0.4 }));
