@@ -296,7 +296,45 @@
     font: 800 20px var(--font); border-radius: 16px; padding: 10px 14px 6px; cursor: pointer;
     border: 3px solid var(--ink); background: #fff; color: var(--ink);
   }
-  #start button.haupt { background: var(--ink); color: #fff; font-size: 24px; }
+  /* Großer Spielen-Knopf: Marine mit rosa Steppnaht, Glanz, Play-Kreis, Turm und Funkel-Sternen */
+  #start button.haupt {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 12px 18px 10px; border-radius: 22px; border: 3px solid var(--ink);
+    background: linear-gradient(180deg, #34426b 0%, #1f2a4a 55%, #182240 100%);
+    color: #fff; font-size: 28px; letter-spacing: 1px;
+    box-shadow: 0 6px 0 #10172e, 0 10px 18px rgba(31, 42, 74, 0.35);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  #start button.haupt::before {   /* rosa Naht innen */
+    content: ''; position: absolute; inset: 5px; border-radius: 16px; z-index: -1;
+    border: 2px dashed rgba(231, 163, 183, 0.75);
+  }
+  #start button.haupt::after {    /* Glanz oben */
+    content: ''; position: absolute; left: 10px; right: 10px; top: 4px; height: 42%; border-radius: 14px 14px 40px 40px; z-index: -1;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  }
+  #start .haupt .play {
+    flex: none; width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: radial-gradient(circle at 35% 30%, #f6c9d6, #e7a3b7 55%, #c9607a);
+    border: 3px solid #fbf8f2; box-shadow: 0 3px 0 #10172e; transition: transform 0.15s;
+  }
+  #start .haupt .play svg { width: 18px; height: 18px; margin-left: 3px; }
+  #start .haupt .wort { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+  #start .haupt .wort small { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #e7a3b7; margin-top: 4px; text-transform: uppercase; }
+  #start .haupt .turm { flex: none; width: 30px; height: 44px; opacity: 0.95; }
+  #start .haupt .funkel { position: absolute; color: #f2c230; font-size: 14px; line-height: 1; animation: funkeln 2.4s ease-in-out infinite; }
+  #start .haupt .funkel.f1 { left: 16px; top: 9px; }
+  #start .haupt .funkel.f2 { right: 20px; top: 8px; font-size: 11px; animation-delay: 0.8s; }
+  #start .haupt .funkel.f3 { right: 64px; bottom: 9px; font-size: 9px; animation-delay: 1.6s; }
+  #start .haupt .funkel.f4 { left: 70px; bottom: 8px; font-size: 10px; animation-delay: 1.2s; }
+  @keyframes funkeln { 0%, 100% { opacity: 0.25; transform: scale(0.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
+  #start button.haupt:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #10172e, 0 14px 22px rgba(31, 42, 74, 0.4); }
+  #start button.haupt:hover .play { transform: scale(1.08); }
+  #start button.haupt:active { transform: translateY(4px); box-shadow: 0 2px 0 #10172e, 0 4px 8px rgba(31, 42, 74, 0.3); }
+  #start button.haupt:focus-visible { outline: 3px solid var(--rosa); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { #start .haupt .funkel { animation: none; opacity: 0.8; } #start button.haupt { transition: none; } }
   #start .zwei { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   #start .zwei button { font-size: 16px; padding-left: 6px; padding-right: 6px; }
   #start button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
@@ -306,7 +344,11 @@
     #start .karte { padding: 12px 18px 12px; }
     #start .unter { margin-bottom: 10px; }
     #start button { font-size: 17px; padding: 7px 12px 4px; }
-    #start button.haupt { font-size: 20px; }
+    #start button.haupt { font-size: 22px; padding: 8px 14px 6px; gap: 10px; }
+    #start .haupt .play { width: 34px; height: 34px; }
+    #start .haupt .play svg { width: 14px; height: 14px; }
+    #start .haupt .turm { height: 34px; width: 24px; }
+    #start .haupt .wort small { font-size: 10px; margin-top: 2px; }
     #start .tipp { display: none; }
   }
   /* Hochkant auf dem Handy: Hinweis zum Drehen */
@@ -341,7 +383,18 @@
     </h2>
     <p class="unter">Springe über Plattformen und habe Spaß mit Freunden!</p>
     <div class="knoepfe">
-      <button type="button" class="haupt" id="startLos">▶ Spielen</button>
+      <button type="button" class="haupt" id="startLos" aria-label="Spielen">
+        <span class="play" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M3 1.5 L16 9 L3 16.5 Z" fill="#fbf8f2" stroke="#fbf8f2" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <span class="wort" aria-hidden="true">Spielen<small>Los geht's!</small></span>
+        <svg class="turm" viewBox="0 0 30 44" aria-hidden="true">
+          <path d="M15 1 l1.4 2.9 3.1.4-2.3 2.2.6 3.1L15 8.1l-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="#f2c230"/>
+          <path d="M3 15 L15 10 L27 15 Z" fill="#e7a3b7" stroke="#fbf8f2" stroke-width="1.5" stroke-linejoin="round"/>
+          <rect x="6" y="15" width="18" height="28" rx="1.5" fill="#fbf8f2"/>
+          <path d="M6 22 L24 18 M6 30 L24 26" stroke="#e7a3b7" stroke-width="1.6" stroke-dasharray="1.6 2.2"/>
+          <path d="M12 43 v-7 a3 3 0 0 1 6 0 v7 z" fill="#8f9b52"/>
+        </svg>
+        <span class="funkel f1" aria-hidden="true">✦</span><span class="funkel f2" aria-hidden="true">✦</span><span class="funkel f3" aria-hidden="true">✦</span><span class="funkel f4" aria-hidden="true">✦</span>
+      </button>
       <div class="zwei">
         <button type="button" id="startWinter">🎄 Weihnachten</button>
         <button type="button" id="startSommer">🌸 Sommer</button>
@@ -3013,8 +3066,32 @@ sprintKnopf.addEventListener('pointerdown', (e) => { e.preventDefault(); sprintA
 // ---------- Kamera drehen (Maus ziehen / wischen) ----------
 const kam = { yaw: Math.PI, pitch: 0.35, abstand: 7.5, id: null, lx: 0, ly: 0 };
 const leinwand = renderer.domElement;
-leinwand.addEventListener('pointerdown', (e) => { kam.id = e.pointerId; kam.lx = e.clientX; kam.ly = e.clientY; leinwand.setPointerCapture(e.pointerId); });
+// Zoomen: Mausrad oder zwei Finger auseinander/zusammen (Kamera näher oder weiter weg)
+const KAM_NAH = 2.5, KAM_WEIT = 16;
+const finger = new Map();
+let pinchStart = 0, pinchAbstand = kam.abstand;
+const fingerAbstand = () => { const [a, b] = [...finger.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+leinwand.addEventListener('wheel', (e) => {
+  if (editor.offen) return;
+  e.preventDefault();
+  kam.abstand = Math.min(KAM_WEIT, Math.max(KAM_NAH, kam.abstand * Math.exp(e.deltaY * 0.0012)));
+}, { passive: false });
+leinwand.addEventListener('pointerdown', (e) => {
+  finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  try { leinwand.setPointerCapture(e.pointerId); } catch (_) {}
+  if (finger.size === 2 && !editor.offen) { pinchStart = fingerAbstand(); pinchAbstand = kam.abstand; kam.id = null; return; }
+  kam.id = e.pointerId; kam.lx = e.clientX; kam.ly = e.clientY;
+});
+const fingerWeg = (e) => { finger.delete(e.pointerId); if (finger.size < 2) pinchStart = 0; };
+leinwand.addEventListener('pointerup', fingerWeg);
+leinwand.addEventListener('pointercancel', fingerWeg);
 leinwand.addEventListener('pointermove', (e) => {
+  if (finger.has(e.pointerId)) finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinchStart > 0 && finger.size === 2) {
+    const d = fingerAbstand();
+    if (d > 10) kam.abstand = Math.min(KAM_WEIT, Math.max(KAM_NAH, pinchAbstand * pinchStart / d));
+    return;
+  }
   if (e.pointerId !== kam.id) return;
   if (editor.offen) {   // im Figur-Editor dreht Ziehen die Figur
     editor.dreh += (e.clientX - kam.lx) * 0.01;
