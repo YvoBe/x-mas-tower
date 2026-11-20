@@ -514,7 +514,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'weihnachtspulli'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'sternkrone'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jglatt', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'weihnachtspulli', 'lebkuchenpyjama'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -2384,6 +2384,41 @@ function ringelTextur(grund, streifen, baender, rx, ry) {
   RINGEL[key] = t;
   return t;
 }
+// Lebkuchen-Pyjama: weicher Stoff in der Grundfarbe mit kleinen Lebkuchenmännern (wiederholt sich)
+const LEBKUCHEN_TEX = {};
+function lebkuchenTextur(grund, rx, ry) {
+  const key = [grund, rx, ry].join('|');
+  if (LEBKUCHEN_TEX[key]) return LEBKUCHEN_TEX[key];
+  let bild = LEBKUCHEN_TEX['bild|' + grund];
+  if (!bild) {
+    const N = 256; bild = document.createElement('canvas'); bild.width = bild.height = N;
+    const g = bild.getContext('2d');
+    g.fillStyle = grund; g.fillRect(0, 0, N, N);
+    const mann = (x, y, gr, dreh) => {
+      g.save(); g.translate(x, y); g.rotate(dreh); g.scale(gr, gr);
+      g.fillStyle = '#a8662f';
+      g.beginPath(); g.arc(0, -22, 11, 0, Math.PI * 2); g.fill();                        // Kopf
+      g.beginPath(); g.ellipse(0, 2, 12, 16, 0, 0, Math.PI * 2); g.fill();              // Bauch
+      g.lineCap = 'round'; g.strokeStyle = '#a8662f'; g.lineWidth = 9;
+      g.beginPath(); g.moveTo(-10, -6); g.lineTo(-22, 4); g.moveTo(10, -6); g.lineTo(22, 4); g.stroke();   // Arme
+      g.beginPath(); g.moveTo(-6, 14); g.lineTo(-11, 30); g.moveTo(6, 14); g.lineTo(11, 30); g.stroke();   // Beine
+      g.strokeStyle = '#fbf5ea'; g.lineWidth = 2;                                         // Zuckerguss
+      g.beginPath(); g.arc(0, -20, 5, 0.2, Math.PI - 0.2); g.stroke();
+      for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(sx * 17, -2); g.lineTo(sx * 21, 4); g.stroke(); g.beginPath(); g.moveTo(sx * 9, 24); g.lineTo(sx * 12, 29); g.stroke(); }
+      g.fillStyle = '#fbf5ea'; for (const yy of [-2, 6]) { g.beginPath(); g.arc(0, yy, 2.2, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#c8323c'; g.beginPath(); g.arc(0, -10, 3, 0, Math.PI * 2); g.fill();   // rotes Knöpfchen am Hals
+      g.fillStyle = '#3b2416'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * 4, -24, 1.6, 0, Math.PI * 2); g.fill(); }
+      g.restore();
+    };
+    mann(64, 70, 1.15, -0.15); mann(192, 190, 1.15, 0.15);
+    g.fillStyle = 'rgba(255,255,255,0.7)';                                                   // kleine Sternchen dazwischen
+    for (const [x, y] of [[190, 60], [60, 200], [128, 128], [230, 120], [20, 120]]) { g.beginPath(); g.arc(x, y, 3.5, 0, Math.PI * 2); g.fill(); }
+    LEBKUCHEN_TEX['bild|' + grund] = bild;
+  }
+  const t = new THREE.CanvasTexture(bild);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4;
+  LEBKUCHEN_TEX[key] = t; return t;
+}
 // Weihnachtspulli: Strick in der Grundfarbe, ein Band mit Zickzack, Tannenbäumen und Schneeflocken
 const WEIHNACHT_TEX = {};
 function weihnachtsTextur(grund, v0, v1, gross) {
@@ -2426,6 +2461,9 @@ function weihnachtsTextur(grund, v0, v1, gross) {
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4; WEIHNACHT_TEX[key] = t; return t;
 }
 function baueFigur(look, ziel = scene) {
+  // Lebkuchen-Pyjama: Oberteil wie der Pulli, Hose wie die Jogginghose, beides mit Lebkuchenmännern in der gewählten Farbe
+  const pyjama = look.oberteilTyp === 'lebkuchenpyjama';
+  if (pyjama) look = { ...look, hoseTyp: 'jogging', hose: '#ffffff', umschlag: look.buendchen, sternAn: false };
   const mat = (farbe, extra = {}) => new THREE.MeshStandardMaterial({ color: farbe, roughness: 0.7, ...extra });
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
   const figur = new THREE.Group();
@@ -2434,10 +2472,10 @@ function baueFigur(look, ziel = scene) {
 
   const hoseTyp = look.hoseTyp || 'jeans';
   const hosenStoff = hoseTyp === 'jeans' ? 'jeans' : 'weich';
-  const hoseM = (rx, ry) => ({ map: stoff(hosenStoff, rx, ry) });
+  const hoseM = (rx, ry) => ({ map: pyjama ? lebkuchenTextur(look.pulli, rx / 4, ry / 2) : stoff(hosenStoff, rx, ry) });
   const naht = '#c9a25a';   // goldene Jeans-Naht
   const weihnachtsPulli = look.oberteilTyp === 'weihnachtspulli';   // baut sich wie der Pulli, nur mit Weihnachtsmuster
-  const oberteilTyp = weihnachtsPulli ? 'pulli' : (look.oberteilTyp || 'pulli');
+  const oberteilTyp = weihnachtsPulli || pyjama ? 'pulli' : (look.oberteilTyp || 'pulli');
 
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const bein = (seite) => {
@@ -2461,7 +2499,7 @@ function baueFigur(look, ziel = scene) {
       const bund = teil(new THREE.CylinderGeometry(0.125, 0.125, 0.07, 18), look.umschlag, { map: stoff('rippe', 12, 1) }); bund.position.y = -0.33;
       const s1 = teil(new THREE.BoxGeometry(0.02, 0.44, 0.05), look.umschlag); s1.position.set(seite * 0.15, -0.21, 0);
       const s2 = teil(new THREE.BoxGeometry(0.02, 0.32, 0.05), look.umschlag); s2.position.set(seite * 0.135, -0.16, 0);
-      gelenk.add(o, s1); knie.add(u, bund, s2);
+      if (pyjama) { gelenk.add(o); knie.add(u, bund); } else { gelenk.add(o, s1); knie.add(u, bund, s2); }
     } else if (hoseTyp === 'rock') {     // Rock: nur Beine mit Söckchen, der Rock selbst hängt an der Hüfte
       const haut1 = teil(new THREE.CylinderGeometry(0.1, 0.095, 0.44, 14), look.haut); haut1.position.y = -0.21;
       const haut2 = teil(new THREE.CylinderGeometry(0.095, 0.08, 0.36, 14), look.haut); haut2.position.y = -0.17;
@@ -2557,7 +2595,7 @@ function baueFigur(look, ziel = scene) {
     const yVon = -0.44, yBis = 0.3, n = Math.max(2, Math.round((yBis - yVon) / 0.03));
     const vVon = (y) => ((y - yVon) / (yBis - yVon) * n + 1) / (n + 2);   // so verteilt LatheGeometry das Bild
     const baender = [0.2, 0.08, -0.04, -0.16, -0.28].map((y) => [vVon(y - 0.0225), vVon(y + 0.0225)]);
-    const pulli = teil(rumpf(yVon, yBis), '#ffffff', { map: weihnachtsPulli ? weihnachtsTextur(look.pulli, vVon(-0.2), vVon(0.0), 1) : ringelTextur(look.pulli, look.streifen, baender, 40, 12) });
+    const pulli = teil(rumpf(yVon, yBis), '#ffffff', { map: pyjama ? lebkuchenTextur(look.pulli, 6, 3) : weihnachtsPulli ? weihnachtsTextur(look.pulli, vVon(-0.2), vVon(0.0), 1) : ringelTextur(look.pulli, look.streifen, baender, 40, 12) });
     koerper.add(pulli);
     const bund = teil(rumpf(-0.46, -0.38, 0.012), look.buendchen, { map: stoff('rippe', 14, 1) });
     const kragen = teil(new THREE.TorusGeometry(0.1, 0.035, 10, 24), look.buendchen, { map: stoff('rippe', 1, 12) });
@@ -2690,7 +2728,7 @@ function baueFigur(look, ziel = scene) {
       if (oberteilTyp === 'pulli') {   // Ärmel mit aufgemalten Streifen (Textur)
         const v = (y) => (y + 0.55) / 0.5;
         const baender = [-0.12, -0.26, -0.4].map((y) => [v(y - 0.02), v(y + 0.02)]);
-        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.1 * ar, 0.5, 20), '#ffffff', { map: weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
+        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.1 * ar, 0.5, 20), '#ffffff', { map: pyjama ? lebkuchenTextur(look.pulli, 2, 2) : weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
         aermel.position.y = -0.3;
       } else {
         aermel = teil(new THREE.CapsuleGeometry(0.1 * ar, 0.5, 8, 16), farbe, { map: stoff('weich', 6, 6) });
@@ -4008,7 +4046,7 @@ const AUSWAHL = [
   { titel: 'Frisur', key: 'frisur', worte: [['lang', 'Lang offen'], ['locken', 'Locken'], ['zopf', 'Zopf'], ['flechtzopf', 'Lang mit Flechtzopf'], ['dutt', 'Dutt'], ['kurz', 'Kurz'], ['junge', 'Kurz wuschelig'], ['jglatt', 'Kurz glatt'], ['jlocken', 'Kurz lockig']] },
   { titel: 'Pony', key: 'pony', ohne: ['frisur', ['junge', 'jglatt', 'jlocken']], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
-  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['weihnachtspulli', 'Weihnachtspulli']] },
+  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
   { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'pulli'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
   { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
@@ -4019,12 +4057,13 @@ const AUSWAHL = [
   { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
   { titel: 'Stern auf der Hose', key: 'sternAn', ohne: ['hoseTyp', 'rock'], worte: [[true, 'Ja'], [false, 'Nein']] },
   { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', 'rock'], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
-  { titel: 'Kopfschmuck', key: 'kopf', worte: [['ohne', 'Nichts'], ['weihnachtsmuetze', 'Weihnachtsmütze'], ['rentierreif', 'Rentier-Haarreif'], ['ohrenschuetzer', 'Ohrenschützer'], ['sternkrone', 'Sternen-Krone']] },
+  { titel: 'Kopfschmuck', key: 'kopf', worte: [['ohne', 'Nichts'], ['weihnachtsmuetze', 'Weihnachtsmütze'], ['rentierreif', 'Rentier-Haarreif'], ['ohrenschuetzer', 'Ohrenschützer']] },
   { titel: 'Schal', key: 'schal', worte: [['ohne', 'Ohne'], ['schal', 'Schal']] },
   { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
 ];
 // Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
 const passt = (g) => {
+  if ((AUSSEHEN.oberteilTyp === 'lebkuchenpyjama') && ['hoseTyp', 'hose', 'umschlag', 'sternAn', 'stern'].includes(g.key)) return false;   // Pyjama hat seine eigene Hose
   if (g.ohne) {   // z. B. kein Stern beim Rock, kein Pony bei kurzen Jungen-Frisuren
     const ist = AUSSEHEN[g.ohne[0]] ?? STANDARD_AUSSEHEN[g.ohne[0]];
     if (Array.isArray(g.ohne[1]) ? g.ohne[1].includes(ist) : ist === g.ohne[1]) return false;
