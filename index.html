@@ -571,6 +571,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
+addEventListener('error', (e) => { if (document.body) fehlerMelden(e.error || e.message); });   // Fehler unten klein anzeigen (siehe fehlerMelden)
 // =====================================================================
 //  TOWER PARKOUR  –  Adventskalender mit 24 Türmen
 //  Tipp: Zahlen in EINSTELLUNGEN darfst du einfach ändern und ausprobieren!
@@ -870,6 +871,7 @@ function tanne(gruppe, x, z, s, geschmueckt = false, schnee = true) {
   }
   baum.position.set(x, 0, z);
   baum.scale.setScalar(s);
+  if (gruppe === scene) baum.userData.fest = true;   // steht fest: darf später zusammengeklebt werden
   gruppe.add(baum);
   return baum;
 }
@@ -7047,9 +7049,67 @@ weltAesthetic.addEventListener('click', () => weltWechseln('aesthetic'));
 weltWonder.addEventListener('click', () => weltWechseln('wonderland'));
 weltZeigen('winter');
 
+// Fürs Handy: alle festen Teile direkt in der Szene (Turmwände, Dächer, Tannen an den Türen ...)
+// pro Material und pro 40-m-Feld zu EINEM Teil zusammenkleben. Bewegliches bleibt, wie es ist.
+function szeneZusammen() {
+  const raus = new Set([...drehSterne, ...Object.values(WELT_TEILE).flat(), dorf, wonder, spuren, schneeFall, aestheticHimmel]);
+  for (const T of TUERME) for (const o of [T.deckel, T.schild, T.towerSchild, T.gruppe]) if (o) raus.add(o);
+  const teile = [];
+  const nehmen = (o) => { if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && !raus.has(o) && !o.userData.eigen && !Array.isArray(o.material) && !o.material.vertexColors) teile.push(o); };
+  for (const c of scene.children) {
+    if (raus.has(c)) continue;
+    if (c.isMesh) nehmen(c);
+    else if (c.isGroup && c.userData.fest) c.traverse(nehmen);
+  }
+  scene.updateMatrixWorld(true);
+  const felder = new Map(), p = new THREE.Vector3();
+  for (const o of teile) {
+    p.setFromMatrixPosition(o.matrixWorld);
+    const key = o.material.uuid + '|' + Math.floor(p.x / 40) + '|' + Math.floor(p.z / 40) + '|' + o.castShadow + o.receiveShadow + '|' + o.renderOrder;
+    let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const n of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(n)) geo.deleteAttribute(n);
+    if (!geo.attributes.normal) geo.computeVertexNormals();
+    if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    geo.applyMatrix4(o.matrixWorld);
+    if (o.matrixWorld.determinant() < 0) {   // gespiegelt: Dreiecke umdrehen, sonst sieht man sie von der falschen Seite
+      for (const n of ['position', 'normal', 'uv']) { const a = geo.attributes[n], k = a.itemSize;
+        for (let i = 0; i < a.count; i += 3) for (let j = 0; j < k; j++) { const t = a.array[(i + 1) * k + j]; a.array[(i + 1) * k + j] = a.array[(i + 2) * k + j]; a.array[(i + 2) * k + j] = t; } }
+    }
+    if (!felder.has(key)) felder.set(key, { mat: o.material, cast: o.castShadow, rec: o.receiveShadow, ro: o.renderOrder, geos: [] });
+    felder.get(key).geos.push(geo);
+    o.parent.remove(o);
+  }
+  for (const f of felder.values()) {
+    let n = 0; for (const g of f.geos) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    let i = 0;
+    for (const g of f.geos) { pos.set(g.attributes.position.array, i * 3); nrm.set(g.attributes.normal.array, i * 3); uv.set(g.attributes.uv.array, i * 2); i += g.attributes.position.count; g.dispose(); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.computeBoundingSphere();
+    const m = new THREE.Mesh(geo, f.mat); m.castShadow = f.cast; m.receiveShadow = f.rec; m.renderOrder = f.ro;
+    scene.add(m);
+  }
+}
+szeneZusammen();
+
 // ---------- Hauptschleife ----------
 const uhr = new THREE.Clock();
-renderer.setAnimationLoop(() => {
+// Falls in einem Bild ein Fehler passiert: nicht das ganze Spiel anhalten (sonst sieht man nur noch ein stehendes Foto),
+// sondern weitermachen und den Fehler klein unten anzeigen, damit man ihn melden kann.
+var fehlerSchon = 0;
+function fehlerMelden(e) {
+  console.error(e);
+  if (fehlerSchon++ > 0) return;
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;max-width:70vw;font:11px/1.3 sans-serif;color:#4a3326;background:rgba(246,241,231,.92);border-radius:8px;padding:4px 8px;pointer-events:none';
+  d.textContent = 'Fehler (bitte Claude sagen): ' + (e && e.message || e) + ' ' + ((e && e.stack || '').split('\n')[1] || '').trim().slice(-60);
+  document.body.appendChild(d);
+}
+renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); fehlerSchon = 0; fehlerMelden('Die Grafik ist kurz ausgefallen (zu viel fürs Gerät). Sie startet gleich neu.'); });
+renderer.domElement.addEventListener('webglcontextrestored', () => location.reload());
+renderer.setAnimationLoop(() => { try { schleife(); } catch (e) { fehlerMelden(e); try { renderer.render(scene, startOffen ? startKamera : camera); } catch (e2) {} } });
+function schleife() {
   const dt = Math.min(uhr.getDelta(), 0.05);
   if (editor.offen) {
     zeit += dt;
@@ -7076,11 +7136,11 @@ renderer.setAnimationLoop(() => {
     renderer.render(scene, startKamera);
   } else {
     if (startFiguren[0].figur.visible) for (const f of startFiguren) f.figur.visible = false;
-    update(dt);
-    mehrspielerUpdate(dt);
+    try { update(dt); } catch (e) { fehlerMelden(e); }
+    try { mehrspielerUpdate(dt); } catch (e) { fehlerMelden(e); }
     renderer.render(scene, camera);
   }
-});
+}
 
 function groesseAnpassen() {
   const w = innerWidth, h = innerHeight;
