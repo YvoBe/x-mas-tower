@@ -583,9 +583,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne' };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -2956,6 +2956,13 @@ function baueFigur(look, ziel = scene) {
     ohr.scale.set(0.45, 1, 0.75);
     ohr.position.set(seite * 0.238, 0.0, 0.0);
     kopf.add(ohr);
+    if (look.ohren === 'spitz') {                       // Elfenohren: lange Spitze nach oben-außen
+      const spitze = teil(new THREE.ConeGeometry(0.04, 0.16, 12), look.haut);
+      spitze.scale.z = 0.45;
+      spitze.position.set(seite * 0.265, 0.07, -0.01);
+      spitze.rotation.z = -seite * 0.75;
+      kopf.add(spitze);
+    }
   }
 
   // Haare mit feinen Strähnen
@@ -4247,8 +4254,19 @@ function editorFigurNeu() {
 }
 
 // Auswahl-Spalte rechts
+// Fertige Figuren: ein Tipp, und alles passt zusammen (danach kann man noch alles ändern)
+const VORLAGEN = {
+  winterkind: { figurTyp: 'maedchen', frisur: 'flechtzopf', pony: false, haare: '#8a5a33', haut: '#f1c9a5', oberteilTyp: 'jacke', jacke: '#1f2a4a', pulli: '#f5f3ee', buendchen: '#e7a3b7', hoseTyp: 'jeans', hose: '#3b5b8c', sternAn: true, schuhe: '#f5f3ee', augen: 'wimpern', mund: 'laecheln', ohren: 'normal' },
+  sportlich: { figurTyp: 'junge', frisur: 'junge', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'tshirt', pulli: '#7a8450', buendchen: '#f5f3ee', hoseTyp: 'jogging', hose: '#2b2b2b', umschlag: '#f5f3ee', sternAn: false, schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal' },
+  ballerina: { figurTyp: 'maedchen', frisur: 'dutt', pony: false, haare: '#e6c27a', haut: '#f6d7bd', oberteilTyp: 'top', pulli: '#f5f3ee', streifen: '#e7a3b7', hoseTyp: 'rock', hose: '#e7a3b7', schuhe: '#e7a3b7', augen: 'wimpern', mund: 'linie', ohren: 'normal' },
+  lockenkopf: { figurTyp: 'junge', frisur: 'jlocken', haare: '#5b3a24', haut: '#9a6440', oberteilTyp: 'pulli', pulli: '#d9cbb5', streifen: '#1f2a4a', buendchen: '#1f2a4a', hoseTyp: 'kurz', hose: '#7a8450', umschlag: '#2e3d68', sternAn: false, schuhe: '#8a5a33', augen: 'rund', mund: 'laecheln', ohren: 'normal' },
+  elfe: { figurTyp: 'maedchen', frisur: 'dutt', pony: true, haare: '#e6c27a', haut: '#f6d7bd', oberteilTyp: 'tshirt', pulli: '#7a8450', buendchen: '#c8323c', hoseTyp: 'rock', hose: '#c8323c', schuhe: '#7a8450', augen: 'zu', mund: 'frech', sommersprossen: true, ohren: 'spitz' },
+  sommer: { figurTyp: 'maedchen', frisur: 'locken', pony: false, haare: '#2b1d14', haut: '#6b4329', oberteilTyp: 'tshirt', pulli: '#e7a3b7', buendchen: '#f5f3ee', hoseTyp: 'kurz', hose: '#d9cbb5', umschlag: '#f5f3ee', sternAn: true, stern: '#f2c230', schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal' },
+};
 const AUSWAHL = [
+  { titel: 'Fertige Figuren', key: 'vorlage', worte: [['winterkind', 'Winterkind'], ['sportlich', 'Sportlich'], ['ballerina', 'Ballerina'], ['lockenkopf', 'Lockenkopf'], ['elfe', 'Elfe'], ['sommer', 'Sommerkind']] },
   { titel: 'Figur', key: 'figurTyp', worte: [['maedchen', 'Mädchen'], ['junge', 'Junge']] },
+  { titel: 'Ohren', key: 'ohren', worte: [['normal', 'Normal'], ['spitz', 'Elfenohren']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
   { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
@@ -4298,7 +4316,7 @@ const ICONS = {
   schloss: ICON('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'),
 };
 const BEREICHE = [
-  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['figurTyp', 'haut'] },
+  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'ohren', 'haut'] },
   { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'sommersprossen', 'mund'] },
   { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'pony', 'haare'] },
   { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
@@ -4351,7 +4369,8 @@ function spalteZeichnen() {
         knopf.setAttribute('aria-label', 'Überraschung aus dem Adventskalender, noch gesperrt');
       }
       knopf.addEventListener('click', () => {
-        AUSSEHEN[gruppe.key] = w;
+        if (gruppe.key === 'vorlage') Object.assign(AUSSEHEN, { kopf: 'ohne', schal: 'ohne', haende: 'ohne' }, VORLAGEN[w]);   // ganze Figur auf einmal
+        else AUSSEHEN[gruppe.key] = w;
         // Beim Wechsel Mädchen/Junge passende Frisur vorschlagen
         if (gruppe.key === 'figurTyp' && w === 'junge' && ['lang', 'zopf', 'flechtzopf', 'dutt'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'junge';
         if (gruppe.key === 'figurTyp' && w === 'maedchen' && ['junge', 'jglatt', 'jlocken'].includes(AUSSEHEN.frisur)) AUSSEHEN.frisur = 'lang';
