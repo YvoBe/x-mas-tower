@@ -2022,7 +2022,6 @@ function laterne(x, z) {
   const l = new THREE.Mesh(boxGeo, fensterMat); l.scale.set(0.38, 0.38, 0.52); l.position.y = 2.95; g.add(l);
   const l2 = new THREE.Mesh(boxGeo, fensterMat); l2.scale.set(0.52, 0.38, 0.38); l2.position.y = 2.95; g.add(l2);
   const kappe = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.35, 4), M(FARBEN.navy)); kappe.position.y = 3.37; kappe.rotation.y = Math.PI / 4; g.add(kappe);
-  const sch = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.06, 6, 12), M(0x8f3a44)); sch.position.set(0, 2.45, -0.1); g.add(sch);
   g.position.set(x, 0, z); dorf.add(g);
 }
 // Holzbank mit Schnee
@@ -2078,18 +2077,32 @@ function bank(x, z, dreh = 0) {
   // Pflastersteine (Ziegel), mit etwas Schnee in den Fugen
   const pflaster = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
-    x.fillStyle = '#eef2f7'; x.fillRect(0, 0, 128, 128);
-    const farben = ['#aebdd0', '#bac7d8', '#a5b5ca', '#c3cedd', '#b3c1d3'];
-    for (let r = 0; r < 8; r++) for (let k = -1; k < 5; k++) {
-      x.fillStyle = farben[(r * 3 + k * 7 + 20) % 5];
-      x.fillRect(k * 32 + (r % 2) * 16 + 2, r * 16 + 2, 28, 12);
+    // Größeres Bild: Ziegel in ruhigem Grau-Rosa mit dunklen Fugen, dazwischen richtige Schneeflecken
+    c.width = c.height = 512;
+    x.fillStyle = '#7f7a80'; x.fillRect(0, 0, 512, 512);   // Fugen
+    const farben = ['#b39c97', '#a6918f', '#bba8a2', '#9e8b8a', '#ad9c9e', '#a3999f'];
+    const rz = zufall(55);
+    for (let r = 0; r < 32; r++) for (let k = -1; k < 17; k++) {
+      x.fillStyle = farben[Math.floor(rz() * farben.length)];
+      x.fillRect(k * 32 + (r % 2) * 16 + 1.5, r * 16 + 1.5, 29, 13);
     }
-    x.fillStyle = 'rgba(255,255,255,0.75)';
-    for (let i = 0; i < 26; i++) { x.beginPath(); x.ellipse((i * 47) % 128, (i * 29) % 128, 9 + (i % 4) * 3, 4 + (i % 3) * 2, 0, 0, Math.PI * 2); x.fill(); }
-    return new THREE.CanvasTexture(c);
+    // Schneeflecken: weich und unregelmäßig, mal groß, mal klein
+    for (let i = 0; i < 26; i++) {
+      const sx = rz() * 512, sy = rz() * 512, rr = 25 + rz() * 70;
+      for (let k = 0; k < 7; k++) {
+        const g = x.createRadialGradient(sx + (rz() - 0.5) * rr, sy + (rz() - 0.5) * rr * 0.6, 0, sx, sy, rr);
+        g.addColorStop(0, 'rgba(250,252,255,0.95)'); g.addColorStop(0.6, 'rgba(246,249,253,0.85)'); g.addColorStop(1, 'rgba(246,249,253,0)');
+        x.fillStyle = g; x.beginPath(); x.ellipse(sx + (rz() - 0.5) * rr, sy + (rz() - 0.5) * rr * 0.5, rr * (0.5 + rz() * 0.5), rr * (0.3 + rz() * 0.3), rz() * 3, 0, Math.PI * 2); x.fill();
+      }
+    }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
   })();
-  flach(pflaster, 0, SZ + 2, 260, 16, [52, 3.2]);         // Platz vor den Türmen
-  flach(pflaster.clone(), 0, SZ - 18.5, 260, 3, [52, 0.6]); // Gehweg auf der anderen Seite
+  flach(pflaster, 0, SZ + 2, 260, 16, [16, 1]);          // Platz vor den Türmen
+  flach(pflaster.clone(), 0, SZ - 18.5, 260, 3, [16, 0.19]); // Gehweg auf der anderen Seite
+  // Ziegelwege auch überall im Dorf: vor jeder Turmtür und rund um den großen Baum
+  for (const T of TUERME) if (!T.normal) flach(pflaster.clone(), T.cx, T.cz - T.innen - 6, 6, 9, [0.37, 0.56]);
+  { const rund = new THREE.Mesh(new THREE.CircleGeometry(12, 40), new THREE.MeshStandardMaterial({ map: (() => { const t2 = pflaster.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(1.5, 1.5); return t2; })(), roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 }));
+    rund.rotation.x = -Math.PI / 2; rund.position.set(PLATZ.x, 0.025, PLATZ.z); rund.receiveShadow = true; rund.userData.eigen = true; dorf.add(rund); }
   // Straße: hellgrau-blau, weiße gestrichelte Mittellinie, Schneereste am Rand
   const strasse = (() => {
     const c = document.createElement('canvas'); c.width = 128; c.height = 64; const x = c.getContext('2d');
@@ -2138,6 +2151,220 @@ function bank(x, z, dreh = 0) {
   schneemann(dorf, -8, SZ - 1.5, 0.75, 0.3);
   for (let i = 0; i < 4; i++) kugel(dorf, -6.3 + i * 0.35, 0.18, SZ - 0.5 + (i % 2) * 0.3, 0.18, 0xffffff);
   bank(-14, SZ + 1, Math.PI);
+}
+
+
+// ---------- Fußspuren im Schnee ----------
+const SPUREN = 220;
+const spurGeo = new THREE.CircleGeometry(1, 10); spurGeo.rotateX(-Math.PI / 2);
+const spuren = new THREE.InstancedMesh(spurGeo, new THREE.MeshBasicMaterial({ color: 0xb8c6d6, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), SPUREN);
+spuren.frustumCulled = false; spuren.renderOrder = 1; scene.add(spuren);
+const spurAlter = new Float32Array(SPUREN).fill(999), spurInfo = [];
+for (let i = 0; i < SPUREN; i++) spurInfo.push({ x: 0, z: 0, w: 0 });
+let spurNr = 0, spurWeg = 0, spurSeite = 1;
+const _sm = new THREE.Matrix4(), _sq = new THREE.Quaternion(), _sv = new THREE.Vector3(), _ss = new THREE.Vector3(), _sy = new THREE.Vector3(0, 1, 0);
+function spurenUpdate(dt, s, imFreien, schritt) {
+  if (imFreien && schritt > 0) {
+    spurWeg += schritt;
+    if (spurWeg > 0.75) {   // alle 75 cm ein Fußabdruck, abwechselnd links und rechts
+      spurWeg = 0; spurSeite *= -1;
+      const w = s.blick || 0, i = spurNr++ % SPUREN;
+      spurInfo[i] = { x: s.pos.x + Math.cos(w) * 0.18 * spurSeite, z: s.pos.z - Math.sin(w) * 0.18 * spurSeite, w };
+      spurAlter[i] = 0;
+    }
+  }
+  for (let i = 0; i < SPUREN; i++) {
+    spurAlter[i] += dt;
+    const a = spurAlter[i], k = a > 25 ? 0 : a > 18 ? (25 - a) / 7 : 1;   // nach 18 s langsam zuschneien
+    const f = spurInfo[i];
+    _sq.setFromAxisAngle(_sy, f.w);
+    _sm.compose(_sv.set(f.x, 0.035, f.z), _sq, _ss.set(0.12 * k + 0.0001, 1, 0.2 * k + 0.0001));
+    spuren.setMatrixAt(i, _sm);
+  }
+  spuren.instanceMatrix.needsUpdate = true;
+}
+// ---------- Verkehr auf der Straße: ein paar Autos und ab und zu ein Bus (ruhige Pastellfarben) ----------
+const FAHRZEUGE = [];
+{
+  const SZ = -2 * ABSTAND - 20;
+  const SPUR_OBEN = SZ - 8, SPUR_UNTEN = SZ - 14;   // oben fährt nach rechts (an der Haltestelle vorbei), unten nach links
+  const radGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.3, 14); radGeo.rotateX(Math.PI / 2);
+  const lichtVorn = new THREE.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xfff0c8, emissiveIntensity: 0.8 });
+  const lichtHinten = new THREE.MeshStandardMaterial({ color: 0xe8b8c0, emissive: 0xd98a96, emissiveIntensity: 0.6 });
+  const scheibe = new THREE.MeshStandardMaterial({ color: 0xcfe0ef, roughness: 0.15, metalness: 0.3 });
+  const raeder = (g, xs, breit) => { for (const x of xs) for (const s of [-1, 1]) { const r = new THREE.Mesh(radGeo, M(0x3b4252)); r.position.set(x, 0.38, s * breit / 2); g.add(r); } };
+  // Auto: Länge entlang x, Front zeigt nach +x
+  function auto(farbe) {
+    const g = new THREE.Group();
+    deko(g, 0, 0.75, 0, 4.2, 0.8, 1.9, farbe);                 // Unterteil
+    deko(g, -0.3, 1.45, 0, 2.3, 0.65, 1.7, farbe);             // Kabine
+    for (const s of [-1, 1]) { const f = new THREE.Mesh(boxGeo, scheibe); f.scale.set(1.9, 0.48, 0.04); f.position.set(-0.3, 1.47, s * 0.86); g.add(f); }
+    const fs = new THREE.Mesh(boxGeo, scheibe); fs.scale.set(0.04, 0.5, 1.5); fs.position.set(0.86, 1.45, 0); fs.rotation.z = 0.35; g.add(fs);
+    deko(g, -0.3, 1.82, 0, 2.2, 0.14, 1.6, 0xffffff);          // Schnee auf dem Dach
+    for (const s of [-1, 1]) { const l = new THREE.Mesh(boxGeo, lichtVorn); l.scale.set(0.06, 0.18, 0.36); l.position.set(2.11, 0.85, s * 0.62); g.add(l);
+      const h = new THREE.Mesh(boxGeo, lichtHinten); h.scale.set(0.06, 0.18, 0.3); h.position.set(-2.11, 0.85, s * 0.66); g.add(h); }
+    deko(g, 2.12, 0.5, 0, 0.1, 0.18, 1.8, 0xd8dde5);           // Stoßstangen
+    deko(g, -2.12, 0.5, 0, 0.1, 0.18, 1.8, 0xd8dde5);
+    raeder(g, [-1.35, 1.35], 1.95);
+    return g;
+  }
+  // Bus: lang, creme mit hellblauem Streifen und vielen Fenstern
+  function bus() {
+    const g = new THREE.Group();
+    deko(g, 0, 1.75, 0, 10, 2.8, 2.5, 0xf5f1e8);
+    deko(g, 0, 1.05, 0, 10.05, 0.35, 2.55, 0x9fb3c8);          // Streifen
+    for (let i = 0; i < 6; i++) for (const s of [-1, 1]) { const f = new THREE.Mesh(boxGeo, scheibe); f.scale.set(1.25, 1.0, 0.04); f.position.set(-3.7 + i * 1.45, 2.3, s * 1.26); g.add(f); }
+    const fs = new THREE.Mesh(boxGeo, scheibe); fs.scale.set(0.04, 1.3, 2.2); fs.position.set(5.01, 2.25, 0); g.add(fs);
+    deko(g, 0, 3.22, 0, 9.8, 0.16, 2.3, 0xffffff);             // Schnee auf dem Dach
+    for (const s of [-1, 1]) { const l = new THREE.Mesh(boxGeo, lichtVorn); l.scale.set(0.06, 0.22, 0.4); l.position.set(5.02, 0.85, s * 0.85); g.add(l);
+      const h = new THREE.Mesh(boxGeo, lichtHinten); h.scale.set(0.06, 0.25, 0.3); h.position.set(-5.02, 0.9, s * 0.9); g.add(h); }
+    deko(g, 5.03, 3.0, 0, 0.05, 0.4, 1.6, 0x55617a);           // Anzeige vorne
+    deko(g, 3.6, 1.45, 1.26, 1.1, 2.2, 0.05, 0x8fa3ba);        // Tür (Seite zur Haltestelle)
+    raeder(g, [-3.3, 3.3], 2.5);
+    return g;
+  }
+  const AUTO_FARBEN = [0xc9d9ea, 0xf3ead8, 0xb8c4a0, 0xe7cdd3, 0xeef1f5];
+  const neu = (g, spur, richtung, tempo, x, istBus = false) => {
+    g.rotation.y = richtung > 0 ? 0 : Math.PI; g.position.set(x, 0, spur); scene.add(g); WELT_TEILE.winter.push(g);
+    FAHRZEUGE.push({ g, richtung, tempo, jetzt: tempo, istBus, warte: 0, gehalten: false });
+  };
+  neu(auto(AUTO_FARBEN[0]), SPUR_OBEN, 1, 9, -60);
+  neu(auto(AUTO_FARBEN[1]), SPUR_UNTEN, -1, 8, 40);
+  neu(auto(AUTO_FARBEN[2]), SPUR_UNTEN, -1, 10, 120);
+  neu(auto(AUTO_FARBEN[3]), SPUR_OBEN, 1, 8.5, 70);
+  neu(bus(), SPUR_OBEN, 1, 7, -130, true);
+}
+const HALTESTELLE_X = 11, STRASSE_ENDE = 150;
+function verkehrUpdate(dt, spielerPos) {
+  for (const f of FAHRZEUGE) {
+    const x = f.g.position.x;
+    if (f.warte > 0) { f.warte -= dt; continue; }   // Bus wartet an der Haltestelle oder ein Auto wartet hinter dem Rand
+    let ziel = f.tempo;
+    // Der Bus hält an der Haltestelle (Mitte etwas vor dem Häuschen, damit die Tür passt)
+    if (f.istBus && !f.gehalten) {
+      const rest = (HALTESTELLE_X - 3.6) - x;
+      if (rest < 14) ziel = Math.max(0.8, f.tempo * rest / 14);
+      if (rest <= 0.1) { f.warte = 5; f.gehalten = true; f.jetzt = 0; continue; }
+    }
+    // Nicht in Leute fahren: anhalten, wenn jemand auf der Spur vor dem Fahrzeug steht
+    if (spielerPos) {
+      const vor = (spielerPos.x - x) * f.richtung, laenge = f.istBus ? 5.5 : 2.6;
+      if (Math.abs(spielerPos.z - f.g.position.z) < 2.2 && vor > 0 && vor < laenge + 6 && spielerPos.y < 3) ziel = 0;
+    }
+    // auch nicht ins Fahrzeug davor fahren
+    for (const a of FAHRZEUGE) if (a !== f && a.g.position.z === f.g.position.z) {
+      const d = (a.g.position.x - x) * f.richtung;
+      if (d > 0 && d < (f.istBus || a.istBus ? 10 : 7.5)) ziel = Math.min(ziel, a.jetzt * 0.8);
+    }
+    f.jetzt += (ziel - f.jetzt) * Math.min(1, dt * 2.5);
+    f.g.position.x += f.richtung * f.jetzt * dt;
+    if (f.g.position.x * f.richtung > STRASSE_ENDE) {   // am Ende: auf der anderen Seite wieder reinkommen, nach einer kleinen Pause
+      f.g.position.x = -f.richtung * STRASSE_ENDE; f.gehalten = false;
+      f.warte = f.istBus ? 12 + Math.random() * 10 : Math.random() * 6;
+    }
+  }
+}
+
+// ---------- Wintertiere, die herumlaufen: Eisbären, Pinguine, Schneehasen, Polarfüchse ----------
+const TIERE = [];
+{
+  const fell = 0xf4f1ea, dunkel = 0x2b3347, nase = 0x1d2236;
+  const ei = (g, x, y, z, sx, sy, sz, farbe) => { const k = kugel(g, x, y, z, 1, farbe); k.scale.set(sx, sy, sz); return k; };
+  const bein = (g, x, z, h, r, farbe) => { const p = new THREE.Group(); p.position.set(x, h, z); const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.9, h, 8), M(farbe)); b.position.y = -h / 2; b.castShadow = true; p.add(b); g.add(p); return p; };
+  // Alle Tiere schauen nach +x (vorne)
+  function eisbaer() {
+    const g = new THREE.Group();
+    ei(g, 0, 1.15, 0, 1.25, 0.75, 0.72, fell);
+    ei(g, 1.25, 1.45, 0, 0.5, 0.45, 0.45, fell);
+    ei(g, 1.7, 1.38, 0, 0.3, 0.22, 0.26, 0xefebe2);
+    kugel(g, 1.98, 1.42, 0, 0.08, nase);
+    for (const s of [-1, 1]) { kugel(g, 1.55, 1.62, s * 0.2, 0.05, nase); kugel(g, 1.12, 1.85, s * 0.28, 0.13, fell); }
+    const beine = [];
+    for (const [x, z] of [[0.75, 0.38], [0.75, -0.38], [-0.75, 0.38], [-0.75, -0.38]]) beine.push(bein(g, x, z, 0.75, 0.2, fell));
+    kugel(g, -1.25, 1.3, 0, 0.14, fell);
+    return { g, beine, tempo: 1.6, art: 'baer' };
+  }
+  function pinguin() {
+    const g = new THREE.Group();
+    ei(g, 0, 0.5, 0, 0.32, 0.48, 0.3, dunkel);
+    ei(g, 0.1, 0.46, 0, 0.24, 0.38, 0.24, 0xffffff);
+    kugel(g, 0.02, 1.02, 0, 0.22, dunkel);
+    for (const s of [-1, 1]) { kugel(g, 0.17, 1.07, s * 0.09, 0.05, 0xffffff); kugel(g, 0.2, 1.07, s * 0.09, 0.025, nase); }
+    const schnabel = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 8), M(0xdcae78)); schnabel.rotation.z = -Math.PI / 2; schnabel.position.set(0.28, 0.98, 0); g.add(schnabel);
+    for (const s of [-1, 1]) { const f = ei(g, 0, 0.55, s * 0.3, 0.08, 0.28, 0.05, dunkel); f.rotation.x = s * 0.25; }
+    for (const s of [-1, 1]) ei(g, 0.1, 0.03, s * 0.11, 0.13, 0.04, 0.08, 0xdcae78);
+    return { g, beine: [], tempo: 0.7, art: 'pinguin' };
+  }
+  function hase() {
+    const g = new THREE.Group();
+    ei(g, 0, 0.32, 0, 0.32, 0.26, 0.22, 0xffffff);
+    kugel(g, 0.3, 0.52, 0, 0.16, 0xffffff);
+    for (const s of [-1, 1]) { const o = ei(g, 0.26, 0.82, s * 0.07, 0.05, 0.22, 0.035, 0xffffff); o.rotation.x = s * 0.2; kugel(g, 0.42, 0.56, s * 0.08, 0.025, nase); }
+    kugel(g, 0.46, 0.5, 0, 0.03, 0xd9a3ae);
+    kugel(g, -0.32, 0.38, 0, 0.08, 0xffffff);
+    return { g, beine: [], tempo: 2.2, art: 'hase' };
+  }
+  function fuchs() {
+    const g = new THREE.Group();
+    ei(g, 0, 0.55, 0, 0.5, 0.25, 0.22, 0xf7f5f0);
+    kugel(g, 0.55, 0.72, 0, 0.2, 0xf7f5f0);
+    const sn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), M(0xf7f5f0)); sn.rotation.z = -Math.PI / 2; sn.position.set(0.82, 0.68, 0); g.add(sn);
+    kugel(g, 0.96, 0.68, 0, 0.035, nase);
+    for (const s of [-1, 1]) { const o = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.18, 6), M(0xf7f5f0)); o.position.set(0.52, 0.95, s * 0.1); g.add(o); kugel(g, 0.7, 0.78, s * 0.09, 0.025, nase); }
+    const schwanz = ei(g, -0.65, 0.6, 0, 0.35, 0.13, 0.13, 0xffffff); schwanz.rotation.z = 0.4;
+    const beine = [];
+    for (const [x, z] of [[0.3, 0.12], [0.3, -0.12], [-0.3, 0.12], [-0.3, -0.12]]) beine.push(bein(g, x, z, 0.42, 0.05, 0xf0ede6));
+    return { g, beine, tempo: 2.0, art: 'fuchs' };
+  }
+  // Wo die Tiere herumlaufen dürfen (nicht auf der Straße, nicht in Türmen oder Häusern)
+  const SZ = -2 * ABSTAND - 20;
+  const BEREICHE = {
+    vorne: [-110, 110, SZ - 40, SZ - 23],     // Schneefeld zwischen Gehweg und Wald
+    platz: [20, 36, SZ + 3, SZ + 9],          // neben dem Startplatz (Pinguine)
+    links: [-128, -112, -100, 100],           // Seite links
+    rechts: [112, 128, -100, 100],            // Seite rechts
+    hinten: [-100, 100, 112, 128],            // hinter den Türmen
+  };
+  const rnd = zufall(31337);
+  const setze = (macher, bereich, anzahl) => {
+    for (let i = 0; i < anzahl; i++) {
+      const t = macher(), [x0, x1, z0, z1] = BEREICHE[bereich];
+      t.bereich = BEREICHE[bereich];
+      t.g.position.set(x0 + rnd() * (x1 - x0), 0, z0 + rnd() * (z1 - z0));
+      t.g.rotation.y = rnd() * 6.3; t.ziel = null; t.pause = rnd() * 3; t.phase = rnd() * 10;
+      t.g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      scene.add(t.g); WELT_TEILE.winter.push(t.g); TIERE.push(t);
+    }
+  };
+  setze(pinguin, 'platz', 4); setze(pinguin, 'vorne', 5); setze(pinguin, 'hinten', 3);
+  setze(eisbaer, 'vorne', 2); setze(eisbaer, 'links', 1); setze(eisbaer, 'rechts', 1); setze(eisbaer, 'hinten', 1);
+  setze(hase, 'vorne', 4); setze(hase, 'links', 2); setze(hase, 'rechts', 2);
+  setze(fuchs, 'vorne', 2); setze(fuchs, 'hinten', 1); setze(fuchs, 'rechts', 1);
+}
+function tiereUpdate(dt) {
+  for (const t of TIERE) {
+    t.phase += dt;
+    const g = t.g;
+    if (t.pause > 0) {   // stehen bleiben und schauen
+      t.pause -= dt;
+      for (const b of t.beine) b.rotation.z *= 0.8;
+      g.position.y = 0; g.rotation.x = g.rotation.z = 0;
+      continue;
+    }
+    if (!t.ziel) { const [x0, x1, z0, z1] = t.bereich; t.ziel = new THREE.Vector2(x0 + Math.random() * (x1 - x0), z0 + Math.random() * (z1 - z0)); }
+    const dx = t.ziel.x - g.position.x, dz = t.ziel.y - g.position.z, d = Math.hypot(dx, dz);
+    if (d < 0.3) { t.ziel = null; t.pause = 1.5 + Math.random() * 5; continue; }
+    // langsam in die Laufrichtung drehen (die Tiere schauen nach +x)
+    const soll = Math.atan2(-dz, dx);
+    let diff = soll - g.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    g.rotation.y += diff * Math.min(1, dt * 3);
+    const v = t.tempo * (Math.abs(diff) > 1 ? 0.3 : 1);
+    g.position.x += (dx / d) * v * dt; g.position.z += (dz / d) * v * dt;
+    // Bewegung: Pinguine watscheln, Hasen hoppeln, Bären und Füchse laufen mit den Beinen
+    if (t.art === 'pinguin') g.rotation.x = Math.sin(t.phase * 9) * 0.15;
+    else if (t.art === 'hase') g.position.y = Math.abs(Math.sin(t.phase * 7)) * 0.35;
+    t.beine.forEach((b, i) => { b.rotation.z = Math.sin(t.phase * (t.art === 'baer' ? 5 : 9) + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * 0.45; });
+  }
 }
 
 // ---------- Sehr viele weiße, verschneite Bäume hinter der Straße (alle als EIN Bauteil, schnell fürs Handy) ----------
@@ -2458,7 +2685,7 @@ for (let i = 0; i < FLOCKEN; i++) {
 const flockenGeo = new THREE.BufferGeometry();
 flockenGeo.setAttribute('position', new THREE.BufferAttribute(flockenPos, 3));
 const schneeFall = new THREE.Points(flockenGeo, new THREE.PointsMaterial({
-  map: flecken, size: 0.11, transparent: true, depthWrite: false, color: 0xffffff,
+  map: flecken, size: 0.16, transparent: true, depthWrite: false, color: 0xffffff,
 }));
 scene.add(schneeFall);
 
@@ -3948,7 +4175,7 @@ leinwand.addEventListener('pointermove', (e) => {
     return;
   }
   kam.yaw -= (e.clientX - kam.lx) * 0.006;
-  kam.pitch = Math.min(1.2, Math.max(-0.1, kam.pitch + (e.clientY - kam.ly) * 0.004));
+  kam.pitch = Math.min(1.35, Math.max(-1.1, kam.pitch + (e.clientY - kam.ly) * 0.004));   // ganz nach oben (Himmel) bis ganz nach unten
   kam.lx = e.clientX; kam.ly = e.clientY;
 });
 const kamLos = (e) => { if (e.pointerId === kam.id) kam.id = null; };
@@ -4430,6 +4657,13 @@ function update(dt) {
     held.armL.rotation.x = -schwung; held.armR.rotation.x = schwung;
   }
 
+  // Fußspuren: nur draußen auf dem Boden (nicht in Türmen oder Häusern)
+  {
+    const imHaus = HAEUSER.some((q) => s.pos.x > q.minX && s.pos.x < q.maxX && s.pos.z > q.minZ && s.pos.z < q.maxZ);
+    const schritt = s._spurAlt ? Math.hypot(s.pos.x - s._spurAlt.x, s.pos.z - s._spurAlt.z) : 0;
+    spurenUpdate(dt, s, !T && !imHaus && s.amBoden && s.pos.y < 0.3 && weltVon(s.pos) === 'winter' && schritt < 2, schritt);
+    (s._spurAlt ||= new THREE.Vector3()).copy(s.pos);
+  }
   // 6) Kamera folgt der Figur
   const blickZiel = s.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
   camera.position.set(
@@ -4463,6 +4697,8 @@ function update(dt) {
   // Weich nachziehen, damit die Kamera an Haustüren nicht springt (sieht sonst aus wie teleportiert)
   if (kamGlatt.distanceTo(camera.position) < 25) camera.position.copy(kamGlatt.lerp(camera.position, 1 - Math.exp(-10 * dt)));
   kamGlatt.copy(camera.position);
+  // Nach oben schauen: die Kamera ist dann unten und schaut über die Figur hinweg in den Himmel
+  if (kam.pitch < 0) blickZiel.y += -Math.sin(kam.pitch) * kam.abstand * 2.2;
   camera.lookAt(blickZiel);
   // Sonne nur in 1-Meter-Schritten mitbewegen, damit die Schatten nicht flimmern
   const sx0 = Math.round(s.pos.x), sy0 = Math.round(s.pos.y), sz0 = Math.round(s.pos.z);
@@ -4471,6 +4707,8 @@ function update(dt) {
 
   // 7) Deko bewegen: Wolken, Schnee, blinkende Lichter, drehende Sterne
   schneeUpdate(dt, s.pos);
+  verkehrUpdate(dt, s.pos);
+  tiereUpdate(dt);
   for (const w of wolken) { w.position.x += w.userData.tempo * dt; if (w.position.x > 260) w.position.x = -260; }
   lichtMatA.opacity = 0.6 + 0.4 * Math.sin(zeit * 2.5);
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
@@ -5276,6 +5514,8 @@ renderer.setAnimationLoop(() => {
     startFlug(dt);
     for (const st of drehSterne) st.rotation.y += dt * 1.2;
     schneeUpdate(dt, startKamera.position);
+    verkehrUpdate(dt, null);
+    tiereUpdate(dt);
     renderer.render(scene, startKamera);
   } else {
     if (startFiguren[0].figur.visible) for (const f of startFiguren) f.figur.visible = false;
