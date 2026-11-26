@@ -1,4 +1,7 @@
+<meta charset="utf-8">
 <title>Towerround</title>
+<!-- Handy: Seite genau so breit wie der Bildschirm, kein Reinzoomen durch Doppeltippen oder Ziehen -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mountains+of+Christmas:wght@700&family=Fredoka:wght@500;600;700&display=swap">
 <style>
@@ -15,7 +18,7 @@
     --font: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
     color-scheme: light;
   }
-  html, body { height: 100%; }
+  html, body { height: 100%; margin: 0; }
   body {
     background: var(--sky);
     color: var(--ink);
@@ -2130,7 +2133,7 @@ function bank(x, z, dreh = 0) {
   klotz(statisch, scene, bx, 2.6, bz + 0.7, 3.6, 0.2, 0, { dicke: 2.6, unsichtbar: true });   // Rückwand ist fest
 
   // Laternen an beiden Straßenseiten
-  for (let lx = -96; lx <= 96; lx += 16) { laterne(lx + 4, SZ - 4.2); laterne(lx - 4, SZ - 18); }
+  for (let lx = -96; lx <= 96; lx += 16) { laterne(lx + 8, SZ - 4.2); laterne(lx, SZ - 18); }   // nicht direkt vor der Kamera am Start
   // Schneemann und kleine Schneebälle neben der Haltestelle
   schneemann(dorf, -8, SZ - 1.5, 0.75, 0.3);
   for (let i = 0; i < 4; i++) kugel(dorf, -6.3 + i * 0.35, 0.18, SZ - 0.5 + (i % 2) * 0.3, 0.18, 0xffffff);
