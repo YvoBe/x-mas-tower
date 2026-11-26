@@ -889,7 +889,7 @@ function zuckerstange(x, z, dreh) {
   const m = new THREE.Mesh(stangenGeo, stangenMat);
   m.position.set(x, -0.3, z); m.rotation.y = dreh; m.castShadow = true;
   scene.add(m);
-  const ende = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M(FARBEN.rot, { roughness: 0.35 }));
+  const ende = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M(FARBEN.weiss, { roughness: 0.35 }));   // weißes, rundes Ende (kein roter Kreis)
   ende.position.set(3, 7.7, 0);
   m.add(ende);
   stangen.push(new THREE.Vector3(x, 9.1, z));
