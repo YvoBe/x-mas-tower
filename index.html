@@ -708,7 +708,7 @@ const KRONEN_GRUEN = [baumKrone(4, false), baumKrone(5, false)];
 const kronenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
 const rindenMat = M(0x4a3426, { roughness: 1 });
 const kugelGeo = new THREE.SphereGeometry(0.13, 10, 8);
-const KUGEL_FARBEN = [FARBEN.rot, FARBEN.gold, FARBEN.rosa, FARBEN.navy, FARBEN.weiss];
+const KUGEL_FARBEN = [0xffffff, 0xc9d9ea, 0xf0d9de, 0xdfe4ea, 0xe8eef5];   // Pastell-Kugeln: weiß, hellblau, zartrosa, silber
 const sternGeo = (() => {
   const f = new THREE.Shape();
   for (let i = 0; i < 10; i++) {
@@ -835,13 +835,11 @@ class StangenKurve extends THREE.Curve {
 const stangenGeo = new THREE.TubeGeometry(new StangenKurve(8, 1.5), 80, 0.45, 16, false);
 const stangenMat = new THREE.MeshStandardMaterial({ map: streifenTex, roughness: 0.35 });
 const stangen = [];
-function zuckerstange(x, z, dreh) {
-  const m = new THREE.Mesh(stangenGeo, stangenMat);
-  m.position.set(x, -0.3, z); m.rotation.y = dreh; m.castShadow = true;
-  scene.add(m);
-  const ende = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M(FARBEN.weiss, { roughness: 0.35 }));   // weißes, rundes Ende (kein roter Kreis)
-  ende.position.set(3, 7.7, 0);
-  m.add(ende);
+// Früher Zuckerstangen, jetzt schlichte weiße Lichter-Masten (die Spielerin wollte die Zuckerstangen weg)
+const mastGeo = new THREE.CylinderGeometry(0.16, 0.22, 9.1, 10); mastGeo.translate(0, 4.55, 0);
+function zuckerstange(x, z) {
+  const m = new THREE.Mesh(mastGeo, M(0xeef2f7)); m.position.set(x, 0, z); m.castShadow = true; scene.add(m);
+  const kappe = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8), M(0xffffff)); kappe.position.set(x, 9.2, z); scene.add(kappe);
   stangen.push(new THREE.Vector3(x, 9.1, z));
 }
 
@@ -1363,11 +1361,6 @@ function themaDeko(T, g, platten) {
       const w = k * 1.25 + 0.3;
       lebkuchenMann(g, cx + Math.cos(w) * 4.3, cz + Math.sin(w) * 4.3, 0.8, -w - Math.PI / 2);
     }
-    for (const [x, z] of [[-3.5, 3.5], [3.5, 3.5], [3.5, -3.5]]) {
-      const st = new THREE.Mesh(stangenGeo, stangenMat);
-      st.scale.setScalar(0.35); st.position.set(cx + x, 0, cz + z); st.rotation.y = rnd() * 6;
-      g.add(st);
-    }
   } else if (thema === 'schlitten') {
     const t = new THREE.Group();
     deko(t, 0, 0.9, 0, 1.6, 0.8, 3, FARBEN.rot);
@@ -1541,7 +1534,7 @@ function baueHuelle(T) {
       girlande.setMatrixAt(i, gm);
     });
     scene.add(girlande);
-    const kugelFarben = [FARBEN.rot, FARBEN.gold, FARBEN.weiss];
+    const kugelFarben = [0xffffff, 0xc9d9ea, 0xf0d9de];
     gp.forEach(([x, y], i) => {
       if (i % 4) return;
       const kugel = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), M(kugelFarben[i % 3], { metalness: 0.4, roughness: 0.3 }));
@@ -1964,7 +1957,6 @@ function lebkuchenHaus(x, z, nr) {
   const bonbon = [FARBEN.rot, FARBEN.weiss, 0x8f9b52, FARBEN.rosa];
   for (let i = 0; i < 10; i++) { const bx = -b / 2 + 0.45 + i * (b - 0.9) / 9; if (Math.abs(bx) > TUER_B / 2 + 0.3) kugel(g, bx, 0.3, v - 0.1, 0.18, bonbon[(i + nr) % 4]); }
   for (let i = 0; i < 6; i++) for (const s of [-1, 1]) kugel(g, s * (0.5 + i * 0.7), h + 3.0 - (0.5 + i * 0.7) * 3.0 / 4.75 + 0.2, v + 0.8 + (i % 2) * 2.5, 0.16, bonbon[(i + (s > 0 ? 1 : 0)) % 4]);
-  for (const sx of [-1, 1]) { const zs = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2, 8), stangenMat); zs.position.set(sx * (TUER_B / 2 + 0.5), 1.1, v - 0.3); g.add(zs); }
   lebkuchenMann(g, -b / 2 - 1.1, v - 0.8, 0.7, 0.3);
   g.position.set(x, 0, z); dorf.add(g);
 }
@@ -1985,7 +1977,7 @@ function schildTextur(text) {
   x.fillStyle = '#1f2a4a'; x.font = '800 38px "Baloo 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, 35);
   return new THREE.CanvasTexture(c);
 }
-function marktStand(x, z, nr, dreh = 0) {
+function marktStand(x, z, nr, dreh = 0, gross = 1, wagen = false) {   // gross: Größe, wagen: kleiner Verkaufswagen mit Rädern
   const g = new THREE.Group(), holz = 0x9b7350, dunkel = 0x6b4a32;
   const b = 4.2, t = 2.6;
   deko(g, 0, 1.6, t / 2 - 0.1, b, 3.2, 0.2, holz);   // Rückwand
@@ -2010,9 +2002,13 @@ function marktStand(x, z, nr, dreh = 0) {
   }
   // Lichterkette an der Markise
   lichter(g, kette(new THREE.Vector3(-b / 2 - 0.1, 2.75, -t / 2 - 1.05), new THREE.Vector3(b / 2 + 0.1, 2.75, -t / 2 - 1.05), 0.4, 0.3), 1.1);
-  g.position.set(x, 0, z); g.rotation.y = dreh; dorf.add(g);
+  if (wagen) for (const sx of [-1, 1]) {   // Räder am Verkaufswagen
+    const rad = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 6, 16), M(0x6b4a32)); rad.position.set(sx * (b / 2 + 0.06), 0.45, -0.2); rad.rotation.y = Math.PI / 2; g.add(rad);
+    deko(g, sx * (b / 2 + 0.06), 0.45, -0.2, 0.06, 0.06, 0.8, 0x6b4a32);
+  }
+  g.position.set(x, 0, z); g.rotation.y = dreh; g.scale.setScalar(gross); dorf.add(g);
   const quer = Math.abs(Math.sin(dreh)) > 0.5;
-  festerKasten(x, z, quer ? t : b, quer ? b : t, 1.2);   // nur die Theke ist fest
+  festerKasten(x, z, (quer ? t : b) * gross, (quer ? b : t) * gross, 1.2 * gross);   // nur die Theke ist fest
 }
 
 // Laterne mit warmem Licht
@@ -2047,7 +2043,7 @@ function bank(x, z, dreh = 0) {
     const art = nr % 3;
     if (art === 0) haus(x, z + 2, nr);
     else if (art === 1) lebkuchenHaus(x, z + 2, nr);
-    else { marktStand(x - 3.2, z + 1, nr); marktStand(x + 3.2, z + 1, nr + 1); }
+    else { tanne(dorf, x - 2.5, z + 1, 0.6, true); tanne(dorf, x + 2.8, z + 3.5, 0.5); schneemann(dorf, x + 0.8, z - 1.5, 0.6, 0.2); }   // ruhiger Platz statt Marktständen
     // Kleine Deko rundherum: Laternen, Tannen, Schneemann, Geschenke
     laterne(x - 6.2, z - 4.5); laterne(x + 6.2, z - 4.5);
     tanne(dorf, x + (r() < 0.5 ? -1 : 1) * 7.5, z + 8, 0.45 + r() * 0.15, r() < 0.5);
@@ -2057,8 +2053,10 @@ function bank(x, z, dreh = 0) {
     nr++;
   }
   // Weihnachtsmarkt rund um den großen Baum am Dorfplatz
-  const MARKT = [[-15, 6, 0.5], [15, 6, -0.5], [-19, -6, Math.PI / 2 - 0.2], [19, -6, -Math.PI / 2 + 0.2], [-30, 8, 0], [30, 8, 0]];
-  MARKT.forEach(([dx, dz, dreh], i) => marktStand(PLATZ.x + dx, PLATZ.z + dz, i, dreh));
+  // Zwei Reihen links und rechts vom Baum, mit verschieden großen Ständen und einem Verkaufswagen (nicht zu viele)
+  const MARKT = [[-17, -9, -Math.PI / 2, 0.85, true], [-17, 1, -Math.PI / 2, 1.25, false], [-17, 11, -Math.PI / 2, 1.0, false],
+                 [17, -8, Math.PI / 2, 1.1, false], [17, 3, Math.PI / 2, 0.8, true], [17, 12, Math.PI / 2, 1.3, false]];
+  MARKT.forEach(([dx, dz, dreh, gross, wagen], i) => marktStand(PLATZ.x + dx, PLATZ.z + dz, i, dreh, gross, wagen));
   for (const [dx, dz] of [[-9, -8], [9, -8], [-9, 9], [9, 9]]) laterne(PLATZ.x + dx, PLATZ.z + dz);
   bank(PLATZ.x - 6, PLATZ.z + 12, Math.PI); bank(PLATZ.x + 6, PLATZ.z + 12, Math.PI);
   // Lichterketten quer über den Markt (von Laterne zu Laterne)
@@ -2189,7 +2187,7 @@ function bank(x, z, dreh = 0) {
     for (const g of geos) { pos.set(g.attributes.position.array, i * 3); nrm.set(g.attributes.normal.array, i * 3); uv.set(g.attributes.uv.array, i * 2); i += g.attributes.position.count; g.dispose(); }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true;
+    const m = new THREE.Mesh(geo, mat); m.castShadow = true;   // kein Schatten AUF den Häusern: sonst flimmern die Wände
     dorf.add(m);
   }
 }
@@ -3962,6 +3960,7 @@ const kam = { yaw: Math.PI, pitch: 0.35, abstand: 7.5, id: null, lx: 0, ly: 0 };
 const leinwand = renderer.domElement;
 // Zoomen: Mausrad oder zwei Finger auseinander/zusammen (Kamera näher oder weiter weg)
 const KAM_NAH = 2.5, KAM_WEIT = 16;
+const kamGlatt = new THREE.Vector3(0, -999, 0);
 const finger = new Map();
 let pinchStart = 0, pinchAbstand = kam.abstand;
 const fingerAbstand = () => { const [a, b] = [...finger.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
@@ -4506,9 +4505,14 @@ function update(dt) {
     }
   }
   camera.position.y = Math.max(0.6, camera.position.y);
+  // Weich nachziehen, damit die Kamera an Haustüren nicht springt (sieht sonst aus wie teleportiert)
+  if (kamGlatt.distanceTo(camera.position) < 25) camera.position.copy(kamGlatt.lerp(camera.position, 1 - Math.exp(-10 * dt)));
+  kamGlatt.copy(camera.position);
   camera.lookAt(blickZiel);
-  sonne.position.set(s.pos.x + 12, s.pos.y + 30, s.pos.z + 8);
-  sonne.target.position.copy(s.pos);
+  // Sonne nur in 1-Meter-Schritten mitbewegen, damit die Schatten nicht flimmern
+  const sx0 = Math.round(s.pos.x), sy0 = Math.round(s.pos.y), sz0 = Math.round(s.pos.z);
+  sonne.position.set(sx0 + 12, sy0 + 30, sz0 + 8);
+  sonne.target.position.set(sx0, sy0, sz0);
 
   // 7) Deko bewegen: Wolken, Schnee, blinkende Lichter, drehende Sterne
   schneeUpdate(dt, s.pos);
