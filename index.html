@@ -318,7 +318,7 @@
     font: 800 20px var(--font); border-radius: 16px; padding: 10px 14px 6px; cursor: pointer;
     border: 3px solid var(--ink); background: #fff; color: var(--ink);
   }
-  /* Großer Spielen-Knopf: Marine mit rosa Steppnaht, Glanz, Play-Kreis, Turm und Funkel-Sternen */
+  /* Großer Spielen-Knopf: ruhig und weihnachtlich – Marine, weiße Naht, Schneehaube, Tannenbaum, fallende Flocken */
   #start button.haupt {
     position: relative; overflow: hidden; isolation: isolate;
     display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -330,7 +330,7 @@
   }
   #start button.haupt::before {   /* rosa Naht innen */
     content: ''; position: absolute; inset: 5px; border-radius: 16px; z-index: -1;
-    border: 2px dashed rgba(231, 163, 183, 0.75);
+    border: 2px dashed rgba(255, 255, 255, 0.35);
   }
   #start button.haupt::after {    /* Glanz oben */
     content: ''; position: absolute; left: 10px; right: 10px; top: 4px; height: 42%; border-radius: 14px 14px 40px 40px; z-index: -1;
@@ -339,23 +339,23 @@
   #start .haupt .play {
     flex: none; width: 44px; height: 44px; border-radius: 50%;
     display: grid; place-items: center;
-    background: radial-gradient(circle at 35% 30%, #f6c9d6, #e7a3b7 55%, #c9607a);
+    background: #fbf8f2;
     border: 3px solid #fbf8f2; box-shadow: 0 3px 0 #10172e; transition: transform 0.15s;
   }
   #start .haupt .play svg { width: 18px; height: 18px; margin-left: 3px; }
   #start .haupt .wort { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
-  #start .haupt .wort small { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #e7a3b7; margin-top: 4px; text-transform: uppercase; }
+  #start .haupt .wort small { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: rgba(255, 255, 255, 0.7); margin-top: 4px; text-transform: uppercase; }
   #start .haupt .turm { flex: none; width: 30px; height: 44px; opacity: 0.95; }
-  #start .haupt .funkel { position: absolute; color: #f2c230; font-size: 14px; line-height: 1; animation: funkeln 2.4s ease-in-out infinite; }
+  #start .haupt .funkel { position: absolute; color: #fff; font-size: 14px; line-height: 1; animation: funkeln 2.4s ease-in-out infinite; }
   #start .haupt .funkel.f1 { left: 16px; top: 9px; }
   #start .haupt .funkel.f2 { right: 20px; top: 8px; font-size: 11px; animation-delay: 0.8s; }
   #start .haupt .funkel.f3 { right: 64px; bottom: 9px; font-size: 9px; animation-delay: 1.6s; }
   #start .haupt .funkel.f4 { left: 70px; bottom: 8px; font-size: 10px; animation-delay: 1.2s; }
-  @keyframes funkeln { 0%, 100% { opacity: 0.25; transform: scale(0.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
+  @keyframes funkeln { 0%, 100% { opacity: 0.15; transform: translateY(-2px) rotate(0deg); } 50% { opacity: 0.6; transform: translateY(2px) rotate(30deg); } }
   #start button.haupt:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #10172e, 0 14px 22px rgba(31, 42, 74, 0.4); }
   #start button.haupt:hover .play { transform: scale(1.08); }
   #start button.haupt:active { transform: translateY(4px); box-shadow: 0 2px 0 #10172e, 0 4px 8px rgba(31, 42, 74, 0.3); }
-  #start button.haupt:focus-visible { outline: 3px solid var(--rosa); outline-offset: 3px; }
+  #start button.haupt:focus-visible { outline: 3px solid #8f9b52; outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { #start .haupt .funkel { animation: none; opacity: 0.8; } #start button.haupt { transition: none; } }
   #start #startFigur { display: flex; align-items: center; justify-content: center; gap: 10px; }
   #start .figurIcon { width: 30px; height: 32px; flex: none; margin-top: -4px; }
@@ -461,16 +461,15 @@
     <div class="knoepfe">
       <button type="button" class="haupt" id="startLos" aria-label="Spielen">
         <svg class="schneehaube" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 H300 V3 Q290 11 280 5 Q268 0 256 7 Q242 12 230 5 Q214 0 200 8 Q186 12 172 4 Q158 0 146 7 Q130 12 116 5 Q102 0 88 8 Q74 12 60 4 Q46 0 34 7 Q18 12 8 5 Q4 3 0 4Z" fill="#fff"/></svg>
-        <span class="play" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M3 1.5 L16 9 L3 16.5 Z" fill="#fbf8f2" stroke="#fbf8f2" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <span class="play" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M3 1.5 L16 9 L3 16.5 Z" fill="#1f2a4a" stroke="#1f2a4a" stroke-width="2" stroke-linejoin="round"/></svg></span>
         <span class="wort" aria-hidden="true">Spielen<small>Los geht's!</small></span>
         <svg class="turm" viewBox="0 0 30 44" aria-hidden="true">
           <path d="M15 1 l1.4 2.9 3.1.4-2.3 2.2.6 3.1L15 8.1l-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="#f2c230"/>
-          <path d="M3 15 L15 10 L27 15 Z" fill="#e7a3b7" stroke="#fbf8f2" stroke-width="1.5" stroke-linejoin="round"/>
-          <rect x="6" y="15" width="18" height="28" rx="1.5" fill="#fbf8f2"/>
-          <path d="M6 22 L24 18 M6 30 L24 26" stroke="#e7a3b7" stroke-width="1.6" stroke-dasharray="1.6 2.2"/>
-          <path d="M12 43 v-7 a3 3 0 0 1 6 0 v7 z" fill="#8f9b52"/>
+          <path d="M15 9 L23 20 H19 L26 30 H21 L28 39 H2 L9 30 H4 L11 20 H7 Z" fill="#8f9b52" stroke="#fbf8f2" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M9 21 Q15 24 21 20 M6 31 Q15 35 24 30" fill="none" stroke="#fbf8f2" stroke-width="1.3" stroke-linecap="round" opacity=".8"/>
+          <rect x="12.5" y="39" width="5" height="4.5" rx="1" fill="#fbf8f2"/>
         </svg>
-        <span class="funkel f1" aria-hidden="true">✦</span><span class="funkel f2" aria-hidden="true">✦</span><span class="funkel f3" aria-hidden="true">✦</span><span class="funkel f4" aria-hidden="true">✦</span>
+        <span class="funkel f1" aria-hidden="true">✻</span><span class="funkel f2" aria-hidden="true">✻</span><span class="funkel f3" aria-hidden="true">✻</span><span class="funkel f4" aria-hidden="true">✻</span>
       </button>
       <div class="zwei">
         <button type="button" id="startWinter">🎄 Weihnachten</button>
@@ -4195,9 +4194,9 @@ const startFiguren = [];
     });
   }
 }
-const START_FLUG = [   // Reihenfolge: Aesthetic ASMR, dann Weihnachten, dann Sommer
-  { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
+const START_FLUG = [   // Reihenfolge: zuerst das Weihnachtsdorf, dann Aesthetic ASMR (Sommer ist aus)
   { welt: 'winter', vorne: true, figuren: START, mitte: new THREE.Vector3(0, 0, -10), weit: 185, hoch: 62 },
+  { welt: 'aesthetic', figuren: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z - 20), mitte: new THREE.Vector3(AESTHETIC.x, 0, AESTHETIC.z), weit: 160, hoch: 40, blick: 45 },
   { welt: 'sommer', figuren: new THREE.Vector3(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8), mitte: new THREE.Vector3(SOMMER.x, 0, SOMMER.z + 30), weit: 250, hoch: 70 },
 ];
 if (!MIT_SOMMER) START_FLUG.splice(START_FLUG.findIndex((f) => f.welt === 'sommer'), 1);
