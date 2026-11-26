@@ -941,6 +941,20 @@ function bewegePlatten(dt) {
       if (b.art === 'dreh') {
         const w = b.tempo * dt;
         p.mesh.rotation.y += w;
+        if (b.balken) {   // Der gelbe Balken fegt über die Scheibe: wer ihn berührt, wird runtergestoßen
+          b.balken.rotation.y += w + b.armTempo * dt;
+          const a = b.balken.rotation.y, mx = (p.minX + p.maxX) / 2, mz = (p.minZ + p.maxZ) / 2;
+          const dx = spieler.pos.x - mx, dz = spieler.pos.z - mz;
+          const quer = dx * Math.sin(a) + dz * Math.cos(a), laengs = dx * Math.cos(a) - dz * Math.sin(a);
+          const hoehe = spieler.pos.y - b.oben0;
+          if (!(spieler.stossUhr > 0) && Math.abs(laengs) < b.laenge / 2 + 0.2 && Math.abs(quer) < 0.45 && hoehe < 0.5 && hoehe > -1.6) {
+            const seite = Math.sign(quer) || 1, st = 7;
+            spieler.stoss = { x: Math.sin(a) * seite * st, z: Math.cos(a) * seite * st };
+            spieler.stossUhr = 0.6; spieler.ignorier = p;
+            spieler.vel.y = 4.5; spieler.amBoden = false; spieler.boden = null; spieler.coyote = 0;
+            boingTon();
+          }
+        }
         if (steht) {
           const mx = (p.minX + p.maxX) / 2, mz = (p.minZ + p.maxZ) / 2;
           const dx = spieler.pos.x - mx, dz = spieler.pos.z - mz;
@@ -1775,12 +1789,17 @@ function baueInnen(T) {
       klotz(platten, g, x, h, z, groesse, groesse, farbe, { turm: T });
     } else if (art === 'rund') {
       rundPlatte(platten, g, x, h, z, groesse * 1.05, farbe, { turm: T });
-    } else if (art === 'dreh') {        // runde Scheibe, die sich dreht und dich mitnimmt
-      const k = rundPlatte(platten, g, x, h, z, groesse * 1.15, farbe, { turm: T });
-      const balken = new THREE.Mesh(boxGeo, M(FARBEN.gold));
-      balken.scale.set(groesse * 1.1, 0.04, 0.25); balken.position.y = 0.52;
-      k.mesh.add(balken);
-      k.bew = { art: 'dreh', tempo: (rnd() < 0.5 ? 1 : -1) * (0.9 + nr * 0.02) };
+    } else if (art === 'dreh') {        // runde Scheibe, die sich dreht, mit einem gelben Balken, der darüber fegt
+      const d = groesse * 1.15;
+      const k = rundPlatte(platten, g, x, h, z, d, farbe, { turm: T });
+      const balken = new THREE.Group();
+      const stange = new THREE.Mesh(boxGeo, M(FARBEN.gold, { metalness: 0.3, roughness: 0.4 }));
+      stange.scale.set(d * 0.92, 0.32, 0.2); stange.position.y = 0.26; stange.castShadow = true;
+      const nabe = new THREE.Mesh(zylGeo, M(FARBEN.gold, { metalness: 0.3, roughness: 0.4 }));
+      nabe.scale.set(0.45, 0.5, 0.45); nabe.position.y = 0.25;
+      balken.add(stange, nabe); balken.position.set(x, h, z); g.add(balken);
+      const richtung = rnd() < 0.5 ? 1 : -1;
+      k.bew = { art: 'dreh', tempo: richtung * (0.9 + nr * 0.02), balken, armTempo: -richtung * (1.3 + nr * 0.015), laenge: d * 0.92, oben0: h };
     } else if (SQUISHIES.includes(art)) {   // Squishy: sinkt weich ein, wenn man draufsteht
       const [sb, st] = art === 'butter' ? butterMasse(groesse) : [groesse * 0.95, groesse * 0.95];
       const k = klotz(platten, g, x, h, z, sb, st, 0, { turm: T, unsichtbar: true });
@@ -3465,7 +3484,7 @@ function ueberXZ(p) {
 function seitlichWegschieben(achse) {
   const s = spieler.pos;
   for (const p of alleKloetze) {
-    if (p.aus || !ueberXZ(p) || s.y >= p.oben - 0.05 || s.y + GROESSE <= p.unten) continue;
+    if (p.aus || p === spieler.ignorier || !ueberXZ(p) || s.y >= p.oben - 0.05 || s.y + GROESSE <= p.unten) continue;
     if (p.oben - s.y <= 0.25) { s.y = p.oben; continue; }   // kleine Stufen einfach hochlaufen
     if (achse === 'x') s.x = s.x < (p.minX + p.maxX) / 2 ? p.minX - RADIUS : p.maxX + RADIUS;
     else               s.z = s.z < (p.minZ + p.maxZ) / 2 ? p.minZ - RADIUS : p.maxZ + RADIUS;
@@ -3842,6 +3861,11 @@ function update(dt) {
   const tempoJetzt = sprintAn || tasten.ShiftLeft || tasten.ShiftRight ? SPRINT_TEMPO : LAUF_TEMPO;
   s.vel.x = (rechtsX * ix + vorX * iy) * tempoJetzt;
   s.vel.z = (rechtsZ * ix + vorZ * iy) * tempoJetzt;
+  if (s.stossUhr > 0) {   // vom gelben Balken weggestoßen
+    s.stossUhr -= dt;
+    s.vel.x = s.vel.x * 0.3 + s.stoss.x; s.vel.z = s.vel.z * 0.3 + s.stoss.z;
+    if (s.stossUhr <= 0) s.ignorier = null;
+  }
 
   // 2) Springen und Schwerkraft
   s.coyote -= dt; s.sprungPuffer -= dt;
@@ -3856,7 +3880,7 @@ function update(dt) {
   s.pos.y += s.vel.y * dt;
   s.amBoden = false;
   for (const p of alleKloetze) {
-    if (p.aus || !ueberXZ(p)) continue;
+    if (p.aus || p === s.ignorier || !ueberXZ(p)) continue;
     if (s.vel.y <= 0 && vorherY >= p.oben - 0.001 && s.pos.y <= p.oben) {
       s.pos.y = p.oben; s.vel.y = 0; s.amBoden = true; s.boden = p;
       if (p.trampolin) { s.vel.y = SPRUNG_KRAFT * 1.55; s.amBoden = false; s.coyote = 0; continue; }
