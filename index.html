@@ -598,7 +598,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', handForm: 'lego' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'dutt', 'wuschel', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig'], armForm: ['normal', 'rund', 'eckig'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'dutt', 'wuschel', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig'], armForm: ['normal', 'rund', 'eckig'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3057,7 +3057,7 @@ function gesichtTextur(look, mass) {
   const junge = look.figurTyp === 'junge';
   const augen = look.augen || 'rund', mundArt = look.mund || 'laecheln';
   const brauen = look.brauen || (junge ? 'gerade' : 'bogen');
-  const schluessel = [look.haut, look.haare, look.augenfarbe, augen, mundArt, junge, !!look.sommersprossen, brauen].join('|');
+  const schluessel = [look.haut, look.haare, look.augenfarbe, augen, mundArt, junge, !!look.sommersprossen, brauen, look.lippen, look.lipliner].join('|');
   if (gesichtCache.has(schluessel)) return gesichtCache.get(schluessel);
   const W = 2048, H = 1024;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -3184,7 +3184,9 @@ function gesichtTextur(look, mass) {
     for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.0085, 0.009, 0.0045, 0.0028, s * 0.3, 0, Math.PI * 2); g.fill(); }
   });
   // Mund
-  const lippe = junge ? '#c98078' : '#d0697a';
+  const lippe = look.lippen || (junge ? '#c98078' : '#d0697a');   // Lippenfarbe (im Make-up wählbar)
+  const unterLippe = look.lippen ? new THREE.Color(look.lippen).lerp(new THREE.Color('#ffffff'), 0.12).getStyle() : (junge ? '#d08a82' : '#de7d8c');
+  const liner = look.lipliner && look.lipliner !== 'ohne' ? look.lipliner : null;   // Lip Liner: dunklerer Rand um die Lippen
   bei(0, -0.105, () => {
     g.scale(1.15, 1.15);
     if (mundArt === 'frech') {
@@ -3205,7 +3207,11 @@ function gesichtTextur(look, mass) {
       g.fillStyle = lippe; g.fill();
       g.beginPath();                                  // Unterlippe
       g.moveTo(-0.044, 0.0); g.quadraticCurveTo(0, 0.006, 0.044, 0.0); g.bezierCurveTo(0.032, 0.03, -0.032, 0.03, -0.044, 0.0);
-      g.fillStyle = junge ? '#d08a82' : '#de7d8c'; g.fill();
+      g.fillStyle = unterLippe; g.fill();
+      if (liner) {                                    // Lip Liner: Rand um Ober- und Unterlippe
+        g.beginPath(); g.moveTo(-0.048, -0.001); g.bezierCurveTo(-0.035, -0.012, -0.018, -0.02, -0.008, -0.017); g.quadraticCurveTo(0, -0.011, 0.008, -0.017);
+        g.bezierCurveTo(0.018, -0.02, 0.035, -0.012, 0.048, -0.001); g.bezierCurveTo(0.034, 0.031, -0.034, 0.031, -0.048, -0.001); linie(liner, 0.0032);
+      }
       g.beginPath(); g.moveTo(-0.05, -0.003); g.quadraticCurveTo(-0.02, 0.006, 0, 0.003); g.quadraticCurveTo(0.02, 0.006, 0.05, -0.003); linie('#8e3c4a', 0.0035);   // Mundlinie, leicht gewellt
       g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(0.006, 0.015, 0.012, 0.004, 0, 0, Math.PI * 2); g.fill();
     } else if (mundArt === 'grinsen') {
@@ -3698,6 +3704,51 @@ function bananenTextur(grund) {
   }
   const t = new THREE.CanvasTexture(c); BANANEN_TEX[grund] = t; return t;
 }
+// Kleidung als Bild: Stoff, Kanten, Taschen und Schleifen sind aufgemalt statt extra gebaut
+const KLEID_TEX = {};
+function stoffGrund(g, W, H, farbe, seed) {
+  const z = zufall(seed);
+  g.fillStyle = farbe; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(${z() < 0.5 ? '255,255,255' : '0,0,0'},0.045)`; g.fillRect(z() * W, z() * H, 2, 2); }
+}
+// Offene Jacke (Lathe mit Lücke vorne): u = 0 und u = 1 sind die beiden Vorderkanten, v von unten nach oben
+function jackenTextur(farbe, kante) {
+  const key = farbe + kante; if (KLEID_TEX['j' + key]) return KLEID_TEX['j' + key];
+  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  stoffGrund(g, W, H, farbe, 12);
+  g.fillStyle = kante; g.fillRect(0, 0, 14, H); g.fillRect(W - 14, 0, 14, H);                    // Kante am Reißverschluss
+  g.strokeStyle = 'rgba(0,0,0,0.25)'; g.setLineDash([5, 4]); g.lineWidth = 1.5;
+  for (const x of [20, W - 20]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }    // Naht daneben
+  g.setLineDash([]);
+  for (const [x0, x1] of [[24, 82], [W - 82, W - 24]]) {                                         // Taschen unten
+    const y0 = H * (1 - 0.33), y1 = H * (1 - 0.2);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x0 + 2, y0 + 3, x1 - x0, y1 - y0);
+    g.fillStyle = farbe; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    g.fillStyle = kante; g.fillRect(x0, y0, x1 - x0, 9);                                            // Taschenklappe
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.setLineDash([4, 3]); g.lineWidth = 1.2; g.strokeRect(x0 + 3, y0 + 12, x1 - x0 - 6, y1 - y0 - 15); g.setLineDash([]);
+  }
+  g.fillStyle = '#bdbdbd'; g.fillRect(2, H * (1 - 0.56), 12, 22);                                  // Reißverschluss-Zipper
+  g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(4, H * (1 - 0.56) + 2, 3, 18);
+  const t = new THREE.CanvasTexture(c); KLEID_TEX['j' + key] = t; return t;
+}
+// Top: vorne (u = 0 und u = 1) oben eine kleine Schleife
+function topTextur(farbe, schleife) {
+  const key = 't' + farbe + schleife; if (KLEID_TEX[key]) return KLEID_TEX[key];
+  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  stoffGrund(g, W, H, farbe, 13);
+  for (const cx of [0, W]) {
+    const cy = H * (1 - 0.86);
+    g.fillStyle = schleife; g.strokeStyle = dunkler(schleife, 0.75); g.lineWidth = 2;
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx, cy); g.bezierCurveTo(cx + s * 30, cy - 26, cx + s * 40, cy + 14, cx, cy); g.fill(); g.stroke();       // Schlaufen
+      g.beginPath(); g.moveTo(cx + s * 3, cy + 4); g.lineTo(cx + s * 14, cy + 30); g.lineTo(cx + s * 6, cy + 30); g.closePath(); g.fill(); g.stroke();   // Bänder
+    }
+    g.beginPath(); g.arc(cx, cy, 6, 0, 7); g.fill(); g.stroke();                                   // Knoten
+  }
+  const t = new THREE.CanvasTexture(c); KLEID_TEX[key] = t; return t;
+}
 let KARO_TEX = null;
 function karoTextur() {   // Karo-Muster nur in Hellbeige, Hellbraun und etwas dunklerem Braun
   if (KARO_TEX) return KARO_TEX;
@@ -3941,7 +3992,7 @@ function baueFigur(look, ziel = scene) {
     kragen.position.y = 0.3;
     koerper.add(bund, kragen);
   } else if (oberteilTyp === 'top') {    // Top mit Trägern, Schultern frei
-    const top = teil(rumpf(-0.44, 0.12, 0.004), look.pulli);
+    const top = teil(rumpf(-0.44, 0.12, 0.004), '#ffffff', { map: topTextur(look.pulli, look.streifen) });
     const haut = teil(rumpf(0.1, 0.3, -0.02), look.haut);
     const saum = teil(rumpf(0.075, 0.125, 0.012), look.streifen);
     koerper.add(top, haut, saum);
@@ -3965,20 +4016,6 @@ function baueFigur(look, ziel = scene) {
       const traeger = teil(new THREE.TubeGeometry(bogen, 30, 0.016, 8, false), look.pulli);
       koerper.add(traeger);
     }
-    // Schleife vorne in der Mitte: zwei runde Schlaufen, ein Knoten und zwei kurze Bänder
-    const schleife = new THREE.Group();
-    schleife.position.set(0, 0.1, rumpfBreite(0.1) * 0.56 + 0.015);
-    for (const seite of [-1, 1]) {
-      const schlaufe = teil(new THREE.TorusGeometry(0.022, 0.009, 8, 18), look.streifen);
-      schlaufe.scale.set(1.25, 0.8, 0.6); schlaufe.position.set(seite * 0.03, 0.004, 0); schlaufe.rotation.z = seite * 0.25;
-      const band = teil(new THREE.CapsuleGeometry(0.007, 0.035, 4, 8), look.streifen);
-      band.position.set(seite * 0.012, -0.03, 0); band.rotation.z = seite * 0.35;
-      schleife.add(schlaufe, band);
-    }
-    const knoten = teil(new THREE.SphereGeometry(0.013, 10, 8), look.streifen);
-    knoten.scale.set(1, 1.1, 0.8);
-    schleife.add(knoten);
-    koerper.add(schleife);
   } else if (oberteilTyp === 'tshirt') { // Kurzes T-Shirt: runder Kragen, kurze Ärmel (siehe Arme)
     const ringel = Array.from({ length: 6 }, (_, k) => [0.06 + k * 0.15, 0.13 + k * 0.15]);   // Streifen als Bild
     const shirt = teil(rumpf(-0.44, 0.3), ringelShirt || bananenShirt ? '#ffffff' : look.pulli, { map: ringelShirt ? ringelTextur(look.pulli, look.streifen, ringel, 40, 2) : bananenShirt ? bananenTextur(look.pulli) : stoff('weich', 8, 8) });
@@ -3991,25 +4028,9 @@ function baueFigur(look, ziel = scene) {
     koerper.add(shirt);
     // Runde Jacke: hat die gleiche Form wie der Körper, nur etwas dicker, und ist vorne offen
     const dick = 0.03, offen = 0.42;
-    const jacke = teil(rumpf(-0.48, 0.3, dick, 0.56, offen), look.jacke, { side: THREE.DoubleSide, map: stoff('weich', 8, 8) });
+    const jacke = teil(rumpf(-0.48, 0.3, dick, 0.56, offen), '#ffffff', { side: THREE.DoubleSide, map: jackenTextur(look.jacke, look.buendchen) });   // Kante, Taschen, Zipper sind aufgemalt
     const bund = teil(rumpf(-0.5, -0.42, dick + 0.008, 0.56, offen), look.buendchen, { side: THREE.DoubleSide, map: stoff('rippe', 14, 1) });
     koerper.add(jacke, bund);
-    const vorne = (y, plus) => (rumpfBreite(y) + plus) * (0.56 + plus * 0.6);
-    for (const seite of [-1, 1]) {
-      // Reißverschluss-Kante entlang der Öffnung
-      const kante = [];
-      for (let y = -0.48; y <= 0.3; y += 0.04) {
-        const w = rumpfBreite(y) + dick;
-        kante.push(new THREE.Vector3(seite * Math.sin(offen) * w * 1.04, y, Math.cos(offen) * w * (0.56 + dick * 0.6) * 1.04));
-      }
-      koerper.add(teil(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(kante), 24, 0.008, 6, false), look.buendchen));
-      const tasche = teil(rundKlotz(0.11, 0.075, 0.012, 0.02), look.buendchen);
-      tasche.position.set(seite * 0.17, -0.27, vorne(-0.27, dick) * 0.93);
-      koerper.add(tasche);
-    }
-    const zipper = teil(new THREE.BoxGeometry(0.02, 0.045, 0.012), '#c9c9c9', { metalness: 0.7, roughness: 0.3 });
-    zipper.position.set(Math.sin(offen) * (rumpfBreite(-0.05) + dick), -0.05, vorne(-0.05, dick) * Math.cos(offen) + 0.012);
-    koerper.add(zipper);
     if (kapuzenJacke) {
       // Echte Kapuze, nach hinten umgelegt: dicker Stoffwulst um den Nacken und ein flacher Beutel, der auf dem Rücken liegt
       const tiefe = rumpfBreite(0.1) * 0.56;
@@ -4041,30 +4062,31 @@ function baueFigur(look, ziel = scene) {
     const schulterMat = oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : oberteilTyp === 'top' ? {} : { map: stoff('weich', 3, 3) };
     // Runde Schulter = genau die obere Hälfte vom Ärmel (gleich dick, sitzt direkt auf dem Ärmel), dadurch kein extra Kreis
     const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.085 : 0.1) * ar, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), schulterFarbe, schulterMat);
-    kugel.position.y = -0.05; kugel.scale.y = 0.55;   // flach, damit sie nicht über die Schulterlinie hinausschaut
+    kugel.position.y = 0.02; kugel.scale.y = 0.8;     // runder Abschluss oben am Arm (der Arm geht ein Stück höher)
+    if (oberteilTyp === 'pulli' || oberteilTyp === 'tshirt') gelenk.add(kugel);
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
       // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
-      const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), -0.05 + 0.047 * Math.cos(w)]; }), [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
+      const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), 0.02 + 0.06 * Math.cos(w)]; }), [0.085, -0.04], [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
         .map(([r, y]) => new THREE.Vector2(r * ar, y));
       const a = teil(new THREE.LatheGeometry(profil.reverse(), 24), look.haut);   // von unten nach oben, sonst zeigt die Fläche nach innen und man sieht durch den Arm
       a.scale.z = 1.08;
       gelenk.add(a);
       if (oberteilTyp === 'tshirt') {   // kurzer Ärmel bis knapp über den Ellbogen
-        const aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.112 * ar, 0.24, 24, 1, false), '#ffffff', { map: ringelShirt ? ringelTextur(look.pulli, look.streifen, [[0.12, 0.26], [0.5, 0.64]], 10, 2) : null, color: ringelShirt ? '#ffffff' : look.pulli, side: THREE.DoubleSide });
-        aermel.position.y = -0.13;   // fängt genau unter der runden Schulter an
+        const aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.112 * ar, 0.3, 24, 1, false), '#ffffff', { map: ringelShirt ? ringelTextur(look.pulli, look.streifen, [[0.12, 0.26], [0.5, 0.64]], 10, 2) : null, color: ringelShirt ? '#ffffff' : look.pulli, side: THREE.DoubleSide });
+        aermel.position.y = -0.1;   // geht oben bis zur runden Schulter
         gelenk.add(aermel);
       }
     } else {
       const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
       let aermel;
       if (oberteilTyp === 'pulli') {   // Ärmel mit aufgemalten Streifen (Textur)
-        const v = (y) => (y + 0.55) / 0.5;
+        const v = (y) => (y + 0.55) / 0.57;
         const baender = [-0.12, -0.26, -0.4].map((y) => [v(y - 0.02), v(y + 0.02)]);
-        aermel = teil(strickPulli ? faltenRein(new THREE.CylinderGeometry(0.115 * ar, 0.118 * ar, 0.5, 24, 12), 0.05, -0.25, 0.05) : faltenRein(new THREE.CylinderGeometry(0.104 * ar, 0.11 * ar, 0.5, 24, 12), 0.035, -0.25, 0.0), '#ffffff', { map: strickPulli ? strickTextur(look.pulli, look.streifen, v(-0.2), v(-0.08), 0) : pyjama ? lebkuchenTextur(look.pulli, 2, 2) : weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
-        aermel.position.y = -0.3;
+        aermel = teil(strickPulli ? faltenRein(new THREE.CylinderGeometry(0.115 * ar, 0.118 * ar, 0.57, 24, 12), 0.05, -0.28, 0.05) : faltenRein(new THREE.CylinderGeometry(0.104 * ar, 0.11 * ar, 0.57, 24, 12), 0.035, -0.28, 0.0), '#ffffff', { map: strickPulli ? strickTextur(look.pulli, look.streifen, v(-0.2), v(-0.08), 0) : pyjama ? lebkuchenTextur(look.pulli, 2, 2) : weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
+        aermel.position.y = -0.265;
       } else {
-        aermel = teil(new THREE.CapsuleGeometry(0.1 * ar, 0.5, 8, 16), farbe, { map: stoff('weich', 6, 6) });
-        aermel.position.y = -0.3;
+        aermel = teil(new THREE.CapsuleGeometry(0.1 * ar, 0.57, 8, 16), farbe, { map: stoff('weich', 6, 6) });
+        aermel.position.y = -0.265;
       }
       gelenk.add(aermel);
       const bw = (strickPulli ? 0.124 : oberteilTyp === 'pulli' ? 0.12 : 0.11) * ar;
@@ -6042,6 +6064,8 @@ const AUSWAHL = [
   { titel: 'Augenbrauen', key: 'brauen', worte: [['bogen', 'Geschwungen'], ['gerade', 'Gerade'], ['hoch', 'Hoher Bogen'], ['buschig', 'Buschig'], ['fein', 'Fein']] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
   { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['linie', 'Strich-Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
+  { titel: 'Lippenfarbe', key: 'lippen', nur: ['mund', 'laecheln'], farben: ['#d0697a', '#c98078', '#dcb8bd', '#b5546a', '#a8505a', '#c48a7a', '#9a5a4a'] },
+  { titel: 'Lip Liner', key: 'lipliner', nur: ['mund', 'laecheln'], worte: [['ohne', 'Ohne'], ['#8e3c4a', 'Dunkel-Rosa'], ['#6b3a2e', 'Braun'], ['#5a2630', 'Beere']] },
   { titel: 'Frisur', key: 'frisur', worte: Object.entries(HAAR_STUECKE).map(([k, f]) => [k, f.name]) },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['ringelshirt', 'Gestreiftes T-Shirt'], ['bananenshirt', 'Bananen-T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['strickpulli', 'Dicker Strickpulli'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
@@ -6089,7 +6113,7 @@ const ICONS = {
 };
 const BEREICHE = [
   { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'koerperForm', 'armForm', 'handForm', 'kopfart', 'ohren', 'haut'] },
-  { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'sommersprossen', 'mund'] },
+  { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'sommersprossen', 'mund', 'lippen', 'lipliner'] },
   { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'haare'] },
   { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
 ];
