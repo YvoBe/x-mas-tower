@@ -614,11 +614,13 @@ scene.background = new THREE.Color(0xc6d8e6);
 scene.fog = new THREE.Fog(0xc6d8e6, 120, 700);
 
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1100);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+// Auf dem Handy etwas weniger Bildschärfe und einfachere Schatten, damit das Spiel flüssig läuft
+const HANDY = matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ antialias: !HANDY, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, HANDY ? 1.25 : 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = HANDY ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4d0, 0.85));
@@ -2505,6 +2507,7 @@ const TIERE = [];
       t.g.position.set(x0 + rnd() * (x1 - x0), 0, z0 + rnd() * (z1 - z0));
       t.g.rotation.y = rnd() * 6.3; t.ziel = null; t.pause = rnd() * 3; t.phase = rnd() * 10;
       t.g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      figurZusammen({ figur: t.g, armL: t.beine[0], armR: t.beine[1], weitere: t.beine.slice(2) });
       scene.add(t.g); WELT_TEILE.winter.push(t.g); TIERE.push(t);
     }
   };
@@ -5290,6 +5293,90 @@ const startFiguren = [];
     });
   }
 }
+// Einfache, süße Dorfbewohner (wenige Teile, damit das Spiel auf dem Handy schnell bleibt)
+const LEUTE_LOOKS = [
+  { jacke: 0x1f2a4a, hose: 0x4a3326, haut: 0xf1c9a5, haare: 0x5b3a24, muetze: 0xf5f3ee, schal: 0xd9cbb5, lang: true },
+  { jacke: 0x8a6446, hose: 0x1f2a4a, haut: 0xc68b5e, haare: 0x2b1d14, muetze: null, schal: 0xf5f3ee, lang: false },
+  { jacke: 0xa9c4dc, hose: 0xf5f3ee, haut: 0xf6d7bd, haare: 0xc48a4a, muetze: 0xd9cbb5, schal: 0xf5f3ee, lang: true },
+  { jacke: 0xd9cbb5, hose: 0x4a3326, haut: 0x9a6440, haare: 0x2b1d14, muetze: 0x4a3326, schal: 0x8a6446, lang: false },
+  { jacke: 0xe7c3cc, hose: 0x3b5b8c, haut: 0x6b4329, haare: 0x2b1d14, muetze: null, schal: 0xf5f3ee, lang: true },
+  { jacke: 0xf5f3ee, hose: 0x1f2a4a, haut: 0xf1c9a5, haare: 0xe6c27a, muetze: 0xa9c4dc, schal: 0xa9c4dc, lang: false },
+  { jacke: 0x5b3a24, hose: 0x45474a, haut: 0xf6d7bd, haare: 0x5b3a24, muetze: 0xf5f3ee, schal: 0xe7c3cc, lang: true },
+];
+function einfacherMensch(L, ziel = scene) {
+  const figur = new THREE.Group(), mat = (c) => M(c, { roughness: 0.85 });
+  const teil = (eltern, geo, farbe, x, y, z) => { const m = new THREE.Mesh(geo, mat(farbe)); m.position.set(x, y, z); m.castShadow = true; eltern.add(m); return m; };
+  const kug = new THREE.SphereGeometry(1, 14, 10);
+  const bein = (sx) => {
+    const g = new THREE.Group(); g.position.set(sx * 0.13, 0.85, 0); figur.add(g);
+    teil(g, new THREE.CylinderGeometry(0.11, 0.1, 0.44, 10), L.hose, 0, -0.22, 0);
+    const k = new THREE.Group(); k.position.y = -0.44; g.add(k);
+    teil(k, new THREE.CylinderGeometry(0.1, 0.09, 0.34, 10), L.hose, 0, -0.17, 0);
+    const schuh = teil(k, kug, 0x4a3326, 0, -0.36, 0.05); schuh.scale.set(0.11, 0.07, 0.16);
+    return [g, k];
+  };
+  const [beinL, knieL] = bein(-1), [beinR, knieR] = bein(1);
+  const koerper = teil(figur, new THREE.CylinderGeometry(0.25, 0.31, 0.78, 14), L.jacke, 0, 1.22, 0);
+  const po = teil(figur, kug, L.jacke, 0, 0.86, 0); po.scale.set(0.3, 0.12, 0.27);
+  for (let i = 0; i < 3; i++) teil(figur, kug, 0xf5f3ee, 0, 1.0 + i * 0.2, 0.28).scale.setScalar(0.035);   // Knöpfe
+  const schal = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 8, 16), mat(L.schal)); schal.rotation.x = Math.PI / 2; schal.position.y = 1.6; figur.add(schal);
+  teil(figur, new THREE.BoxGeometry(0.12, 0.3, 0.06), L.schal, 0.1, 1.42, 0.27).rotation.z = 0.15;
+  const kopf = teil(figur, kug, L.haut, 0, 1.9, 0); kopf.scale.setScalar(0.27);
+  // Gesicht: große Augen mit Glanz, Bäckchen, Lächeln
+  for (const sx of [-1, 1]) {
+    teil(figur, kug, 0x2b2420, sx * 0.09, 1.92, 0.235).scale.setScalar(0.04);
+    teil(figur, kug, 0xffffff, sx * 0.09 + 0.012, 1.935, 0.27).scale.setScalar(0.012);
+    const b = teil(figur, kug, 0xe8a9a9, sx * 0.15, 1.85, 0.21); b.scale.set(0.045, 0.028, 0.02);
+  }
+  const mund = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 6, 10, Math.PI), mat(0x8a4a44)); mund.rotation.z = Math.PI; mund.position.set(0, 1.83, 0.255); figur.add(mund);
+  // Haare (und lange Haare hinten)
+  const h = teil(figur, kug, L.haare, 0, 1.95, -0.03); h.scale.set(0.29, 0.27, 0.29);
+  const pony = teil(figur, kug, L.haare, 0, 2.05, 0.12); pony.scale.set(0.24, 0.1, 0.14);
+  if (L.lang) { const zopf = teil(figur, kug, L.haare, 0, 1.68, -0.18); zopf.scale.set(0.26, 0.32, 0.14); }
+  if (L.muetze) {   // Mütze mit Bommel
+    const m = teil(figur, kug, L.muetze, 0, 2.03, -0.01); m.scale.set(0.3, 0.22, 0.3);
+    teil(figur, new THREE.CylinderGeometry(0.29, 0.29, 0.08, 16), L.muetze, 0, 1.98, 0);
+    teil(figur, kug, 0xf5f3ee, 0, 2.27, -0.02).scale.setScalar(0.08);
+  }
+  const arm = (sx) => {
+    const g = new THREE.Group(); g.position.set(sx * 0.33, 1.52, 0); figur.add(g);
+    const a = teil(g, new THREE.CylinderGeometry(0.08, 0.075, 0.56, 10), L.jacke, 0, -0.28, 0); a.rotation.z = sx * 0.08;
+    teil(g, kug, L.schal, sx * 0.02, -0.6, 0).scale.setScalar(0.085);   // Handschuh
+    g.rotation.z = sx * 0.12;
+    return g;
+  };
+  const armL = arm(-1), armR = arm(1);
+  ziel.add(figur);
+  return { figur, beinL, beinR, knieL, knieR, armL, armR };
+}
+// Fürs Handy: eine stehende Figur aus ganz vielen Teilen zu wenigen Teilen zusammenkleben (nur die Arme bleiben beweglich)
+function figurZusammen(f) {
+  const fig = f.figur; fig.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(fig.matrixWorld).invert(), m4 = new THREE.Matrix4();
+  const proMat = new Map(), weg = [];
+  const beweglich = [f.armR, f.armL, ...(f.weitere || [])].filter(Boolean);
+  const armTeil = (o) => { for (let p = o; p && p !== fig; p = p.parent) if (beweglich.includes(p)) return true; return false; };
+  fig.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || armTeil(o) || o.material.vertexColors || Array.isArray(o.material) || o.morphTargetInfluences) return;
+    let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const n of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(n)) geo.deleteAttribute(n);
+    if (!geo.attributes.normal) geo.computeVertexNormals();
+    if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    geo.applyMatrix4(m4.multiplyMatrices(inv, o.matrixWorld));
+    if (!proMat.has(o.material)) proMat.set(o.material, []);
+    proMat.get(o.material).push(geo); weg.push(o);
+  });
+  for (const o of weg) o.parent.remove(o);
+  for (const [mat, geos] of proMat) {
+    let n = 0; for (const g of geos) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    let i = 0;
+    for (const g of geos) { pos.set(g.attributes.position.array, i * 3); nrm.set(g.attributes.normal.array, i * 3); uv.set(g.attributes.uv.array, i * 2); i += g.attributes.position.count; g.dispose(); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    const m = new THREE.Mesh(geo, mat); m.castShadow = true; fig.add(m);
+  }
+}
 // ---------- Leute im Weihnachtsdorf: Verkäufer in den Ständen, Besucher mit Punsch, Leute auf den Bänken ----------
 // Alle warm angezogen (Jacke, Schal, Mütze, Handschuhe), in ruhigen Farben
 const LEUTE = [];
@@ -5306,20 +5393,21 @@ const LEUTE = [];
   const TRANK = { Punsch: 0xa86a6a, Kakao: 0x7a5236 };
   let n = 0;
   const mensch = (x, z, blick, art, extra = {}) => {
-    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...WARM[n++ % WARM.length] }, scene);
+    const f = einfacherMensch(LEUTE_LOOKS[n++ % LEUTE_LOOKS.length]);
     f.figur.position.set(x, 0, z); f.figur.rotation.y = blick;
     WELT_TEILE.winter.push(f.figur);
     const l = { f, art, phase: n * 1.7, ...extra };
     if (extra.tasse) {   // Tasse mit Punsch oder Kakao in der Hand
       const t = new THREE.Group(), c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.14, 10), M([0xffffff, 0xc9d9ea, 0xf0d9de][n % 3]));
       t.add(c); const d = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10), M(extra.tasse)); d.rotation.x = -Math.PI / 2; d.position.y = 0.06; t.add(d);
-      t.position.set(0, -0.72, 0.1); f.armR.add(t); l.tasseObj = t;
+      t.position.set(0, -0.62, 0.1); f.armR.add(t); l.tasseObj = t;
       f.armR.rotation.x = -1.1; t.rotation.x = 1.1;
     }
     if (art === 'sitzen') {   // Oberschenkel nach vorne, Unterschenkel nach unten
       f.beinL.rotation.x = f.beinR.rotation.x = -Math.PI / 2; f.knieL.rotation.x = f.knieR.rotation.x = Math.PI / 2;
-      f.figur.position.y = -0.24;
+      f.figur.position.y = -0.27;
     } else if (art !== 'verkaufen') klotz(statisch, scene, x, 2, z, 0.7, 0.7, 0, { dicke: 2, unsichtbar: true });   // man läuft nicht durch
+    figurZusammen(f); l.welt = 'winter';
     LEUTE.push(l);
     return l;
   };
@@ -5338,16 +5426,20 @@ const LEUTE = [];
   mensch(PLATZ.x + 5.5, PLATZ.z + 6, -Math.PI / 2 - 0.3, 'stehen', { tasse: TRANK.Punsch });
   mensch(PLATZ.x + 3.4, PLATZ.z + 6.6, Math.PI / 2 - 0.3, 'stehen', { tasse: TRANK.Kakao });
   // Auf den Bänken sitzen (Bank-Lehne ist hinten, man schaut nach vorne)
-  BAENKE.slice(0, 6).forEach((b, i) => {
-    if (i % 2 && i > 2) return;
+  BAENKE.slice(0, 2).forEach((b, i) => {
     const seite = i % 2 ? 0.45 : -0.45, fx = Math.sin(b.dreh) * 0.12 + Math.cos(b.dreh) * seite, fz = Math.cos(b.dreh) * 0.12 - Math.sin(b.dreh) * seite;
     mensch(b.x + fx, b.z + fz, b.dreh + Math.PI, 'sitzen', { tasse: i % 2 ? TRANK.Kakao : TRANK.Punsch });
   });
 }
 function leuteUpdate(dt) {
+  const c = startOffen ? startKamera.position : camera.position;
   for (const l of LEUTE) {
-    l.phase += dt;
     const f = l.f;
+    // Nur Leute in der Nähe zeigen (spart viel Arbeit fürs Handy)
+    const sicht = l.welt === zeigeWelt && Math.hypot(f.figur.position.x - c.x, f.figur.position.z - c.z) < 60;
+    f.figur.visible = sicht;
+    if (!sicht) continue;
+    l.phase += dt;
     if (l.art === 'verkaufen') {   // Verkäufer reichen ab und zu etwas über die Theke
       const w = Math.max(0, Math.sin(l.phase * 0.6));
       f.armR.rotation.x = -w * 1.3; f.armL.rotation.x = -w * 0.5;
@@ -5367,7 +5459,7 @@ const wonder = new THREE.Group(); scene.add(wonder); WELT_TEILE.wonderland.push(
 const W_HAEUSER = [];    // die Wohnhäuser (Nummer, Tür, Schild, ...)
 const W_AKTIONEN = [];   // Stellen, an denen ein Knopf erscheint (Sachen mitnehmen, Tür auf/zu)
 const W_START = new THREE.Vector3(WONDER.x, 0, WONDER.z - 3);
-const W_FEUER = [], W_VERKAEUFER = [];
+const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
 {
   const W = WONDER, rnd = zufall(4711);
   const C = {   // Farben der Stadt
@@ -5619,7 +5711,7 @@ const W_FEUER = [], W_VERKAEUFER = [];
   // --- Die Holzhäuser (2 Etagen, Kamin, Treppe, Kinderzimmer ...) ---
   // s = 1: Haustür zeigt nach -z (Straße im Süden), s = -1: gedreht, Tür zeigt nach +z
   function wohnhaus(nr, x, z, s) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = s < 0 ? Math.PI : 0; wonder.add(g);
+    let g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = s < 0 ? Math.PI : 0; wonder.add(g);
     const P = (lx, lz) => [x + lx * s, z + lz * s];
     const fest = (lx, oben, lz, b, t, dicke) => { const [wx, wz] = P(lx, lz); return klotz(statisch, wonder, wx, oben, wz, b, t, 0, { dicke, unsichtbar: true }); };
     const b = 16, t = 14, F = 0.6, E = 5.0, H = 9.2, D = 0.3, TB = 2.0, TH = 2.9;
@@ -5707,6 +5799,9 @@ const W_FEUER = [], W_VERKAEUFER = [];
     nrSchild.rotation.y = Math.PI; nrSchild.position.set(1.6, F + 2.1, vz - 0.02); nrSchild.userData.eigen = true; g.add(nrSchild);
 
     // ===== Erdgeschoss: Wohnzimmer =====
+    // Alles drinnen kommt in eine eigene Gruppe: sie wird nur gezeigt, wenn man in der Nähe ist (fürs Handy)
+    const innenWurzel = new THREE.Group(); wonder.add(innenWurzel);
+    { const gi = new THREE.Group(); gi.position.copy(g.position); gi.rotation.y = g.rotation.y; innenWurzel.add(gi); g = gi; }
     const iL = -b / 2 + D, iR = b / 2 - D, iV = vz + D, iH = t / 2 - D;   // Innenkanten
     // Kamin aus Ziegeln mit Socken und ruhigem Feuer
     const kx = 1.6;
@@ -5902,6 +5997,8 @@ const W_FEUER = [], W_VERKAEUFER = [];
     W_HAEUSER.push({ nr, x, z, s, scharnier, tuerKlotz, tuerPos: P(0, vz - 1.2), name: HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: g, vz, F, TH });
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
     HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H, etage: E, unten: F });
+    punkteZusammen(innenWurzel); zusammenkleben(innenWurzel); innenWurzel.traverse((o) => { o.userData.eigen = true; });
+    W_INNEN.push({ grp: innenWurzel, x, z });
   }
 
   // --- Läden: Supermarkt und Bäckerei, mit Verkäufer/in und Sachen zum Mitnehmen ---
@@ -6023,21 +6120,23 @@ const W_FEUER = [], W_VERKAEUFER = [];
     { figurTyp: 'junge', frisur: 'wuschel', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'pulli', pulli: '#f5f3ee', streifen: '#8a6446', hoseTyp: 'jeans', hose: '#45474a', kopf: 'weihnachtsmuetze', sternAn: false },
   ];
   for (const v of W_VERKAEUFER) {
-    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...LOOKS[v.look] }, scene);
+    const f = einfacherMensch(LEUTE_LOOKS[v.look * 3]);
     f.figur.position.set(v.x, 0.2, v.z); f.figur.rotation.y = v.blick;
     WELT_TEILE.wonderland.push(f.figur);
-    LEUTE.push({ f, art: 'verkaufen', phase: v.look * 2 });
+    figurZusammen(f);
+    LEUTE.push({ f, art: 'verkaufen', phase: v.look * 2, welt: 'wonderland' });
   }
 }
 // Fürs Handy: alle weißen Lichter-Punkte mit gleichem Material zu EINEM Teil zusammenfassen
-{
-  wonder.updateMatrixWorld(true);
-  const proMat = new Map(), weg = [], v = new THREE.Vector3();
-  wonder.traverse((o) => { if (!o.isPoints) return; const a = o.geometry.attributes.position; if (!proMat.has(o.material)) proMat.set(o.material, []);
-    for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld); proMat.get(o.material).push(v.x, v.y, v.z); } weg.push(o); });
+function punkteZusammen(gruppe) {
+  gruppe.updateMatrixWorld(true);
+  const proMat = new Map(), weg = [], v = new THREE.Vector3(), inv = new THREE.Matrix4().copy(gruppe.matrixWorld).invert();
+  gruppe.traverse((o) => { if (!o.isPoints || o.userData.eigen) return; const a = o.geometry.attributes.position; if (!proMat.has(o.material)) proMat.set(o.material, []);
+    for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld).applyMatrix4(inv); proMat.get(o.material).push(v.x, v.y, v.z); } weg.push(o); });
   for (const o of weg) { o.parent.remove(o); o.geometry.dispose(); }
-  for (const [mat, pos] of proMat) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wonder.add(new THREE.Points(geo, mat)); }
+  for (const [mat, pos] of proMat) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gruppe.add(new THREE.Points(geo, mat)); }
 }
+punkteZusammen(wonder);
 zusammenkleben(wonder);
 alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
 
@@ -6048,7 +6147,7 @@ try { meinHaus = Number(localStorage.getItem('wonderland-haus') ?? -1); hausZu =
 if (!(meinHaus >= 0 && meinHaus < W_HAEUSER.length)) meinHaus = -1;
 const deinSchild = (() => {   // schwebendes Schild "Dein Haus" über deiner Tür
   const c = document.createElement('canvas'); c.width = 256; c.height = 80; const x = c.getContext('2d');
-  x.fillStyle = '#4a3326'; x.beginPath(); x.roundRect(4, 4, 248, 72, 20); x.fill();
+  x.fillStyle = '#4a3326'; x.beginPath(); x.moveTo(24, 4); x.arcTo(252, 4, 252, 76, 20); x.arcTo(252, 76, 4, 76, 20); x.arcTo(4, 76, 4, 4, 20); x.arcTo(4, 4, 252, 4, 20); x.closePath(); x.fill();   // runde Ecken (ohne roundRect, das kennen ältere iPads nicht)
   x.fillStyle = '#f6f1e7'; x.font = '700 40px "Fredoka", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('Dein Haus', 128, 42);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
   sp.scale.set(2.4, 0.75, 1); sp.visible = false; scene.add(sp); WELT_TEILE.wonderland.push(sp); return sp;
@@ -6098,6 +6197,7 @@ function wonderUpdate(dt, pos, imWonder) {
   for (const h of W_HAEUSER) {   // Türen weich auf- und zugehen lassen
     const soll = h.tuerZiel ?? -1.9; h.scharnier.rotation.y += (soll - h.scharnier.rotation.y) * Math.min(1, dt * 6);
   }
+  for (const h of W_INNEN) h.grp.visible = Math.hypot(pos.x - h.x, pos.z - h.z) < 32;
   for (const f of W_FEUER) { f.scale.y = 0.9 + Math.sin(zeit * 9 + f.position.x * 5) * 0.1 + Math.sin(zeit * 13) * 0.05; f.scale.x = f.scale.z = 1 + Math.sin(zeit * 7) * 0.05; }
   // Welcher Knopf passt gerade? (Tür von deinem Haus oder Sachen im Laden)
   let neu = null;
