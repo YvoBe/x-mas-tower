@@ -533,9 +533,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal' };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'lang', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['lang', 'locken', 'zopf', 'flechtzopf', 'dutt', 'kurz', 'junge', 'jlocken'], oberteilTyp: ['pulli', 'top', 'tshirt', 'jacke', 'kapuzenjacke', 'weihnachtspulli', 'lebkuchenpyjama'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer'], schal: ['ohne', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'rock'], augen: ['rund', 'wimpern', 'zu'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3106,6 +3106,9 @@ function baueFigur(look, ziel = scene) {
     }
   }
 
+  // Kopf unsichtbar: Gesicht, Schädel und Ohren weg, nur Haare (und Mütze usw.) schweben über dem Hals
+  if (look.kopfart === 'unsichtbar') for (const teilchen of kopf.children) teilchen.visible = false;
+
   // Haare mit feinen Strähnen
   const haarMat = { roughness: 0.75, map: haarTextur };
   const frisur = look.frisur || 'lang';
@@ -4397,16 +4400,18 @@ function editorFigurNeu() {
 // Auswahl-Spalte rechts
 // Fertige Figuren: ein Tipp, und alles passt zusammen (danach kann man noch alles ändern)
 const VORLAGEN = {
-  winterkind: { figurTyp: 'maedchen', frisur: 'flechtzopf', pony: false, haare: '#8a5a33', haut: '#f1c9a5', oberteilTyp: 'jacke', jacke: '#1f2a4a', pulli: '#f5f3ee', buendchen: '#e7a3b7', hoseTyp: 'jeans', hose: '#3b5b8c', sternAn: true, schuhe: '#f5f3ee', augen: 'wimpern', mund: 'laecheln', ohren: 'normal' },
-  sportlich: { figurTyp: 'junge', frisur: 'junge', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'tshirt', pulli: '#7a8450', buendchen: '#f5f3ee', hoseTyp: 'jogging', hose: '#2b2b2b', umschlag: '#f5f3ee', sternAn: false, schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal' },
-  ballerina: { figurTyp: 'maedchen', frisur: 'dutt', pony: false, haare: '#e6c27a', haut: '#f6d7bd', oberteilTyp: 'top', pulli: '#f5f3ee', streifen: '#e7a3b7', hoseTyp: 'rock', hose: '#e7a3b7', schuhe: '#e7a3b7', augen: 'wimpern', mund: 'linie', ohren: 'normal' },
-  lockenkopf: { figurTyp: 'junge', frisur: 'jlocken', haare: '#5b3a24', haut: '#9a6440', oberteilTyp: 'pulli', pulli: '#d9cbb5', streifen: '#1f2a4a', buendchen: '#1f2a4a', hoseTyp: 'kurz', hose: '#7a8450', umschlag: '#2e3d68', sternAn: false, schuhe: '#8a5a33', augen: 'rund', mund: 'laecheln', ohren: 'normal' },
-  elfe: { figurTyp: 'maedchen', frisur: 'dutt', pony: true, haare: '#e6c27a', haut: '#f6d7bd', oberteilTyp: 'tshirt', pulli: '#7a8450', buendchen: '#c8323c', hoseTyp: 'rock', hose: '#c8323c', schuhe: '#7a8450', augen: 'zu', mund: 'frech', sommersprossen: true, ohren: 'spitz' },
-  sommer: { figurTyp: 'maedchen', frisur: 'locken', pony: false, haare: '#2b1d14', haut: '#6b4329', oberteilTyp: 'tshirt', pulli: '#e7a3b7', buendchen: '#f5f3ee', hoseTyp: 'kurz', hose: '#d9cbb5', umschlag: '#f5f3ee', sternAn: true, stern: '#f2c230', schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal' },
+  winterkind: { figurTyp: 'maedchen', frisur: 'flechtzopf', pony: false, haare: '#5b3a24', haut: '#f1c9a5', oberteilTyp: 'jacke', jacke: '#1f2a4a', pulli: '#f5f3ee', buendchen: '#d9cbb5', hoseTyp: 'jeans', hose: '#3b5b8c', umschlag: '#2e3d68', sternAn: true, stern: '#c9a25a', schuhe: '#f5f3ee', augen: 'wimpern', mund: 'laecheln', ohren: 'normal', kopfart: 'normal' },
+  sportlich: { figurTyp: 'junge', frisur: 'junge', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'tshirt', pulli: '#a9c4dc', buendchen: '#f5f3ee', hoseTyp: 'jogging', hose: '#1f2a4a', umschlag: '#f5f3ee', sternAn: false, schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal', kopfart: 'normal' },
+  ballerina: { figurTyp: 'maedchen', frisur: 'dutt', pony: false, haare: '#c48a4a', haut: '#f6d7bd', oberteilTyp: 'top', pulli: '#f5f3ee', streifen: '#d9cbb5', hoseTyp: 'rock', hose: '#d9cbb5', schuhe: '#f5f3ee', augen: 'wimpern', mund: 'linie', ohren: 'normal', kopfart: 'normal' },
+  lockenkopf: { figurTyp: 'junge', frisur: 'jlocken', haare: '#2b1d14', haut: '#9a6440', oberteilTyp: 'pulli', pulli: '#d9cbb5', streifen: '#4a3326', buendchen: '#4a3326', hoseTyp: 'kurz', hose: '#8a5a33', umschlag: '#4a3326', sternAn: false, schuhe: '#4a3326', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'normal' },
+  elfe: { figurTyp: 'maedchen', frisur: 'dutt', pony: true, haare: '#e6c27a', haut: '#f6d7bd', oberteilTyp: 'tshirt', pulli: '#7a8450', buendchen: '#d9cbb5', hoseTyp: 'rock', hose: '#8a5a33', schuhe: '#4a3326', augen: 'zu', mund: 'frech', sommersprossen: true, ohren: 'spitz', kopfart: 'normal' },
+  sommer: { figurTyp: 'maedchen', frisur: 'locken', pony: false, haare: '#2b1d14', haut: '#6b4329', oberteilTyp: 'tshirt', pulli: '#f5f3ee', buendchen: '#a9c4dc', hoseTyp: 'kurz', hose: '#a9c4dc', umschlag: '#f5f3ee', sternAn: true, stern: '#c9a25a', schuhe: '#f5f3ee', augen: 'rund', mund: 'grinsen', ohren: 'normal', kopfart: 'normal' },
+  ohnekopf: { figurTyp: 'junge', frisur: 'junge', haare: '#4a3326', haut: '#e0ac85', oberteilTyp: 'pulli', pulli: '#4a3326', streifen: '#b08a64', buendchen: '#d9cbb5', hoseTyp: 'jeans', hose: '#1f2a4a', umschlag: '#2e3d68', sternAn: false, schuhe: '#d9cbb5', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
 };
 const AUSWAHL = [
-  { titel: 'Fertige Figuren', key: 'vorlage', worte: [['winterkind', 'Winterkind'], ['sportlich', 'Sportlich'], ['ballerina', 'Ballerina'], ['lockenkopf', 'Lockenkopf'], ['elfe', 'Elfe'], ['sommer', 'Sommerkind']] },
+  { titel: 'Fertige Figuren', key: 'vorlage', worte: [['winterkind', 'Winterkind'], ['sportlich', 'Sportlich'], ['ballerina', 'Ballerina'], ['lockenkopf', 'Lockenkopf'], ['elfe', 'Elfe'], ['sommer', 'Sommerkind'], ['ohnekopf', 'Ohne Kopf']] },
   { titel: 'Figur', key: 'figurTyp', worte: [['maedchen', 'Mädchen'], ['junge', 'Junge']] },
+  { titel: 'Kopf', key: 'kopfart', worte: [['normal', 'Normal'], ['unsichtbar', 'Unsichtbar']] },
   { titel: 'Ohren', key: 'ohren', worte: [['normal', 'Normal'], ['spitz', 'Elfenohren']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
   { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['zu', 'Fröhlich zu']] },
@@ -4418,21 +4423,21 @@ const AUSWAHL = [
   { titel: 'Pony', key: 'pony', ohne: ['frisur', ['junge', 'jglatt', 'jlocken']], worte: [[false, 'Ohne Pony'], [true, 'Mit Pony']] },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
   { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['tshirt', 'T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
-  { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#e7a3b7', '#7a8450', '#1f2a4a', '#c8323c', '#d9cbb5'] },
-  { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'pulli'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
-  { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#e7a3b7', '#1f2a4a', '#7a8450', '#c8323c', '#f5f3ee', '#f2c230'] },
-  { titel: 'Jacke', key: 'jacke', nur: ['oberteilTyp', 'jacke'], farben: ['#7a8450', '#1f2a4a', '#e7a3b7', '#c8323c', '#d9cbb5', '#3b5b8c'] },
-  { titel: 'Farbe Winterjacke', key: 'jacke', nur: ['oberteilTyp', 'kapuzenjacke'], farben: ['#7a8450', '#1f2a4a', '#e7a3b7', '#c8323c', '#d9cbb5', '#3b5b8c'] },
-  { titel: 'Kragen, Bündchen, Taschen', key: 'buendchen', nur: ['oberteilTyp', '!top'], farben: ['#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450', '#c8323c'] },
+  { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'pulli'], farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Saum vom Top', key: 'streifen', nur: ['oberteilTyp', 'top'], farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Jacke', key: 'jacke', nur: ['oberteilTyp', 'jacke'], farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Farbe Winterjacke', key: 'jacke', nur: ['oberteilTyp', 'kapuzenjacke'], farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Kragen, Bündchen, Taschen', key: 'buendchen', nur: ['oberteilTyp', '!top'], farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
   { titel: 'Hose', key: 'hoseTyp', worte: [['jeans', 'Jeans'], ['jogging', 'Jogginghose'], ['kurz', 'Kurze Hose'], ['rock', 'Rock']] },
-  { titel: 'Farbe Hose / Rock', key: 'hose', farben: ['#1f2a4a', '#3b5b8c', '#7a8450', '#2b2b2b', '#e7a3b7', '#d9cbb5'] },
-  { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#2e3d68', '#1f2a4a', '#f5f3ee', '#e7a3b7', '#7a8450'] },
+  { titel: 'Farbe Hose / Rock', key: 'hose', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
+  { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
   { titel: 'Stern auf der Hose', key: 'sternAn', ohne: ['hoseTyp', 'rock'], worte: [[true, 'Ja'], [false, 'Nein']] },
-  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', 'rock'], farben: ['#f2c230', '#f5f3ee', '#e7a3b7', '#c8323c'] },
+  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', 'rock'], farben: ['#c9a25a', '#f5f3ee', '#a9c4dc', '#b08a64'] },
   { titel: 'Kopfschmuck', key: 'kopf', worte: [['ohne', 'Nichts'], ['weihnachtsmuetze', 'Weihnachtsmütze'], ['rentierreif', 'Rentier-Haarreif'], ['ohrenschuetzer', 'Ohrenschützer']] },
   { titel: 'Handschuhe', key: 'haende', worte: [['ohne', 'Keine'], ['faeustlinge', 'Fäustlinge']] },
   { titel: 'Schal', key: 'schal', worte: [['ohne', 'Ohne'], ['schal', 'Schal']] },
-  { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#1f2a4a', '#e7a3b7', '#7a8450', '#2b2b2b', '#8a5a33'] },
+  { titel: 'Schuhe', key: 'schuhe', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd'] },
 ];
 // Zeigt eine Auswahl nur, wenn sie gerade passt (z. B. Streifen nur beim Pulli)
 const passt = (g) => {
@@ -4457,7 +4462,7 @@ const ICONS = {
   schloss: ICON('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'),
 };
 const BEREICHE = [
-  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'ohren', 'haut'] },
+  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'kopfart', 'ohren', 'haut'] },
   { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'sommersprossen', 'mund'] },
   { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'pony', 'haare'] },
   { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
