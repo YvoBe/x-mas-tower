@@ -579,9 +579,10 @@ const glasNormal = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 
 const glasGold = new THREE.MeshStandardMaterial({ color: 0xf3e3b0, roughness: 0.6, metalness: 0.2 });
 // Weihnachtstürme in Weihnachtsfarben: abwechselnd Dunkelrot, Tannengrün und Creme
 const WEIHNACHTS_WAENDE = [
-  { wand: new THREE.MeshStandardMaterial({ color: 0x9e2b36, roughness: 0.85 }), rahmen: 0xd4a53c, streifen: 0xf5f3ee, dach: 0x2c4a35 },
-  { wand: new THREE.MeshStandardMaterial({ color: 0x2f5a3e, roughness: 0.85 }), rahmen: 0xd4a53c, streifen: 0xc8323c, dach: 0x9e2b36 },
-  { wand: new THREE.MeshStandardMaterial({ color: 0xf3ead8, roughness: 0.85 }), rahmen: 0x9e2b36, streifen: 0x2f5a3e, dach: 0x9e2b36 },
+  // Pastell (die Spielerin wollte es nicht so bunt): Altrosa, Salbeigrün, Hellblau, dazu Weiß
+  { wand: new THREE.MeshStandardMaterial({ color: 0xd9b3bd, roughness: 0.85 }), rahmen: 0xf5f3ee, streifen: 0xffffff, dach: 0x9fb3c8 },
+  { wand: new THREE.MeshStandardMaterial({ color: 0xb8c4a0, roughness: 0.85 }), rahmen: 0xf5f3ee, streifen: 0xf3dde3, dach: 0xd9b3bd },
+  { wand: new THREE.MeshStandardMaterial({ color: 0xc9d9ea, roughness: 0.85 }), rahmen: 0x8fa3ba, streifen: 0xffffff, dach: 0x8fa3ba },
 ];
 // Sommertürme: helles, sonniges Gelb, als ob die Sonne drauf scheint
 const glasWolke = new THREE.MeshStandardMaterial({ color: 0xfff4fa, roughness: 0.2, transparent: true, opacity: 0.16, depthWrite: false });   // durchsichtige Wände
@@ -1853,8 +1854,8 @@ zuckerstange(7, PLATZ.z - 12, 0);
   const punkte = [];
   const bei = (x, z) => stangen.find((p) => p.x === x && p.z === z);
   for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) {
-    punkte.push(...kette(bei(LINIEN[k], LINIEN[i]), bei(LINIEN[k + 1], LINIEN[i]), 0.9, 2));
-    punkte.push(...kette(bei(LINIEN[i], LINIEN[k]), bei(LINIEN[i], LINIEN[k + 1]), 0.9, 2));
+    punkte.push(...kette(bei(LINIEN[k], LINIEN[i]), bei(LINIEN[k + 1], LINIEN[i]), 0.9, 0.8));
+    punkte.push(...kette(bei(LINIEN[i], LINIEN[k]), bei(LINIEN[i], LINIEN[k + 1]), 0.9, 0.8));
   }
   punkte.push(...kette(bei(-7, PLATZ.z - 12), bei(7, PLATZ.z - 12), 0.7, 1.5));
   lichter(scene, punkte, 1.2);
@@ -1880,53 +1881,92 @@ function fenster(g, x, y, z, b = 0.9, h = 1) {
 // Kollision: man kann nicht durch die Häuser laufen
 function festerKasten(x, z, b, t, h) { klotz(statisch, scene, x, h, z, b, t, 0, { dicke: h, unsichtbar: true }); }
 
-// Kleines Haus mit Schneedach, leuchtenden Fenstern, Tür, Kamin und Kranz
-const HAUS_FARBEN = [[FARBEN.weiss, FARBEN.navy], [0x8f9b52, 0x6e2a33], [0xe9d7c8, FARBEN.navy], [0x3b4a6b, 0x6e2a33], [0xf0d9de, 0x55613a]];
-function haus(x, z, nr) {
-  const g = new THREE.Group(), [wand, dachF] = HAUS_FARBEN[nr % HAUS_FARBEN.length];
-  const b = 5.2, t = 4.6, h = 3.4;
-  deko(g, 0, h / 2, 0, b, h, t, wand);
-  dach(g, b, t, h, 2.2, dachF);
-  const v = -t / 2 - 0.05;   // Vorderseite (zeigt nach vorne, wie die Turmtüren)
-  deko(g, 0, 0.95, v, 1.1, 1.9, 0.1, 0x6b4a32);   // Tür
-  kugel(g, 0.35, 0.95, v - 0.08, 0.07, FARBEN.gold);
-  const kranz = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.1, 8, 16), M(0x2c4a35)); kranz.position.set(0, 1.55, v - 0.1); g.add(kranz);
-  kugel(g, 0, 1.3, v - 0.15, 0.07, FARBEN.rot);
-  fenster(g, -1.6, 1.9, v - 0.02); fenster(g, 1.6, 1.9, v - 0.02);
-  const r = new THREE.Group(); r.rotation.y = Math.PI; r.position.z = 0; g.add(r);   // Fenster auch hinten
-  fenster(r, 0, 1.9, v - 0.02, 1.4);
-  deko(g, 1.4, h + 1.8, 0.8, 0.6, 1.6, 0.6, 0x8a5a4a);   // Kamin
-  deko(g, 1.4, h + 2.65, 0.8, 0.75, 0.15, 0.75, 0xfbfcff);
-  const lp = kette(new THREE.Vector3(-b / 2 - 0.4, h + 0.05, v - 0.45), new THREE.Vector3(b / 2 + 0.4, h + 0.05, v - 0.45), 0.5, 0.35);
-  lichter(g, lp, 1.1);
-  g.position.set(x, 0, z); g.rotation.y = 0; dorf.add(g);
-  festerKasten(x, z, b, t, h + 1.2);
+// Häuser, in die man hineingehen kann: Wände mit Türöffnung, innen ein gemütliches Zimmer
+const HAEUSER = [];   // für die Kamera: drinnen bleibt sie im Haus, draußen nicht hinter einer Hauswand
+const TUER_B = 2.2, TUER_H = 3.0, WAND_D = 0.3;
+function raum(g, x, z, b, t, h, wandFarbe, innenFarbe, nr) {
+  const v = -t / 2;   // Vorderseite (zeigt nach vorne, wie die Turmtüren)
+  const seite = (b - TUER_B) / 2;
+  // sichtbare Wände (außen + innen in anderer Farbe)
+  const stueck = (lx, ly, lz, sb, sh, st) => {
+    deko(g, lx, ly, lz, sb, sh, st, wandFarbe);
+    klotz(statisch, scene, x + lx, ly + sh / 2, z + lz, sb, st, 0, { dicke: sh, unsichtbar: true });
+  };
+  stueck(0, h / 2, t / 2 - WAND_D / 2, b, h, WAND_D);                       // hinten
+  stueck(-b / 2 + WAND_D / 2, h / 2, 0, WAND_D, h, t);                      // links
+  stueck(b / 2 - WAND_D / 2, h / 2, 0, WAND_D, h, t);                       // rechts
+  for (const s of [-1, 1]) stueck(s * (TUER_B / 2 + seite / 2), h / 2, v + WAND_D / 2, seite, h, WAND_D);   // vorne neben der Tür
+  stueck(0, (h + TUER_H) / 2, v + WAND_D / 2, TUER_B, h - TUER_H, WAND_D);  // über der Tür
+  // Innenwände heller (dünne Verkleidung)
+  deko(g, 0, h / 2, t / 2 - WAND_D - 0.02, b - 2 * WAND_D, h, 0.04, innenFarbe);
+  for (const s of [-1, 1]) deko(g, s * (b / 2 - WAND_D - 0.02), h / 2, 0, 0.04, h, t - 2 * WAND_D, innenFarbe);
+  for (const s of [-1, 1]) deko(g, s * (TUER_B / 2 + seite / 2), h / 2, v + WAND_D + 0.02, seite, h, 0.04, innenFarbe);
+  deko(g, 0, 0.04, 0, b - 2 * WAND_D, 0.08, t - 2 * WAND_D, 0xb89a78);   // Holzboden
+  deko(g, 0, h - 0.05, 0, b - 2 * WAND_D, 0.1, t - 2 * WAND_D, 0xf3efe8); // Decke
+  // Gemütliches Zimmer: Kamin mit Feuer, Teppich, Tisch mit Plätzchen, Sofa, kleiner Baum, Lampe
+  const hinten = t / 2 - WAND_D - 0.05;
+  deko(g, 0, 1.1, hinten - 0.45, 2.4, 2.2, 0.9, 0xd9d4cc);            // Kamin
+  deko(g, 0, 0.7, hinten - 0.92, 1.3, 1.1, 0.05, 0x3a2f2a);           // Öffnung
+  const feuer = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 7), new THREE.MeshStandardMaterial({ color: 0xffb35c, emissive: 0xff8a2a, emissiveIntensity: 1 }));
+  feuer.position.set(0, 0.5, hinten - 0.75); g.add(feuer);
+  deko(g, 0, 2.25, hinten - 0.5, 2.8, 0.15, 1.1, 0xbfb6aa);          // Kaminsims
+  for (let i = 0; i < 3; i++) deko(g, -0.8 + i * 0.8, 1.75, hinten - 1.02, 0.4, 0.55, 0.06, [FARBEN.rot, FARBEN.weiss, 0x8f9b52][(i + nr) % 3]);   // Strümpfe
+  const tep = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.03, 24), M([0xdbe6f0, 0xf0d9de, 0xe6e9d6][nr % 3])); tep.position.set(0, 0.1, 0.2); g.add(tep);
+  deko(g, 0.6, 0.55, 0.1, 1.2, 0.08, 0.8, 0x9b7350);                  // Tisch
+  for (const [a, c] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) deko(g, 0.6 + a * 0.5, 0.27, 0.1 + c * 0.32, 0.08, 0.5, 0.08, 0x6b4a32);
+  const teller = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 16), M(0xffffff)); teller.position.set(0.6, 0.61, 0.1); g.add(teller);
+  for (let i = 0; i < 4; i++) { const k = kugel(g, 0.6 + Math.cos(i * 1.6) * 0.14, 0.64, 0.1 + Math.sin(i * 1.6) * 0.14, 0.08, 0xc08a52); k.scale.y = 0.03; }
+  const sofaF = [0x9fb3c8, 0xb8c4a0, 0xd9b3bd][nr % 3];
+  deko(g, -b / 2 + WAND_D + 0.55, 0.45, 0.3, 0.9, 0.5, 2.2, sofaF); deko(g, -b / 2 + WAND_D + 0.2, 0.85, 0.3, 0.25, 0.9, 2.2, sofaF);
+  for (const s of [-1, 1]) deko(g, -b / 2 + WAND_D + 0.55, 0.7, 0.3 + s * 1.05, 0.9, 0.35, 0.2, sofaF);
+  tanne(g, b / 2 - WAND_D - 0.9, hinten - 0.9, 0.3, true, false);
+  const lampe = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 8), fensterMat); lampe.position.set(0, h - 0.6, 0); g.add(lampe);
+  deko(g, 0, h - 0.3, 0, 0.04, 0.5, 0.04, 0x6b4a32);
+  // Für die Kamera merken
+  HAEUSER.push({ minX: x - b / 2, maxX: x + b / 2, minZ: z - t / 2, maxZ: z + t / 2, h });
+  return v;
 }
 
-// Lebkuchenhaus: brauner Lebkuchen, weißer Zuckerguss, Bonbons
+// Großes Haus mit Schneedach, leuchtenden Fenstern, Türrahmen, Kamin und Kranz (pastell)
+const HAUS_FARBEN = [[0xf5f3ee, 0x7f93ad], [0xdbe6f0, 0x8f9b52], [0xf0e4e7, 0x7f93ad], [0xe6e9d6, 0xa98591], [0xeef1f5, 0x55613a]];
+function haus(x, z, nr) {
+  const g = new THREE.Group(), [wand, dachF] = HAUS_FARBEN[nr % HAUS_FARBEN.length];
+  const b = 9, t = 8, h = 4.4;
+  const v = raum(g, x, z, b, t, h, wand, 0xfbf8f2, nr);
+  dach(g, b, t, h, 2.6, dachF, 0.6);
+  // Türrahmen mit Kranz darüber
+  for (const s of [-1, 1]) deko(g, s * (TUER_B / 2 + 0.12), TUER_H / 2, v - 0.06, 0.24, TUER_H, 0.14, 0xffffff);
+  deko(g, 0, TUER_H + 0.1, v - 0.06, TUER_B + 0.5, 0.24, 0.14, 0xffffff);
+  const kranz = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.12, 8, 16), M(0x2c4a35)); kranz.position.set(0, TUER_H + 0.75, v - 0.12); g.add(kranz);
+  kugel(g, 0, TUER_H + 0.42, v - 0.18, 0.08, FARBEN.rot);
+  for (const s of [-1, 1]) fenster(g, s * 2.9, 2.3, v - 0.02, 1.4, 1.3);
+  for (const s of [-1, 1]) { const r = new THREE.Group(); r.rotation.y = s * Math.PI / 2; g.add(r); fenster(r, 0, 2.3, -b / 2 - 0.02, 1.4, 1.3); }
+  const r = new THREE.Group(); r.rotation.y = Math.PI; g.add(r); fenster(r, -2.6, 2.3, v - 0.02, 1.4, 1.3);
+  deko(g, 2.4, h + 2.1, 1.6, 0.7, 1.8, 0.7, 0xb7a39a);   // Kamin
+  deko(g, 2.4, h + 3.05, 1.6, 0.85, 0.18, 0.85, 0xfbfcff);
+  lichter(g, kette(new THREE.Vector3(-b / 2 - 0.5, h + 0.05, v - 0.6), new THREE.Vector3(b / 2 + 0.5, h + 0.05, v - 0.6), 0.5, 0.4), 1.1);
+  g.position.set(x, 0, z); dorf.add(g);
+}
+
+// Großes Lebkuchenhaus: brauner Lebkuchen, weißer Zuckerguss, Bonbons – auch zum Reingehen
 function lebkuchenHaus(x, z, nr) {
   const g = new THREE.Group(), braun = 0xa8693a, guss = 0xfbf8f2;
-  const b = 4.8, t = 4.2, h = 3.0;
-  deko(g, 0, h / 2, 0, b, h, t, braun);
-  dach(g, b, t, h, 2.4, 0x8a5330, 0.45);
-  const v = -t / 2 - 0.05;
+  const b = 8.4, t = 7.6, h = 4.2;
+  const v = raum(g, x, z, b, t, h, braun, 0xf3e4d2, nr);
+  dach(g, b, t, h, 3.0, 0x8a5330, 0.55);
   // Zuckerguss-Zacken unter der Dachkante
-  for (let i = 0; i < 9; i++) { const zk = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.42, 6), M(guss)); zk.rotation.x = Math.PI; zk.position.set(-b / 2 + 0.3 + i * (b - 0.6) / 8, h - 0.2, v - 0.05); g.add(zk); }
-  deko(g, 0, h - 0.02, v - 0.02, b + 0.1, 0.18, 0.1, guss);
-  // Tür mit Gussrand
-  deko(g, 0, 0.9, v, 1.1, 1.8, 0.08, 0x6b3d22);
-  deko(g, 0, 1.85, v - 0.03, 1.3, 0.12, 0.08, guss);
-  for (const sx of [-1, 1]) deko(g, sx * 0.62, 0.9, v - 0.03, 0.12, 1.8, 0.08, guss);
-  fenster(g, -1.5, 1.8, v - 0.02, 0.8, 0.8); fenster(g, 1.5, 1.8, v - 0.02, 0.8, 0.8);
-  // Bunte Bonbons (gedämpfte Farben) an der Wand und Gummi-Tupfen auf dem Dach
+  for (let i = 0; i < 13; i++) { const zk = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), M(guss)); zk.rotation.x = Math.PI; zk.position.set(-b / 2 + 0.3 + i * (b - 0.6) / 12, h - 0.25, v - 0.08); g.add(zk); }
+  deko(g, 0, h - 0.02, v - 0.04, b + 0.1, 0.2, 0.1, guss);
+  // Türrahmen aus Zuckerguss
+  deko(g, 0, TUER_H + 0.1, v - 0.05, TUER_B + 0.4, 0.16, 0.1, guss);
+  for (const s of [-1, 1]) deko(g, s * (TUER_B / 2 + 0.1), TUER_H / 2, v - 0.05, 0.16, TUER_H, 0.1, guss);
+  for (const s of [-1, 1]) fenster(g, s * 2.7, 2.2, v - 0.02, 1.2, 1.1);
   const bonbon = [FARBEN.rot, FARBEN.weiss, 0x8f9b52, FARBEN.rosa];
-  for (let i = 0; i < 6; i++) kugel(g, -b / 2 + 0.45 + i * (b - 0.9) / 5, 0.25, v - 0.08, 0.16, bonbon[(i + nr) % 4]);
-  for (let i = 0; i < 5; i++) for (const s of [-1, 1]) kugel(g, s * (0.35 + i * 0.42) * 1.05, h + 2.4 - (0.35 + i * 0.42) * 2.4 / 2.85 * 1.05 + 0.2, v + 0.6 + (i % 2) * 1.6, 0.13, bonbon[(i + (s > 0 ? 1 : 0)) % 4]);
-  // Zuckerstangen neben der Tür
-  for (const sx of [-1, 1]) { const zs = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6, 8), stangenMat); zs.position.set(sx * 0.95, 0.8, v - 0.2); g.add(zs); }
-  lebkuchenMann(g, -b / 2 - 0.9, v - 0.6, 0.55, 0.3);
+  for (let i = 0; i < 10; i++) { const bx = -b / 2 + 0.45 + i * (b - 0.9) / 9; if (Math.abs(bx) > TUER_B / 2 + 0.3) kugel(g, bx, 0.3, v - 0.1, 0.18, bonbon[(i + nr) % 4]); }
+  for (let i = 0; i < 6; i++) for (const s of [-1, 1]) kugel(g, s * (0.5 + i * 0.7), h + 3.0 - (0.5 + i * 0.7) * 3.0 / 4.75 + 0.2, v + 0.8 + (i % 2) * 2.5, 0.16, bonbon[(i + (s > 0 ? 1 : 0)) % 4]);
+  for (const sx of [-1, 1]) { const zs = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2, 8), stangenMat); zs.position.set(sx * (TUER_B / 2 + 0.5), 1.1, v - 0.3); g.add(zs); }
+  lebkuchenMann(g, -b / 2 - 1.1, v - 0.8, 0.7, 0.3);
   g.position.set(x, 0, z); dorf.add(g);
-  festerKasten(x, z, b, t, h + 1.2);
 }
 
 // Weihnachtsmarkt-Stand: Holzbude mit gestreiftem Dach, Theke mit Waren und Lichterkette
@@ -2009,11 +2049,11 @@ function bank(x, z, dreh = 0) {
     else if (art === 1) lebkuchenHaus(x, z + 2, nr);
     else { marktStand(x - 3.2, z + 1, nr); marktStand(x + 3.2, z + 1, nr + 1); }
     // Kleine Deko rundherum: Laternen, Tannen, Schneemann, Geschenke
-    laterne(x - 5.5, z - 4.5); laterne(x + 5.5, z - 4.5);
-    tanne(dorf, x + (r() < 0.5 ? -1 : 1) * 4.5, z + 6.5, 0.45 + r() * 0.15, r() < 0.5);
-    if (nr % 4 === 1) schneemann(dorf, x + 4.8, z - 1.5, 0.5, -0.4);
-    if (nr % 4 === 3) for (let i = 0; i < 3; i++) geschenk(dorf, x - 4.6 + i * 0.6, 0, z + (i % 2) * 0.6 - 1, 0.45 + r() * 0.25, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], r() * 3);
-    if (nr % 5 === 2) bank(x, z - 5.2, 0);
+    laterne(x - 6.2, z - 4.5); laterne(x + 6.2, z - 4.5);
+    tanne(dorf, x + (r() < 0.5 ? -1 : 1) * 7.5, z + 8, 0.45 + r() * 0.15, r() < 0.5);
+    if (nr % 4 === 1) schneemann(dorf, x + 7.5, z - 3, 0.5, -0.4);
+    if (nr % 4 === 3) for (let i = 0; i < 3; i++) geschenk(dorf, x - 8 + i * 0.6, 0, z + (i % 2) * 0.6 - 3, 0.45 + r() * 0.25, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], r() * 3);
+    if (nr % 5 === 2) bank(x + 8.5, z + 1, Math.PI / 2);
     nr++;
   }
   // Weihnachtsmarkt rund um den großen Baum am Dorfplatz
@@ -2024,6 +2064,109 @@ function bank(x, z, dreh = 0) {
   // Lichterketten quer über den Markt (von Laterne zu Laterne)
   const P = (dx, dz) => new THREE.Vector3(PLATZ.x + dx, 3.4, PLATZ.z + dz);
   lichter(dorf, [...kette(P(-9, -8), P(-9, 9), 0.6, 1), ...kette(P(9, -8), P(9, 9), 0.6, 1), ...kette(P(-9, 9), P(9, 9), 0.6, 1)], 1.2);
+}
+// ---------- Vorne beim Start: verschneite Straße, Bushaltestelle, Pflastersteine, Laternen, Schneemann, weiße Bäume ----------
+// Ganz in Pastell: Weiß, Hellblau, ein bisschen Grau – nicht bunt
+{
+  const SZ = -2 * ABSTAND - 20;   // da steht man am Anfang (wie START weiter unten)
+  const flach = (tex, x, z, b, t, wdh, farbe = 0xffffff) => {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(...wdh);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(b, t), new THREE.MeshStandardMaterial({ map: tex, color: farbe, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); m.receiveShadow = true; m.userData.eigen = true; dorf.add(m); return m;
+  };
+  // Pflastersteine (Ziegel), mit etwas Schnee in den Fugen
+  const pflaster = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+    x.fillStyle = '#eef2f7'; x.fillRect(0, 0, 128, 128);
+    const farben = ['#aebdd0', '#bac7d8', '#a5b5ca', '#c3cedd', '#b3c1d3'];
+    for (let r = 0; r < 8; r++) for (let k = -1; k < 5; k++) {
+      x.fillStyle = farben[(r * 3 + k * 7 + 20) % 5];
+      x.fillRect(k * 32 + (r % 2) * 16 + 2, r * 16 + 2, 28, 12);
+    }
+    x.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let i = 0; i < 26; i++) { x.beginPath(); x.ellipse((i * 47) % 128, (i * 29) % 128, 9 + (i % 4) * 3, 4 + (i % 3) * 2, 0, 0, Math.PI * 2); x.fill(); }
+    return new THREE.CanvasTexture(c);
+  })();
+  flach(pflaster, 0, SZ + 2, 260, 16, [52, 3.2]);         // Platz vor den Türmen
+  flach(pflaster.clone(), 0, SZ - 18.5, 260, 3, [52, 0.6]); // Gehweg auf der anderen Seite
+  // Straße: hellgrau-blau, weiße gestrichelte Mittellinie, Schneereste am Rand
+  const strasse = (() => {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 64; const x = c.getContext('2d');
+    x.fillStyle = '#97a3b4'; x.fillRect(0, 0, 128, 64);
+    x.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let i = 0; i < 40; i++) x.fillRect((i * 53) % 128, (i * 31) % 64, 6 + (i % 5) * 3, 2);
+    x.fillStyle = '#ffffff'; x.fillRect(8, 30, 56, 4);
+    x.fillStyle = '#f4f7fb'; x.fillRect(0, 0, 128, 4); x.fillRect(0, 60, 128, 4);
+    return new THREE.CanvasTexture(c);
+  })();
+  flach(strasse, 0, SZ - 11, 260, 12, [26, 1]);
+  // Bordsteine mit Schnee
+  for (const dz of [-5, -17]) { deko(dorf, 0, 0.12, SZ + dz - 0.0, 260, 0.24, 0.4, 0xe6ebf2); deko(dorf, 0, 0.27, SZ + dz, 260, 0.08, 0.5, 0xffffff); }
+  // Schneehaufen am Straßenrand
+  for (let i = 0; i < 18; i++) { const sx = -120 + i * 14 + ((i * 37) % 6); const k = kugel(dorf, sx, 0, SZ - 18.6 + (i % 2) * 0.3, 1 + (i % 3) * 0.4, 0xffffff); k.scale.y *= 0.45; }
+
+  // Bushaltestelle (Wartehäuschen) neben dem Start
+  const bus = new THREE.Group(), rahmen = 0x8fa3ba, bx = 11, bz = SZ - 3.2;
+  for (const sx of [-1.8, 1.8]) for (const sz of [-0.7, 0.7]) deko(bus, sx, 1.3, sz, 0.12, 2.6, 0.12, rahmen);
+  const glas = new THREE.MeshStandardMaterial({ color: 0xdfeefa, transparent: true, opacity: 0.4, roughness: 0.1, depthWrite: false });
+  const rw = new THREE.Mesh(boxGeo, glas); rw.scale.set(3.6, 2.0, 0.05); rw.position.set(0, 1.4, 0.7); rw.userData.eigen = true; bus.add(rw);
+  for (const sx of [-1, 1]) { const sw = new THREE.Mesh(boxGeo, glas); sw.scale.set(0.05, 2.0, 1.3); sw.position.set(sx * 1.8, 1.4, 0); sw.userData.eigen = true; bus.add(sw); }
+  deko(bus, 0, 2.65, 0, 4.0, 0.14, 1.8, rahmen);                     // Dach
+  deko(bus, 0, 2.82, 0, 4.0, 0.22, 1.8, 0xffffff);                   // Schnee darauf
+  deko(bus, 0, 0.5, 0.4, 2.8, 0.1, 0.45, 0xe9e2d6);                  // Bank
+  deko(bus, 0, 0.56, 0.4, 2.7, 0.04, 0.4, 0xffffff);
+  for (const sx of [-1.2, 1.2]) deko(bus, sx, 0.25, 0.4, 0.08, 0.5, 0.35, rahmen);
+  deko(bus, 1.55, 1.4, 0.66, 0.5, 0.8, 0.04, 0xf5f3ee);              // Fahrplan
+  for (let i = 0; i < 5; i++) deko(bus, 1.55, 1.65 - i * 0.12, 0.64, 0.36, 0.03, 0.02, 0x9fb3c8);
+  // Haltestellen-Schild: rundes Schild mit H
+  deko(bus, -2.5, 1.5, -0.6, 0.1, 3.0, 0.1, rahmen);
+  const schildTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+    x.fillStyle = '#f3e7b0'; x.beginPath(); x.arc(64, 64, 60, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = '#7f9a76'; x.lineWidth = 8; x.stroke();
+    x.fillStyle = '#7f9a76'; x.font = '800 78px "Baloo 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('H', 64, 70);
+    return new THREE.CanvasTexture(c); })();
+  const hs = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshStandardMaterial({ map: schildTex, side: THREE.DoubleSide }));
+  hs.position.set(-2.5, 3.1, -0.66); hs.rotation.y = Math.PI; hs.userData.eigen = true; bus.add(hs);
+  const hsSchnee = kugel(bus, -2.5, 3.55, -0.62, 0.3, 0xffffff); hsSchnee.scale.set(0.45, 0.12, 0.12);
+  bus.position.set(bx, 0, bz); dorf.add(bus);
+  klotz(statisch, scene, bx, 2.6, bz + 0.7, 3.6, 0.2, 0, { dicke: 2.6, unsichtbar: true });   // Rückwand ist fest
+
+  // Laternen an beiden Straßenseiten
+  for (let lx = -96; lx <= 96; lx += 16) { laterne(lx + 4, SZ - 4.2); laterne(lx - 4, SZ - 18); }
+  // Schneemann und kleine Schneebälle neben der Haltestelle
+  schneemann(dorf, -8, SZ - 1.5, 0.75, 0.3);
+  for (let i = 0; i < 4; i++) kugel(dorf, -6.3 + i * 0.35, 0.18, SZ - 0.5 + (i % 2) * 0.3, 0.18, 0xffffff);
+  bank(-14, SZ + 1, Math.PI);
+}
+
+// ---------- Sehr viele weiße, verschneite Bäume hinter der Straße (alle als EIN Bauteil, schnell fürs Handy) ----------
+{
+  const r = zufall(777), N = 760;
+  const etagen = [];
+  for (let i = 0; i < 4; i++) { const g = new THREE.ConeGeometry(1.9 - i * 0.38, 2.1 - i * 0.2, 9); g.translate(0, 1.6 + i * 1.15, 0); etagen.push(g); }
+  const zus = (geos) => { const pos = [], nrm = []; for (const g0 of geos) { const g = g0.toNonIndexed(); pos.push(...g.attributes.position.array); nrm.push(...g.attributes.normal.array); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); return g; };
+  const kroneGeo = zus(etagen);
+  const stammG = new THREE.CylinderGeometry(0.15, 0.22, 1.2, 6); stammG.translate(0, 0.6, 0);
+  const kronen = new THREE.InstancedMesh(kroneGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true }), N);
+  const staemme = new THREE.InstancedMesh(stammG, M(0xb7aaa0), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), c = new THREE.Color();
+  let n = 0;
+  while (n < N) {
+    // dichter Wald vor der Straße und an den Seiten der Weihnachtswelt
+    const x = (r() - 0.5) * 380, z = -2 * ABSTAND - 44 - r() * 140;
+    const w = r() * Math.PI * 2, rr = 135 + r() * 130;   // die Hälfte rund um die ganze Welt
+    const zz = n % 2 === 0 ? Math.sin(w) * rr : z;
+    const xx = n % 2 === 0 ? Math.cos(w) * rr : x;
+    if (Math.abs(xx) < 128 && Math.abs(zz) < 128) continue;   // nicht in Türme, Dorf oder Straße
+    const g = 0.8 + r() * 1.1;
+    m.compose(ps.set(xx, 0, zz), q.setFromEuler(e.set(0, r() * 6.3, 0)), sc.set(g, g * (0.9 + r() * 0.3), g));
+    kronen.setMatrixAt(n, m); staemme.setMatrixAt(n, m);
+    kronen.setColorAt(n, c.setHSL(0.58, 0.35, 0.9 + r() * 0.08));   // weiß bis ganz hellblau
+    n++;
+  }
+  kronen.castShadow = staemme.castShadow = true;
+  scene.add(kronen, staemme);
 }
 // Fürs Handy: alle Teile vom Dorf mit gleichem Material zu EINEM Teil zusammenkleben (viel weniger Arbeit für die Grafik)
 {
@@ -2052,7 +2195,7 @@ function bank(x, z, dreh = 0) {
 }
 
 // ---------- Tannen draußen ----------
-let gepflanzt = 0;
+let gepflanzt = 80;   // die grünen Tannen draußen sind jetzt weiße Schneebäume (siehe unten)
 while (gepflanzt < 80) {
   const winkel = Math.random() * Math.PI * 2, abstand = 140 + Math.random() * 110;
   const x = Math.cos(winkel) * abstand, z = Math.sin(winkel) * abstand;
@@ -2304,7 +2447,7 @@ for (let i = 0; i < 34; i++) {
 }
 
 // ---------- Fallender Schnee ----------
-const FLOCKEN = 1800, SCHNEE_RAUM = 50;
+const FLOCKEN = 3600, SCHNEE_RAUM = 70;   // viele kleine Flocken
 const flockenPos = new Float32Array(FLOCKEN * 3);
 for (let i = 0; i < FLOCKEN; i++) {
   flockenPos[i * 3] = (Math.random() - 0.5) * SCHNEE_RAUM;
@@ -2314,9 +2457,30 @@ for (let i = 0; i < FLOCKEN; i++) {
 const flockenGeo = new THREE.BufferGeometry();
 flockenGeo.setAttribute('position', new THREE.BufferAttribute(flockenPos, 3));
 const schneeFall = new THREE.Points(flockenGeo, new THREE.PointsMaterial({
-  map: flecken, size: 0.18, transparent: true, depthWrite: false, color: 0xffffff,
+  map: flecken, size: 0.11, transparent: true, depthWrite: false, color: 0xffffff,
 }));
 scene.add(schneeFall);
+
+// ---------- Pastell-Himmel mit Mond (Weihnachtswelt) ----------
+{
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256; const x = c.getContext('2d');
+  const v = x.createLinearGradient(0, 0, 0, 256);
+  v.addColorStop(0, '#a9c6e2'); v.addColorStop(0.32, '#c9dcee'); v.addColorStop(0.47, '#e9eff6'); v.addColorStop(0.52, '#f5f1f3'); v.addColorStop(1, '#f5f1f3');
+  x.fillStyle = v; x.fillRect(0, 0, 4, 256);
+  const himmel = new THREE.Mesh(new THREE.SphereGeometry(950, 32, 16), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.BackSide, fog: false, depthWrite: false }));
+  himmel.renderOrder = -2; scene.add(himmel); WELT_TEILE.winter.push(himmel);
+  // Mond: heller runder Mond mit sanftem Schein und ein paar Kratern
+  const mc = document.createElement('canvas'); mc.width = mc.height = 256; const g = mc.getContext('2d');
+  const schein = g.createRadialGradient(128, 128, 40, 128, 128, 128);
+  schein.addColorStop(0, 'rgba(255,255,250,0.55)'); schein.addColorStop(1, 'rgba(255,255,250,0)');
+  g.fillStyle = schein; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#fbfaf2'; g.beginPath(); g.arc(128, 128, 52, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(214,220,232,0.55)';
+  for (const [kx, ky, kr] of [[110, 112, 12], [146, 140, 9], [132, 100, 6], [104, 146, 7], [150, 112, 5]]) { g.beginPath(); g.arc(kx, ky, kr, 0, Math.PI * 2); g.fill(); }
+  const mond = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(mc), fog: false, depthWrite: false, transparent: true }));
+  mond.position.set(-180, 290, 700); mond.scale.setScalar(170); mond.renderOrder = -1;
+  scene.add(mond); WELT_TEILE.winter.push(mond);
+}
 function schneeUpdate(dt, um) {
   const p = flockenGeo.attributes.position;
   for (let i = 0; i < FLOCKEN; i++) {
@@ -4103,12 +4267,20 @@ function update(dt) {
     camera.position.x = Math.max(T.cx - T.innen + 0.4, Math.min(T.cx + T.innen - 0.4, camera.position.x));
     camera.position.z = Math.max(T.cz - T.innen + 0.4, Math.min(T.cz + T.innen - 0.4, camera.position.z));
   }
-  // Draußen: Kamera nicht hinter einer Turmwand verstecken, sondern näher zur Figur holen
-  if (!T) {
+  // Im Haus bleibt die Kamera drinnen (unter der Decke)
+  const H = HAEUSER.find((q) => s.pos.x > q.minX && s.pos.x < q.maxX && s.pos.z > q.minZ && s.pos.z < q.maxZ && s.pos.y < q.h);
+  if (H) {
+    camera.position.x = Math.max(H.minX + 0.5, Math.min(H.maxX - 0.5, camera.position.x));
+    camera.position.z = Math.max(H.minZ + 0.5, Math.min(H.maxZ - 0.5, camera.position.z));
+    camera.position.y = Math.min(H.h - 0.4, camera.position.y);
+  }
+  // Draußen: Kamera nicht hinter einer Turm- oder Hauswand verstecken, sondern näher zur Figur holen
+  else if (!T) {
     const weg = camera.position.clone().sub(blickZiel);
     for (let f = 1; f > 0.1; f -= 0.08) {
       const c = blickZiel.clone().addScaledVector(weg, f);
-      const drin = TUERME.some((U) => Math.abs(c.x - U.cx) < U.innen + 1.2 && Math.abs(c.z - U.cz) < U.innen + 1.2 && c.y < U.hoehe + 0.5);
+      const drin = TUERME.some((U) => Math.abs(c.x - U.cx) < U.innen + 1.2 && Math.abs(c.z - U.cz) < U.innen + 1.2 && c.y < U.hoehe + 0.5)
+        || HAEUSER.some((q) => c.x > q.minX - 0.4 && c.x < q.maxX + 0.4 && c.z > q.minZ - 0.4 && c.z < q.maxZ + 0.4 && c.y < q.h + 3);
       if (!drin) { camera.position.copy(c); break; }
     }
   }
@@ -4862,7 +5034,7 @@ const weltWinter = document.getElementById('weltWinter'), weltSommer = document.
 const weltAesthetic = document.getElementById('weltAesthetic');
 const imSommer = (pos) => pos.z > SOMMER.z - 700;
 function weltVon(pos) { return imSommer(pos) ? 'sommer' : pos.z < AESTHETIC.z + 700 ? 'aesthetic' : 'winter'; }
-const WELT_FARBEN = { winter: [0xc6d8e6, 0xc6d8e6], sommer: [0xa9cfe8, 0xb8d6ea], aesthetic: [0xf6b7b0, 0xf7c3b4] };
+const WELT_FARBEN = { winter: [0xdbe8f4, 0xe2eaf3], sommer: [0xa9cfe8, 0xb8d6ea], aesthetic: [0xf6b7b0, 0xf7c3b4] };
 function weltZeigen(welt) {
   zeigeWelt = welt;
   weltWinter.setAttribute('aria-pressed', String(welt === 'winter'));
