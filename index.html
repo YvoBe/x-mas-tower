@@ -5295,8 +5295,18 @@ function update(dt) {
   // Im Haus bleibt die Kamera drinnen (unter der Decke)
   const H = HAEUSER.find((q) => s.pos.x > q.minX && s.pos.x < q.maxX && s.pos.z > q.minZ && s.pos.z < q.maxZ && s.pos.y < q.h);
   if (H) {
-    camera.position.x = Math.max(H.minX + 0.5, Math.min(H.maxX - 0.5, camera.position.x));
-    camera.position.z = Math.max(H.minZ + 0.5, Math.min(H.maxZ - 0.5, camera.position.z));
+    // Kamera nicht an der Wand entlangschieben (sonst klebt sie in einer Ecke), sondern einfach näher zur Figur holen
+    const untenStock = H.etage && s.pos.y + 1.2 < H.etage;
+    const lo = { x: H.minX + 0.6, y: (H.etage && !untenStock ? H.etage + 0.6 : (H.unten || 0) + 0.5), z: H.minZ + 0.6 };
+    const hi = { x: H.maxX - 0.6, y: untenStock ? H.etage - 0.45 : H.h - 0.4, z: H.maxZ - 0.6 };
+    const weg = camera.position.clone().sub(blickZiel); let f = 1;
+    for (const a of ['x', 'y', 'z']) {
+      if (weg[a] > 1e-6 && blickZiel[a] + weg[a] > hi[a]) f = Math.min(f, Math.max(0, (hi[a] - blickZiel[a]) / weg[a]));
+      if (weg[a] < -1e-6 && blickZiel[a] + weg[a] < lo[a]) f = Math.min(f, Math.max(0, (lo[a] - blickZiel[a]) / weg[a]));
+    }
+    camera.position.copy(blickZiel).addScaledVector(weg, Math.max(f, 0.12));
+    camera.position.x = Math.max(H.minX + 0.35, Math.min(H.maxX - 0.35, camera.position.x));
+    camera.position.z = Math.max(H.minZ + 0.35, Math.min(H.maxZ - 0.35, camera.position.z));
     camera.position.y = Math.min(H.h - 0.4, camera.position.y);
     if (H.etage) {   // Haus mit 2. Stock: Kamera bleibt auf dem Stockwerk, auf dem man gerade ist
       if (s.pos.y + 1.2 < H.etage) camera.position.y = Math.min(H.etage - 0.45, camera.position.y);
@@ -6105,14 +6115,14 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     buecher(g, rx - 0.08, F + 2.07, rz + 0.3, 5, 0.07, Math.PI / 2); pflanze(g, rx - 0.08, F + 2.07, rz - 0.4, 0.7);
     kerze(g, rx - 0.08, F + 0.87, rz + 0.4, 0.2); kerze(g, rx - 0.08, F + 0.87, rz + 0.25, 0.12);
     // Kleiner Tisch mit Lampe beim Fenster, Pflanze und Sofa vorne
-    tischchen(g, iL + 2.2, F, iV + 0.6, 0.6, 0.7); lampeTisch(g, iL + 2.2, F + 0.73, iV + 0.6);
+    tischchen(g, -6.3, F, iV + 0.6, 0.6, 0.7); lampeTisch(g, -6.3, F + 0.73, iV + 0.6);
     pflanze(g, iR - 0.4, F, iH - 0.4, 1.4); pflanze(g, iL + 1.6, F, iH - 0.4, 1.2);
-    { const so = new THREE.Group(); so.position.set(-0.6, F, iV + 0.65); g.add(so);
+    { const so = new THREE.Group(); so.position.set(-2.95, F, iV + 0.65); g.add(so);   // Sofa neben der Tür (nicht davor, damit die Tür aufgehen kann)
       deko(so, 0, 0.3, 0, 2.2, 0.35, 0.85, C.grau); deko(so, 0, 0.7, -0.35, 2.2, 0.6, 0.2, C.grau);
       for (const sx of [-1, 1]) deko(so, sx * 1.05, 0.5, 0, 0.2, 0.45, 0.85, C.grau);
       deko(so, -0.5, 0.6, -0.15, 0.45, 0.35, 0.12, C.creme); deko(so, 0.5, 0.6, -0.15, 0.45, 0.35, 0.12, C.beige);
       deko(so, 0.3, 0.5, 0.1, 0.9, 0.05, 0.6, C.creme); }   // Decke
-    bild(g, -0.6, F + 1.9, iV + 0.03, 0.9, 0.6, 'stern');
+    bild(g, -2.95, F + 1.6, iV + 0.03, 0.9, 0.6, 'stern');
     // ===== Treppe in den 2. Stock (an der linken Wand), Geländer mit Girlande, Bilder an der Wand =====
     const SN = 18, SR = (E - F) / SN, ST = 0.44, sx0 = iL + 0.6, sz0 = iV + 1.1;
     for (let i = 0; i < SN; i++) {
@@ -6131,7 +6141,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
       for (let i = 2; i < 20; i += 5) { const p = pk[i]; deko(g, p.x + 0.05, p.y - 0.2, p.z, 0.04, 0.25, 0.12, C.beige); }   // kleine Schleifen
     }
     ['foto', 'berge', 'reh', 'stern'].forEach((art, i) => bild(g, iL + 0.03, F + 1.7 + i * 0.85, sz0 + 0.7 + i * 1.25, 0.5, 0.4, art, Math.PI / 2));
-    stuhl(g, sx0 + 1.6, F, sz0 - 0.6, Math.PI * 0.75, C.dunkel); pflanze(g, sx0, F, sz0 - 0.7, 1.1);
+    stuhl(g, -5.4, F, iV + 1.5, Math.PI * 0.75, C.dunkel); pflanze(g, sx0, F, sz0 - 0.7, 1.1);
     // ===== Decke / Boden 2. Stock (mit Loch über der Treppe) =====
     const decke = (lx, lz, db, dt) => { kasten(g, lx, E - 0.125, lz, db, 0.25, dt, deckenMat); kasten(g, lx, E + 0.005, lz, db, 0.01, dt, bodenMat); fest(lx, E, lz, db, dt, 0.25); };
     const lochR = sx0 + 0.6;
@@ -6203,9 +6213,9 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     regalVoll(g, -1.6, F, iH - 0.25, 1.8, 2.2, Math.PI, sd + 2, C.creme);
     regalVoll(g, 3.8, F, iV + 0.25, 1.6, 2.0, 0, sd + 3);
     kommode(g, iR - 0.3, F, 3.3, 2.0, -Math.PI / 2);
-    kommode(g, -4.6, F, iV + 0.3, 1.6, 0, C.braun);
+    kommode(g, -5.0, F, iV + 0.3, 1.4, 0, C.braun);
     // Wandregale über dem Sofa und neben dem Kamin, Bilderwand
-    for (const [wx, wy] of [[-1.2, F + 2.5], [0.2, F + 2.9]]) { deko(g, wx, wy, iV + 0.15, 1.0, 0.04, 0.22, C.beige); kerze(g, wx - 0.3, wy + 0.02, iV + 0.15, 0.14); vase(g, wx, wy + 0.02, iV + 0.15, 0.2); holzStern(g, wx + 0.3, wy + 0.02, iV + 0.15); }
+    for (const [wx, wy] of [[-3.5, F + 2.4], [-2.4, F + 2.75]]) { deko(g, wx, wy, iV + 0.15, 1.0, 0.04, 0.22, C.beige); kerze(g, wx - 0.3, wy + 0.02, iV + 0.15, 0.14); vase(g, wx, wy + 0.02, iV + 0.15, 0.2); holzStern(g, wx + 0.3, wy + 0.02, iV + 0.15); }
     [[3.3, F + 2.0, 'foto'], [4.0, F + 2.4, 'reh'], [3.3, F + 2.8, 'stern'], [4.1, F + 1.6, 'berge']].forEach(([bx3, by3, art]) => bild(g, bx3, by3, iH - 0.03, 0.45, 0.35, art, Math.PI));
     // Schwibbögen in den Fenstern und hängende Sterne
     for (const sx of [-1, 1]) { schwibbogen(g, sx * 4.6, F + 1.02, iV + 0.12, 0); haengeSterne(g, sx * 4.6, F + 2.7, iV + 0.2); }
@@ -6215,7 +6225,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     girlande(g, V(iR - 0.1, E - 0.35, iV + 0.1), V(iR - 0.1, E - 0.35, iH - 0.1), 0.25, 46);
     // Körbe mit Holz und Decken, Laterne, große Pflanzen, Bodenkissen
     { deko(g, kx + 1.9, F + 0.25, iH - 0.6, 0.7, 0.5, 0.5, C.beige); for (let i = 0; i < 4; i++) { const l = zyl(g, kx + 1.75 + (i % 2) * 0.25, F + 0.55 + Math.floor(i / 2) * 0.1, iH - 0.6, 0.06, 0.06, 0.55, C.dunkel, 7); l.rotation.x = Math.PI / 2; } }
-    { zyl(g, -2.6, F + 0.25, iV + 0.6, 0.3, 0.25, 0.5, C.beige, 12); for (let i = 0; i < 3; i++) deko(g, -2.6, F + 0.55 + i * 0.07, iV + 0.6, 0.45, 0.06, 0.35, [C.creme, C.grau, C.beige][i]); }
+    { zyl(g, -4.4, F + 0.25, iV + 1.5, 0.3, 0.25, 0.5, C.beige, 12); for (let i = 0; i < 3; i++) deko(g, -4.4, F + 0.55 + i * 0.07, iV + 1.5, 0.45, 0.06, 0.35, [C.creme, C.grau, C.beige][i]); }
     deko(g, kx - 2.0, F + 0.3, iH - 0.6, 0.4, 0.6, 0.4, C.schwarz); { const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.3, 0.45, 0.42); l.position.set(kx - 2.0, F + 0.3, iH - 0.6); g.add(l); }
     pflanze(g, iR - 0.5, F, iV + 2.2, 2.0); pflanze(g, -0.2, F, iH - 0.5, 1.6); pflanze(g, iL + 1.6, F, 3.0, 1.5);
     for (const [px2, pz2, f] of [[kx - 0.6, 1.7, C.creme], [kx + 0.6, 1.75, C.beige]]) { const k2 = kugelW(g, px2, F + 0.15, pz2, 0.32, f); k2.scale.y = 0.14; }
@@ -6258,7 +6268,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     // Lampe an der Decke unten und oben
     for (const ly of [E - 0.55, H - 0.5]) { zyl(g, 0.5, ly + 0.25, 0, 0.02, 0.02, 0.5, C.dunkel, 6); zyl(g, 0.5, ly, 0, 0.18, 0.35, 0.3, lampenMat); }
     // Für die Kamera merken
-    W_HAEUSER.push({ nr, x, z, s, scharnier, tuerKlotz, tuerPos: P(0, vz - 1.2), name: HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: g, vz, F, TH });
+    W_HAEUSER.push({ nr, x, z, s, scharnier, tuer, tuerKlotz, offen: false, tuerPos: P(0, vz - 1.2), name: HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: g, vz, F, TH });
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
     HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H, etage: E, unten: F });
     punkteZusammen(innenWurzel); zusammenkleben(innenWurzel); innenWurzel.traverse((o) => { o.userData.eigen = true; });
@@ -6418,7 +6428,9 @@ const deinSchild = (() => {   // schwebendes Schild "Dein Haus" über deiner Tü
 })();
 function tuerenStellen() {
   for (const h of W_HAEUSER) {
-    const zu = h.nr === meinHaus && hausZu;
+    const abgeschlossen = h.nr === meinHaus && hausZu;
+    if (abgeschlossen) h.offen = false;
+    const zu = abgeschlossen || !h.offen;   // Türen sind zu, bis man sie antippt
     h.tuerKlotz.aus = !zu;
     h.tuerZiel = zu ? 0 : -1.9;   // offen: Tür nach innen gedreht
   }
@@ -6427,6 +6439,28 @@ function tuerenStellen() {
   if (h) { const [x, z] = [h.x + 0 * h.s, h.z + (h.vz - 0.2) * h.s]; deinSchild.position.set(x, h.F + h.TH + 1.6, z); }
 }
 tuerenStellen();
+// Tür antippen (oder anklicken): sie geht auf bzw. wieder zu
+function tuerUmschalten(h) {
+  if (h.nr === meinHaus && hausZu) { zeigeBanner('Abgeschlossen 🔒', 1200); return; }
+  h.offen = !h.offen; tuerenStellen();
+}
+{
+  const strahl = new THREE.Raycaster(), maus = new THREE.Vector2();
+  let tipp = null;
+  leinwand.addEventListener('pointerdown', (e) => { tipp = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+  leinwand.addEventListener('pointerup', (e) => {
+    if (!tipp || startOffen || editor.offen || weltVon(spieler.pos) !== 'wonderland') return;
+    const kurz = Math.hypot(e.clientX - tipp.x, e.clientY - tipp.y) < 12 && performance.now() - tipp.t < 450; tipp = null;
+    if (!kurz) return;
+    const r = leinwand.getBoundingClientRect();
+    maus.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    strahl.setFromCamera(maus, camera);
+    const nah = W_HAEUSER.filter((h) => Math.hypot(spieler.pos.x - h.tuerPos[0], spieler.pos.z - h.tuerPos[1]) < 9);
+    if (!nah.length) return;
+    const treffer = strahl.intersectObjects(nah.map((h) => h.scharnier), true)[0];
+    if (treffer) { const h = nah.find((q) => { let o = treffer.object; while (o) { if (o === q.scharnier) return true; o = o.parent; } return false; }); if (h) tuerUmschalten(h); }
+  });
+}
 function hausPanelBauen() {
   const liste = document.getElementById('hausListe'); liste.replaceChildren();
   for (const h of W_HAEUSER) {
@@ -6466,6 +6500,8 @@ function wonderUpdate(dt, pos, imWonder) {
   // Welcher Knopf passt gerade? (Tür von deinem Haus oder Sachen im Laden)
   let neu = null;
   const h = W_HAEUSER[meinHaus];
+  const naheTuer = W_HAEUSER.find((q) => q !== h && Math.hypot(pos.x - q.tuerPos[0], pos.z - q.tuerPos[1]) < 2.2 && pos.y < 1.5);
+  if (naheTuer) neu = { text: naheTuer.offen ? '🚪 Tür zumachen' : '🚪 Tür aufmachen', tun: () => tuerUmschalten(naheTuer) };
   if (h && Math.hypot(pos.x - h.tuerPos[0], pos.z - h.tuerPos[1]) < 2.2 && pos.y < 1.5) {
     neu = { text: hausZu ? '🔓 Aufschließen' : '🔒 Abschließen', tun: () => {
       hausZu = !hausZu; try { localStorage.setItem('wonderland-zu', hausZu ? '1' : '0'); } catch (e) {}
