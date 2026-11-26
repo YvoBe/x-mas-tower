@@ -2087,8 +2087,8 @@ function bank(x, z, dreh = 0) {
       x.fillRect(k * 32 + (r % 2) * 16 + 1.5, r * 16 + 1.5, 29, 13);
     }
     // Schneeflecken: weich und unregelmäßig, mal groß, mal klein
-    for (let i = 0; i < 26; i++) {
-      const sx = rz() * 512, sy = rz() * 512, rr = 25 + rz() * 70;
+    for (let i = 0; i < 12; i++) {
+      const sx = rz() * 512, sy = rz() * 512, rr = 20 + rz() * 45;
       for (let k = 0; k < 7; k++) {
         const g = x.createRadialGradient(sx + (rz() - 0.5) * rr, sy + (rz() - 0.5) * rr * 0.6, 0, sx, sy, rr);
         g.addColorStop(0, 'rgba(250,252,255,0.95)'); g.addColorStop(0.6, 'rgba(246,249,253,0.85)'); g.addColorStop(1, 'rgba(246,249,253,0)');
@@ -2097,11 +2097,9 @@ function bank(x, z, dreh = 0) {
     }
     const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
   })();
-  flach(pflaster, 0, SZ + 2, 260, 16, [16, 1]);          // Platz vor den Türmen
-  flach(pflaster.clone(), 0, SZ - 18.5, 260, 3, [16, 0.19]); // Gehweg auf der anderen Seite
-  // Ziegelwege auch überall im Dorf: vor jeder Turmtür und rund um den großen Baum
-  for (const T of TUERME) if (!T.normal) flach(pflaster.clone(), T.cx, T.cz - T.innen - 6, 6, 9, [0.37, 0.56]);
-  { const rund = new THREE.Mesh(new THREE.CircleGeometry(12, 40), new THREE.MeshStandardMaterial({ map: (() => { const t2 = pflaster.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(1.5, 1.5); return t2; })(), roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 }));
+  // Ziegel nur an ein paar Stellen (sonst überall Schnee): bei der Bushaltestelle und rund um den großen Baum
+  flach(pflaster, 11, SZ - 2.5, 12, 5, [1.1, 0.45]);
+  { const rund = new THREE.Mesh(new THREE.CircleGeometry(8, 40), new THREE.MeshStandardMaterial({ map: (() => { const t2 = pflaster.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.repeat.set(1.5, 1.5); return t2; })(), roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 }));
     rund.rotation.x = -Math.PI / 2; rund.position.set(PLATZ.x, 0.025, PLATZ.z); rund.receiveShadow = true; rund.userData.eigen = true; dorf.add(rund); }
   // Straße: hellgrau-blau, weiße gestrichelte Mittellinie, Schneereste am Rand
   const strasse = (() => {
@@ -2155,9 +2153,9 @@ function bank(x, z, dreh = 0) {
 
 
 // ---------- Fußspuren im Schnee ----------
-const SPUREN = 220;
-const spurGeo = new THREE.CircleGeometry(1, 10); spurGeo.rotateX(-Math.PI / 2);
-const spuren = new THREE.InstancedMesh(spurGeo, new THREE.MeshBasicMaterial({ color: 0xb8c6d6, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), SPUREN);
+const SPUREN = 320;
+const spurGeo = new THREE.PlaneGeometry(2, 2); spurGeo.rotateX(-Math.PI / 2);
+const spuren = new THREE.InstancedMesh(spurGeo, new THREE.MeshBasicMaterial({ map: flecken, color: 0xa9b9cc, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), SPUREN);   // weicher, eingedrückter Schnee
 spuren.frustumCulled = false; spuren.renderOrder = 1; scene.add(spuren);
 const spurAlter = new Float32Array(SPUREN).fill(999), spurInfo = [];
 for (let i = 0; i < SPUREN; i++) spurInfo.push({ x: 0, z: 0, w: 0 });
@@ -2166,10 +2164,10 @@ const _sm = new THREE.Matrix4(), _sq = new THREE.Quaternion(), _sv = new THREE.V
 function spurenUpdate(dt, s, imFreien, schritt) {
   if (imFreien && schritt > 0) {
     spurWeg += schritt;
-    if (spurWeg > 0.75) {   // alle 75 cm ein Fußabdruck, abwechselnd links und rechts
+    if (spurWeg > 0.35) {   // alle 35 cm eine Delle, so entsteht eine weiche Rinne im Schnee
       spurWeg = 0; spurSeite *= -1;
       const w = s.blick || 0, i = spurNr++ % SPUREN;
-      spurInfo[i] = { x: s.pos.x + Math.cos(w) * 0.18 * spurSeite, z: s.pos.z - Math.sin(w) * 0.18 * spurSeite, w };
+      spurInfo[i] = { x: s.pos.x + Math.cos(w) * 0.06 * spurSeite, z: s.pos.z - Math.sin(w) * 0.06 * spurSeite, w };
       spurAlter[i] = 0;
     }
   }
@@ -2178,7 +2176,7 @@ function spurenUpdate(dt, s, imFreien, schritt) {
     const a = spurAlter[i], k = a > 25 ? 0 : a > 18 ? (25 - a) / 7 : 1;   // nach 18 s langsam zuschneien
     const f = spurInfo[i];
     _sq.setFromAxisAngle(_sy, f.w);
-    _sm.compose(_sv.set(f.x, 0.035, f.z), _sq, _ss.set(0.12 * k + 0.0001, 1, 0.2 * k + 0.0001));
+    _sm.compose(_sv.set(f.x, 0.035, f.z), _sq, _ss.set(0.32 * k + 0.0001, 1, 0.42 * k + 0.0001));
     spuren.setMatrixAt(i, _sm);
   }
   spuren.instanceMatrix.needsUpdate = true;
@@ -2321,6 +2319,7 @@ const TIERE = [];
   const BEREICHE = {
     vorne: [-110, 110, SZ - 40, SZ - 23],     // Schneefeld zwischen Gehweg und Wald
     platz: [20, 36, SZ + 3, SZ + 9],          // neben dem Startplatz (Pinguine)
+    baeren: [-40, -22, SZ + 2, SZ + 9],       // links vom Startplatz: Eisbären-Familie
     links: [-128, -112, -100, 100],           // Seite links
     rechts: [112, 128, -100, 100],            // Seite rechts
     hinten: [-100, 100, 112, 128],            // hinter den Türmen
@@ -2337,7 +2336,7 @@ const TIERE = [];
     }
   };
   setze(pinguin, 'platz', 4); setze(pinguin, 'vorne', 5); setze(pinguin, 'hinten', 3);
-  setze(eisbaer, 'vorne', 2); setze(eisbaer, 'links', 1); setze(eisbaer, 'rechts', 1); setze(eisbaer, 'hinten', 1);
+  setze(eisbaer, 'baeren', 2); setze(eisbaer, 'vorne', 3); setze(eisbaer, 'links', 1); setze(eisbaer, 'rechts', 1); setze(eisbaer, 'hinten', 1);
   setze(hase, 'vorne', 4); setze(hase, 'links', 2); setze(hase, 'rechts', 2);
   setze(fuchs, 'vorne', 2); setze(fuchs, 'hinten', 1); setze(fuchs, 'rechts', 1);
 }
