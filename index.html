@@ -1910,6 +1910,197 @@ zuckerstange(7, PLATZ.z - 12, 0);
   lichter(scene, punkte, 1.2);
 }
 
+// ---------- Weihnachtsdorf zwischen den Türmen: Häuschen, Lebkuchenhäuser, Marktstände ----------
+// Alles steht in den Gassen ZWISCHEN zwei Türmen (nicht vor den Türen), damit man gut zu jedem Turm laufen kann.
+const dorf = new THREE.Group(); scene.add(dorf);
+const dachGeo = (() => {   // Satteldach als Prisma (Breite 1, Höhe 1, Tiefe 1), First entlang z
+  const s = new THREE.Shape(); s.moveTo(-0.5, 0); s.lineTo(0.5, 0); s.lineTo(0, 1); s.lineTo(-0.5, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false }); g.translate(0, 0, -0.5); return g;
+})();
+const fensterMat = new THREE.MeshStandardMaterial({ color: 0xffd98a, emissive: 0xffc860, emissiveIntensity: 0.9 });
+function dach(g, b, t, y, h, farbe, ueber = 0.5) {   // Dach + Schneedecke darauf
+  const d = new THREE.Mesh(dachGeo, M(farbe)); d.scale.set(b + ueber * 2, h, t + ueber * 2); d.position.y = y; d.castShadow = true; g.add(d);
+  const sn = new THREE.Mesh(dachGeo, M(0xfbfcff)); sn.scale.set((b + ueber * 2) * 0.84, h * 0.86, t + ueber * 2 + 0.06); sn.position.y = y + 0.28; g.add(sn);
+}
+function fenster(g, x, y, z, b = 0.9, h = 1) {
+  const f = new THREE.Mesh(boxGeo, fensterMat); f.scale.set(b, h, 0.08); f.position.set(x, y, z); g.add(f);
+  deko(g, x, y, z + 0.03, 0.08, h, 0.1, FARBEN.weiss); deko(g, x, y, z + 0.03, b, 0.08, 0.1, FARBEN.weiss);   // Fensterkreuz
+  deko(g, x, y - h / 2 - 0.08, z + 0.12, b + 0.3, 0.14, 0.3, 0xfbfcff);   // Schnee auf der Fensterbank
+}
+// Kollision: man kann nicht durch die Häuser laufen
+function festerKasten(x, z, b, t, h) { klotz(statisch, scene, x, h, z, b, t, 0, { dicke: h, unsichtbar: true }); }
+
+// Kleines Haus mit Schneedach, leuchtenden Fenstern, Tür, Kamin und Kranz
+const HAUS_FARBEN = [[FARBEN.weiss, FARBEN.navy], [0x8f9b52, 0x6e2a33], [0xe9d7c8, FARBEN.navy], [0x3b4a6b, 0x6e2a33], [0xf0d9de, 0x55613a]];
+function haus(x, z, nr) {
+  const g = new THREE.Group(), [wand, dachF] = HAUS_FARBEN[nr % HAUS_FARBEN.length];
+  const b = 5.2, t = 4.6, h = 3.4;
+  deko(g, 0, h / 2, 0, b, h, t, wand);
+  dach(g, b, t, h, 2.2, dachF);
+  const v = -t / 2 - 0.05;   // Vorderseite (zeigt nach vorne, wie die Turmtüren)
+  deko(g, 0, 0.95, v, 1.1, 1.9, 0.1, 0x6b4a32);   // Tür
+  kugel(g, 0.35, 0.95, v - 0.08, 0.07, FARBEN.gold);
+  const kranz = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.1, 8, 16), M(0x2c4a35)); kranz.position.set(0, 1.55, v - 0.1); g.add(kranz);
+  kugel(g, 0, 1.3, v - 0.15, 0.07, FARBEN.rot);
+  fenster(g, -1.6, 1.9, v - 0.02); fenster(g, 1.6, 1.9, v - 0.02);
+  const r = new THREE.Group(); r.rotation.y = Math.PI; r.position.z = 0; g.add(r);   // Fenster auch hinten
+  fenster(r, 0, 1.9, v - 0.02, 1.4);
+  deko(g, 1.4, h + 1.8, 0.8, 0.6, 1.6, 0.6, 0x8a5a4a);   // Kamin
+  deko(g, 1.4, h + 2.65, 0.8, 0.75, 0.15, 0.75, 0xfbfcff);
+  const lp = kette(new THREE.Vector3(-b / 2 - 0.4, h + 0.05, v - 0.45), new THREE.Vector3(b / 2 + 0.4, h + 0.05, v - 0.45), 0.5, 0.35);
+  lichter(g, lp, 1.1);
+  g.position.set(x, 0, z); g.rotation.y = 0; dorf.add(g);
+  festerKasten(x, z, b, t, h + 1.2);
+}
+
+// Lebkuchenhaus: brauner Lebkuchen, weißer Zuckerguss, Bonbons
+function lebkuchenHaus(x, z, nr) {
+  const g = new THREE.Group(), braun = 0xa8693a, guss = 0xfbf8f2;
+  const b = 4.8, t = 4.2, h = 3.0;
+  deko(g, 0, h / 2, 0, b, h, t, braun);
+  dach(g, b, t, h, 2.4, 0x8a5330, 0.45);
+  const v = -t / 2 - 0.05;
+  // Zuckerguss-Zacken unter der Dachkante
+  for (let i = 0; i < 9; i++) { const zk = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.42, 6), M(guss)); zk.rotation.x = Math.PI; zk.position.set(-b / 2 + 0.3 + i * (b - 0.6) / 8, h - 0.2, v - 0.05); g.add(zk); }
+  deko(g, 0, h - 0.02, v - 0.02, b + 0.1, 0.18, 0.1, guss);
+  // Tür mit Gussrand
+  deko(g, 0, 0.9, v, 1.1, 1.8, 0.08, 0x6b3d22);
+  deko(g, 0, 1.85, v - 0.03, 1.3, 0.12, 0.08, guss);
+  for (const sx of [-1, 1]) deko(g, sx * 0.62, 0.9, v - 0.03, 0.12, 1.8, 0.08, guss);
+  fenster(g, -1.5, 1.8, v - 0.02, 0.8, 0.8); fenster(g, 1.5, 1.8, v - 0.02, 0.8, 0.8);
+  // Bunte Bonbons (gedämpfte Farben) an der Wand und Gummi-Tupfen auf dem Dach
+  const bonbon = [FARBEN.rot, FARBEN.weiss, 0x8f9b52, FARBEN.rosa];
+  for (let i = 0; i < 6; i++) kugel(g, -b / 2 + 0.45 + i * (b - 0.9) / 5, 0.25, v - 0.08, 0.16, bonbon[(i + nr) % 4]);
+  for (let i = 0; i < 5; i++) for (const s of [-1, 1]) kugel(g, s * (0.35 + i * 0.42) * 1.05, h + 2.4 - (0.35 + i * 0.42) * 2.4 / 2.85 * 1.05 + 0.2, v + 0.6 + (i % 2) * 1.6, 0.13, bonbon[(i + (s > 0 ? 1 : 0)) % 4]);
+  // Zuckerstangen neben der Tür
+  for (const sx of [-1, 1]) { const zs = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6, 8), stangenMat); zs.position.set(sx * 0.95, 0.8, v - 0.2); g.add(zs); }
+  lebkuchenMann(g, -b / 2 - 0.9, v - 0.6, 0.55, 0.3);
+  g.position.set(x, 0, z); dorf.add(g);
+  festerKasten(x, z, b, t, h + 1.2);
+}
+
+// Weihnachtsmarkt-Stand: Holzbude mit gestreiftem Dach, Theke mit Waren und Lichterkette
+const markisenTex = (farbe) => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 8;
+  const x = c.getContext('2d'); x.fillStyle = '#fbf8f2'; x.fillRect(0, 0, 64, 8);
+  x.fillStyle = farbe; for (let i = 0; i < 64; i += 16) x.fillRect(i, 0, 8, 8);
+  return new THREE.CanvasTexture(c);
+};
+const MARKISEN = [markisenTex('#1f2a4a'), markisenTex('#8f3a44'), markisenTex('#7a8450')].map((m) => new THREE.MeshStandardMaterial({ map: m, roughness: 0.8 }));
+const SCHILDER = ['Lebkuchen', 'Kakao', 'Maronen', 'Plätzchen', 'Kerzen', 'Punsch', 'Waffeln', 'Sterne'];
+function schildTextur(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const x = c.getContext('2d'); x.fillStyle = '#fbf8f2'; x.fillRect(0, 0, 256, 64);
+  x.strokeStyle = '#1f2a4a'; x.lineWidth = 6; x.strokeRect(3, 3, 250, 58);
+  x.fillStyle = '#1f2a4a'; x.font = '800 38px "Baloo 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, 35);
+  return new THREE.CanvasTexture(c);
+}
+function marktStand(x, z, nr, dreh = 0) {
+  const g = new THREE.Group(), holz = 0x9b7350, dunkel = 0x6b4a32;
+  const b = 4.2, t = 2.6;
+  deko(g, 0, 1.6, t / 2 - 0.1, b, 3.2, 0.2, holz);   // Rückwand
+  for (const sx of [-1, 1]) deko(g, sx * (b / 2 - 0.1), 1.6, 0, 0.2, 3.2, t, holz);   // Seiten
+  deko(g, 0, 1.0, -t / 2 + 0.25, b, 0.12, 0.7, dunkel);   // Theke
+  deko(g, 0, 0.5, -t / 2 + 0.25, b - 0.2, 1.0, 0.5, holz);
+  for (const sx of [-1, 0, 1]) deko(g, sx * (b / 2 - 0.15), 1.6, -t / 2 + 0.15, 0.18, 3.2, 0.18, dunkel);   // Pfosten vorne
+  // Dach mit Schnee und gestreifter Markise
+  const d = new THREE.Mesh(dachGeo, M(dunkel)); d.rotation.y = Math.PI / 2; d.scale.set(t + 1.2, 1.2, b + 0.6); d.position.y = 3.2; g.add(d);
+  const sn = new THREE.Mesh(dachGeo, M(0xfbfcff)); sn.rotation.y = Math.PI / 2; sn.scale.set((t + 1.2) * 0.94, 1.12, b + 0.66); sn.position.y = 3.36; g.add(sn);
+  const mk = new THREE.Mesh(boxGeo, MARKISEN[nr % 3]); mk.scale.set(b + 0.4, 0.06, 1.2); mk.position.set(0, 3.0, -t / 2 - 0.45); mk.rotation.x = -0.35; g.add(mk);
+  for (let i = 0; i < 7; i++) { const z2 = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.3, 3), MARKISEN[nr % 3]); z2.rotation.x = Math.PI; z2.position.set(-b / 2 + 0.1 + i * (b + 0.2) / 6, 2.68, -t / 2 - 1.0); g.add(z2); }
+  // Schild
+  const sch = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshStandardMaterial({ map: schildTextur(SCHILDER[nr % SCHILDER.length]), roughness: 0.9 }));
+  sch.rotation.y = Math.PI; sch.position.set(0, 2.2, -t / 2 + 0.05); sch.userData.eigen = true; g.add(sch);
+  // Waren auf der Theke
+  for (let i = 0; i < 5; i++) {
+    const wx = -1.5 + i * 0.75, art = (nr + i) % 3;
+    if (art === 0) { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.32, 10), M(i % 2 ? FARBEN.weiss : 0x8f3a44)); h.position.set(wx, 1.22, -t / 2 + 0.25); g.add(h); }   // Tassen
+    else if (art === 1) { const l = kugel(g, wx, 1.22, -t / 2 + 0.25, 0.22, 0xa8693a); l.scale.set(0.24, 0.24, 0.08); }   // Lebkuchenherz
+    else geschenk(g, wx, 1.06, -t / 2 + 0.25, 0.32, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], i);
+  }
+  // Lichterkette an der Markise
+  lichter(g, kette(new THREE.Vector3(-b / 2 - 0.1, 2.75, -t / 2 - 1.05), new THREE.Vector3(b / 2 + 0.1, 2.75, -t / 2 - 1.05), 0.4, 0.3), 1.1);
+  g.position.set(x, 0, z); g.rotation.y = dreh; dorf.add(g);
+  const quer = Math.abs(Math.sin(dreh)) > 0.5;
+  festerKasten(x, z, quer ? t : b, quer ? b : t, 1.2);   // nur die Theke ist fest
+}
+
+// Laterne mit warmem Licht
+function laterne(x, z) {
+  const g = new THREE.Group();
+  deko(g, 0, 1.4, 0, 0.14, 2.8, 0.14, FARBEN.navy);
+  deko(g, 0, 2.95, 0, 0.5, 0.5, 0.5, FARBEN.navy);
+  const l = new THREE.Mesh(boxGeo, fensterMat); l.scale.set(0.38, 0.38, 0.52); l.position.y = 2.95; g.add(l);
+  const l2 = new THREE.Mesh(boxGeo, fensterMat); l2.scale.set(0.52, 0.38, 0.38); l2.position.y = 2.95; g.add(l2);
+  const kappe = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.35, 4), M(FARBEN.navy)); kappe.position.y = 3.37; kappe.rotation.y = Math.PI / 4; g.add(kappe);
+  const sch = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.06, 6, 12), M(0x8f3a44)); sch.position.set(0, 2.45, -0.1); g.add(sch);
+  g.position.set(x, 0, z); dorf.add(g);
+}
+// Holzbank mit Schnee
+function bank(x, z, dreh = 0) {
+  const g = new THREE.Group();
+  deko(g, 0, 0.5, 0, 2.2, 0.12, 0.6, 0x9b7350); deko(g, 0, 0.9, 0.28, 2.2, 0.5, 0.1, 0x9b7350);
+  deko(g, 0, 0.6, 0, 2.2, 0.06, 0.55, 0xfbfcff);
+  for (const sx of [-1, 1]) deko(g, sx * 0.95, 0.25, 0, 0.12, 0.5, 0.55, FARBEN.navy);
+  g.position.set(x, 0, z); g.rotation.y = dreh; dorf.add(g);
+}
+
+// In jeder Gasse zwischen zwei Türmen nebeneinander: abwechselnd Haus, Lebkuchenhaus, Marktstand
+{
+  const r = zufall(2412);
+  const GASSEN_X = [-1.5 * ABSTAND, -0.5 * ABSTAND, 0.5 * ABSTAND, 1.5 * ABSTAND];
+  const REIHEN_Z = [-2, -1, 0, 1, 2].map((k) => k * ABSTAND);
+  let nr = 0;
+  for (const z of REIHEN_Z) for (const x of GASSEN_X) {
+    const nahePlatz = Math.hypot(x - PLATZ.x, z - PLATZ.z) < 30;
+    if (nahePlatz) { nr++; continue; }   // am Dorfplatz steht der Markt
+    const art = nr % 3;
+    if (art === 0) haus(x, z + 2, nr);
+    else if (art === 1) lebkuchenHaus(x, z + 2, nr);
+    else { marktStand(x - 3.2, z + 1, nr); marktStand(x + 3.2, z + 1, nr + 1); }
+    // Kleine Deko rundherum: Laternen, Tannen, Schneemann, Geschenke
+    laterne(x - 5.5, z - 4.5); laterne(x + 5.5, z - 4.5);
+    tanne(dorf, x + (r() < 0.5 ? -1 : 1) * 4.5, z + 6.5, 0.45 + r() * 0.15, r() < 0.5);
+    if (nr % 4 === 1) schneemann(dorf, x + 4.8, z - 1.5, 0.5, -0.4);
+    if (nr % 4 === 3) for (let i = 0; i < 3; i++) geschenk(dorf, x - 4.6 + i * 0.6, 0, z + (i % 2) * 0.6 - 1, 0.45 + r() * 0.25, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], r() * 3);
+    if (nr % 5 === 2) bank(x, z - 5.2, 0);
+    nr++;
+  }
+  // Weihnachtsmarkt rund um den großen Baum am Dorfplatz
+  const MARKT = [[-15, 6, 0.5], [15, 6, -0.5], [-19, -6, Math.PI / 2 - 0.2], [19, -6, -Math.PI / 2 + 0.2], [-30, 8, 0], [30, 8, 0]];
+  MARKT.forEach(([dx, dz, dreh], i) => marktStand(PLATZ.x + dx, PLATZ.z + dz, i, dreh));
+  for (const [dx, dz] of [[-9, -8], [9, -8], [-9, 9], [9, 9]]) laterne(PLATZ.x + dx, PLATZ.z + dz);
+  bank(PLATZ.x - 6, PLATZ.z + 12, Math.PI); bank(PLATZ.x + 6, PLATZ.z + 12, Math.PI);
+  // Lichterketten quer über den Markt (von Laterne zu Laterne)
+  const P = (dx, dz) => new THREE.Vector3(PLATZ.x + dx, 3.4, PLATZ.z + dz);
+  lichter(dorf, [...kette(P(-9, -8), P(-9, 9), 0.6, 1), ...kette(P(9, -8), P(9, 9), 0.6, 1), ...kette(P(-9, 9), P(9, 9), 0.6, 1)], 1.2);
+}
+// Fürs Handy: alle Teile vom Dorf mit gleichem Material zu EINEM Teil zusammenkleben (viel weniger Arbeit für die Grafik)
+{
+  dorf.updateMatrixWorld(true);
+  const proMat = new Map(), weg = [];
+  dorf.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.eigen || o.material.vertexColors || drehSterne.includes(o)) return;
+    let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const n of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(n)) geo.deleteAttribute(n);
+    if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    geo.applyMatrix4(o.matrixWorld);
+    if (!proMat.has(o.material)) proMat.set(o.material, []);
+    proMat.get(o.material).push(geo); weg.push(o);
+  });
+  for (const o of weg) o.parent.remove(o);
+  for (const [mat, geos] of proMat) {
+    let n = 0; for (const g of geos) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+    let i = 0;
+    for (const g of geos) { pos.set(g.attributes.position.array, i * 3); nrm.set(g.attributes.normal.array, i * 3); uv.set(g.attributes.uv.array, i * 2); i += g.attributes.position.count; g.dispose(); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true;
+    dorf.add(m);
+  }
+}
+
 // ---------- Tannen draußen ----------
 let gepflanzt = 0;
 while (gepflanzt < 80) {
