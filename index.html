@@ -88,6 +88,11 @@
     background: var(--ink); color: #fff; border: 3px solid #fbf8f2; box-shadow: 0 5px 0 rgba(31, 42, 74, 0.5);
   }
   #busKnopf:focus-visible { outline: 3px solid #8f9b52; outline-offset: 3px; }
+  #busWahl { position: fixed; left: 50%; bottom: max(26px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 12; display: flex; gap: 10px; zoom: 0.8; }
+  #busWahl[hidden] { display: none; }
+  .busZielKnopf { font: 800 19px var(--font); padding: 10px 20px 7px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    background: var(--ink); color: #fff; border: 3px solid #fbf8f2; box-shadow: 0 5px 0 rgba(31, 42, 74, 0.5); }
+  .busZielKnopf:focus-visible { outline: 3px solid #8f9b52; outline-offset: 3px; }
   #aktionKnopf {
     position: fixed; left: 50%; bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 96px)); transform: translateX(-50%); z-index: 12; zoom: 0.8;
     font: 700 19px var(--font); padding: 10px 22px 7px; border-radius: 999px; cursor: pointer;
@@ -111,7 +116,7 @@
   #hausPanel .zeile { display: flex; gap: 8px; margin-top: 10px; }
   #hausPanel .zeile button { flex: 1; text-align: center; }
   #aktionKnopf:focus-visible, #hausKnopf:focus-visible, #hausPanel button:focus-visible { outline: 3px solid #8f9b52; outline-offset: 2px; }
-  body.editor-offen #hausKnopf, body.start-offen #hausKnopf, body.editor-offen #aktionKnopf { display: none !important; }
+  body.editor-offen #hausKnopf, body.start-offen #hausKnopf, body.editor-offen #aktionKnopf, body.editor-offen #busWahl, body.start-offen #busWahl { display: none !important; }
   #start .zwei .breit { grid-column: 1 / -1; }
   #busFahrt {
     position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; text-align: center;
@@ -538,6 +543,7 @@
 </div>
 <div class="banner" id="banner" hidden>Geschafft!</div>
 <button type="button" id="busKnopf" hidden>🚌 Einsteigen</button>
+<div id="busWahl" hidden></div>
 <button type="button" id="aktionKnopf" hidden></button>
 <button type="button" id="hausKnopf" hidden aria-label="Haus aussuchen">🏠 Häuser</button>
 <div id="hausPanel" hidden>
@@ -2165,6 +2171,7 @@ function bank(x, z, dreh = 0) {
   lichter(dorf, [...kette(P(-9, -8), P(-9, 9), 0.6, 1), ...kette(P(9, -8), P(9, 9), 0.6, 1), ...kette(P(-9, 9), P(9, 9), 0.6, 1)], 1.2);
 }
 // ---------- Vorne beim Start: verschneite Straße, Bushaltestelle, Pflastersteine, Laternen, Schneemann, weiße Bäume ----------
+let PFLASTER_TEX = null;   // die Ziegel vom Weihnachtsdorf (auch für die Winterstadt)
 // Ganz in Pastell: Weiß, Hellblau, ein bisschen Grau – nicht bunt
 {
   const SZ = -2 * ABSTAND - 20;   // da steht man am Anfang (wie START weiter unten)
@@ -2196,6 +2203,7 @@ function bank(x, z, dreh = 0) {
     }
     const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
   })();
+  PFLASTER_TEX = pflaster;
   // Ziegel nur an ein paar Stellen: unregelmäßige Flecken, als ob die Ziegel unter dem Schnee hervorschauen
   {
     const flecken = [[11, SZ + 2, 7, 1], [-3, SZ + 3, 9, 2], [PLATZ.x - 6, PLATZ.z + 10, 10, 3], [PLATZ.x + 8, PLATZ.z - 9, 8, 4],
@@ -2301,30 +2309,40 @@ function spurenUpdate(dt, s, imFreien, schritt) {
 const BUS_AE = { tuer: new THREE.Vector3() };
 let busZiel = null, busFaehrt = false;
 const busKnopf = document.getElementById('busKnopf'), busFahrt = document.getElementById('busFahrt');
+const BUS_NAMEN = { winter: 'Weihnachtsdorf', aesthetic: 'Aesthetic-Welt', wonderland: 'Winterstadt' };
+const busWahl = document.getElementById('busWahl');
+let busOrt = null;
+function busHalt(welt) {   // wo in jeder Welt die Haltestelle ist
+  if (welt === 'winter') return { x: 11, z: -2 * ABSTAND - 20 - 3.2 };
+  if (welt === 'aesthetic') return { x: BUS_AE.tuer.x, z: BUS_AE.tuer.z };
+  if (welt === 'wonderland') return { x: WONDER.x + 88, z: WONDER.z + 8.6 };
+  return null;
+}
 function busPruefen(pos) {
   if (busFaehrt) return;
-  let ziel = null;
-  // Weihnachtsbus: nur einsteigen, wenn er an der Haltestelle wartet
-  for (const f of FAHRZEUGE) if (f.istBus && f.warte > 0 && f.gehalten && f.g.position.x * f.richtung < 100) {
-    const tx = f.g.position.x + 3.6 * f.richtung, tz = f.g.position.z + 1.26 * f.richtung;
-    if (Math.hypot(pos.x - tx, pos.z - tz) < 3.5 && pos.y < 2) ziel = 'aesthetic';
-  }
-  if (Math.hypot(pos.x - BUS_AE.tuer.x, pos.z - BUS_AE.tuer.z) < 3.5 && pos.y < 2) ziel = 'winter';
-  if (ziel !== busZiel) {
-    busZiel = ziel; busKnopf.hidden = !ziel;
-    busKnopf.textContent = ziel === 'aesthetic' ? '🚌 Einsteigen: zur Aesthetic-Welt' : '🚌 Einsteigen: zurück ins Weihnachtsdorf';
-    emojisDaempfen?.(busKnopf);
+  const welt = weltVon(pos), h = busHalt(welt);
+  const da = h && Math.hypot(pos.x - h.x, pos.z - h.z) < 4.8 && pos.y < 2 ? welt : null;
+  if (da !== busOrt) {
+    busOrt = da; busWahl.hidden = !da; busZiel = null; busKnopf.hidden = true;
+    busWahl.replaceChildren();
+    if (da) {
+      const ziele = ['winter', 'aesthetic', 'wonderland'].filter((w) => w !== da);
+      busZiel = ziele[0];
+      for (const z2 of ziele) { const k = document.createElement('button'); k.type = 'button'; k.className = 'busZielKnopf'; k.textContent = '🚌 ' + BUS_NAMEN[z2]; k.addEventListener('click', () => { busZiel = z2; busFahren(); }); busWahl.appendChild(k); }
+      emojisDaempfen?.(busWahl);
+    }
   }
 }
 function busFahren() {
   if (!busZiel || busFaehrt) return;
-  const ziel = busZiel; busFaehrt = true; busKnopf.hidden = true; busZiel = null;
-  document.getElementById('busText').textContent = ziel === 'aesthetic' ? 'Der Bus fährt zur Aesthetic-Welt …' : 'Der Bus fährt zurück ins Weihnachtsdorf …';
+  const ziel = busZiel; busFaehrt = true; busWahl.hidden = true; busKnopf.hidden = true; busZiel = null; busOrt = null;
+  document.getElementById('busText').textContent = 'Der Bus fährt ' + (ziel === 'winter' ? 'ins Weihnachtsdorf' : ziel === 'aesthetic' ? 'zur Aesthetic-Welt' : 'in die Winterstadt') + ' …';
   busFahrt.classList.add('an');
   setTimeout(() => {
     weltWechseln(ziel);
     // An der Haltestelle aussteigen
-    if (ziel === 'aesthetic') spieler.pos.set(BUS_AE.tuer.x + 1.5, 0, BUS_AE.tuer.z + 4.5);
+    if (ziel === 'aesthetic') spieler.pos.set(BUS_AE.tuer.x + 1.5, 0, BUS_AE.tuer.z + 3.0);
+    else if (ziel === 'wonderland') spieler.pos.set(WONDER.x + 88, 0, WONDER.z + 6.0);
     else spieler.pos.set(9, 0, -2 * ABSTAND - 20 + 0.5);
     spieler.checkpoint.copy(spieler.pos); spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;
     tuermeNachladen(spieler.pos);
@@ -2336,6 +2354,7 @@ addEventListener('keydown', (e) => { if ((e.key === 'e' || e.key === 'E') && bus
 
 // ---------- Verkehr auf der Straße: ein paar Autos und ab und zu ein Bus (ruhige Pastellfarben) ----------
 const FAHRZEUGE = [];
+let FAHRZEUG_BAU = null;
 {
   const SZ = -2 * ABSTAND - 20;
   const SPUR_OBEN = SZ - 8, SPUR_UNTEN = SZ - 14;   // oben fährt nach rechts (an der Haltestelle vorbei), unten nach links
@@ -2375,6 +2394,7 @@ const FAHRZEUGE = [];
     return g;
   }
   const AUTO_FARBEN = [0xc9d9ea, 0xf3ead8, 0xb8c4a0, 0xe7cdd3, 0xeef1f5];
+  FAHRZEUG_BAU = { auto, bus, AUTO_FARBEN };
   const neu = (g, spur, richtung, tempo, x, istBus = false) => {
     g.rotation.y = richtung > 0 ? 0 : Math.PI; g.position.set(x, 0, spur); scene.add(g); WELT_TEILE.winter.push(g);
     FAHRZEUGE.push({ g, richtung, tempo, jetzt: tempo, istBus, warte: 0, gehalten: false });
@@ -4953,6 +4973,13 @@ const SACHEN = {
   milch: { emoji: '🥛', name: 'Milch' },
   brot: { emoji: '🍞', name: 'Brot' },
   apfel: { emoji: '🍎', name: 'Apfel' },
+  muffin: { emoji: '🧁', name: 'Muffin' },
+  buch: { emoji: '📖', name: 'Buch' },
+  holzauto: { emoji: '🚗', name: 'Holzauto' },
+  hase: { emoji: '🐰', name: 'Kuschelhase' },
+  blume: { emoji: '🌺', name: 'Weihnachtsstern' },
+  tannentopf: { emoji: '🌲', name: 'Tännchen im Topf' },
+  tasche: { emoji: '👜', name: 'Tasche' },
 };
 // Adventskalender: hinter jedem Türchen ein Geschenk, jedes dritte Türchen ist Kleidung. sache = zum In-die-Hand-Nehmen, kleid = neu in der Umkleide
 const GESCHENKE = {
@@ -5100,6 +5127,42 @@ function handDingBauen(name) {
       ku(0.008, navy, -0.018, 0.315, 0.043); ku(0.008, navy, 0.018, 0.315, 0.043);
       teil(new THREE.TorusGeometry(0.05, 0.014, 8, 16), rot, 0, 0.255, 0).rotation.x = Math.PI / 2;
       zy(0.035, 0.035, 0.05, navy, 0, 0.36, 0); zy(0.055, 0.055, 0.008, navy, 0, 0.338, 0);
+      break;
+    }
+    case 'muffin': {   // Muffin aus dem Café
+      zy(0.07, 0.055, 0.08, M(0xd8c6b0), 0, 0.04, 0, 14); const h = ku(0.085, M(0x7a5236), 0, 0.1, 0); h.scale.y = 0.7; ku(0.02, weiss, 0, 0.16, 0);
+      break;
+    }
+    case 'buch': {
+      teil(new THREE.BoxGeometry(0.2, 0.26, 0.05), M(0x8a6446), 0, 0.13, 0); teil(new THREE.BoxGeometry(0.19, 0.25, 0.042), weiss, 0.008, 0.13, 0); teil(new THREE.BoxGeometry(0.12, 0.03, 0.052), M(0xd9cbb5), 0, 0.18, 0);
+      break;
+    }
+    case 'holzauto': {
+      teil(new THREE.BoxGeometry(0.26, 0.07, 0.12), M(0xc49a6c), 0, 0.07, 0); teil(new THREE.BoxGeometry(0.13, 0.07, 0.11), M(0xb8574e), -0.02, 0.14, 0);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const r = zy(0.035, 0.035, 0.025, M(0x4a3326), sx * 0.08, 0.035, sz * 0.065, 12); r.rotation.x = Math.PI / 2; }
+      break;
+    }
+    case 'hase': {
+      const hell = M(0xe8ddd0); const k = ku(0.08, hell, 0, 0.08, 0); k.scale.set(1, 0.95, 0.9); ku(0.06, hell, 0, 0.19, 0.02);
+      for (const sx of [-1, 1]) { const o = ku(0.022, hell, sx * 0.03, 0.29, 0); o.scale.set(1, 3, 0.6); ku(0.008, navy, sx * 0.022, 0.2, 0.075); }
+      ku(0.012, rosa, 0, 0.185, 0.08); ku(0.025, weiss, 0, 0.06, -0.08);
+      break;
+    }
+    case 'blume': {   // Weihnachtsstern im Topf
+      zy(0.06, 0.045, 0.08, M(0xd9cbb5), 0, 0.04, 0, 14);
+      for (let i = 0; i < 7; i++) { const bl = ku(0.035, i % 2 ? M(0xb8574e) : gruen, Math.cos(i * 0.9) * 0.05, 0.12, Math.sin(i * 0.9) * 0.05); bl.scale.set(1.6, 0.3, 0.8); bl.rotation.y = i * 0.9; }
+      ku(0.012, gold, 0, 0.13, 0);
+      break;
+    }
+    case 'tannentopf': {
+      zy(0.06, 0.05, 0.08, M(0x8a6446), 0, 0.04, 0, 14);
+      for (let i = 0; i < 3; i++) teil(new THREE.ConeGeometry(0.1 - i * 0.025, 0.12, 10), M(0x4f5e4a), 0, 0.13 + i * 0.07, 0);
+      teil(new THREE.SphereGeometry(0.015, 8, 6), weiss, 0, 0.33, 0);
+      break;
+    }
+    case 'tasche': {
+      teil(new THREE.BoxGeometry(0.24, 0.18, 0.08), M(0x8a6446), 0, 0.09, 0); const h = teil(new THREE.TorusGeometry(0.07, 0.01, 6, 14, Math.PI), M(0x4a3326), 0, 0.18, 0);
+      teil(new THREE.BoxGeometry(0.03, 0.03, 0.085), gold, 0, 0.14, 0);
       break;
     }
     case 'milch': {   // Milchflasche aus dem Supermarkt
@@ -5817,7 +5880,7 @@ const wonder = new THREE.Group(); scene.add(wonder); WELT_TEILE.wonderland.push(
 const W_HAEUSER = [];    // die Wohnhäuser (Nummer, Tür, Schild, ...)
 const W_AKTIONEN = [];   // Stellen, an denen ein Knopf erscheint (Sachen mitnehmen, Tür auf/zu)
 const W_START = new THREE.Vector3(WONDER.x, 0, WONDER.z - 3);
-const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
+const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
 {
   const W = WONDER, rnd = zufall(4711);
   const C = {   // Farben der Stadt
@@ -5985,19 +6048,19 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     const boden = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), M(0xf3f5f8, { roughness: 1 }));
     boden.rotation.x = -Math.PI / 2; boden.position.set(W.x, 0, W.z); boden.receiveShadow = true; wonder.add(boden);
     klotz(statisch, wonder, W.x, 0, W.z, 420, 420, 0, { dicke: 1, unsichtbar: true });
-    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(200, 9), M(0xb9b8b3, { roughness: 0.95 }));
+    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(310, 9), M(0xb9b8b3, { roughness: 0.95 }));
     strasse.rotation.x = -Math.PI / 2; strasse.position.set(W.x, 0.02, W.z); strasse.receiveShadow = true; wonder.add(strasse);
-    for (let i = 0; i < 40; i++) {   // Schneereste am Straßenrand
+    for (let i = 0; i < 70; i++) {   // Schneereste am Straßenrand
       const f = new THREE.Mesh(new THREE.PlaneGeometry(2 + rnd() * 3, 0.8 + rnd()), M(0xf3f5f8)); f.rotation.x = -Math.PI / 2;
-      f.position.set(W.x - 84 + rnd() * 168, 0.03, W.z + (rnd() < 0.5 ? -1 : 1) * (4.1 + rnd() * 0.4)); wonder.add(f);
+      f.position.set(W.x - 150 + rnd() * 300, 0.03, W.z + (rnd() < 0.5 ? -1 : 1) * (4.1 + rnd() * 0.4)); wonder.add(f);
     }
     for (const s of [-1, 1]) {   // Bürgersteig mit Ziegeln
-      const b = new THREE.Mesh(new THREE.PlaneGeometry(200, 3), new THREE.MeshStandardMaterial({ map: (() => { const t = ziegelTextur(); t.repeat.set(60, 1); return t; })(), roughness: 0.95, color: 0xd8d2cc }));
+      const b = new THREE.Mesh(new THREE.PlaneGeometry(310, 3), new THREE.MeshStandardMaterial({ map: (() => { const t = PFLASTER_TEX ? PFLASTER_TEX.clone() : ziegelTextur(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(103, 1); return t; })(), roughness: 0.95 }));   // gleiche Ziegel wie im Weihnachtsdorf
       b.rotation.x = -Math.PI / 2; b.position.set(W.x, 0.025, W.z + s * 6); wonder.add(b);
-      for (let i = -4; i <= 4; i++) if (i % 2 === 0) laterneW(wonder, W.x + i * 18 + 9, W.z + s * 7.2, 3.2);
+      for (let i = -8; i <= 8; i++) if (i % 2 === 0) laterneW(wonder, W.x + i * 18 + 9, W.z + s * 7.2, 3.2);
     }
     // Lichterketten quer über die Straße
-    for (let i = -3; i <= 3; i += 2) weisseLichter(wonder, kette(V(W.x + i * 18 + 9, 3.6, W.z - 7.2), V(W.x + i * 18 + 9, 3.6, W.z + 7.2), 0.5, 0.9), 1.2);
+    for (let i = -7; i <= 7; i += 2) weisseLichter(wonder, kette(V(W.x + i * 18 + 9, 3.6, W.z - 7.2), V(W.x + i * 18 + 9, 3.6, W.z + 7.2), 0.5, 0.9), 1.2);
     // Himmel (abends, ruhig) und viele verschneite Bäume rundherum
     const c = document.createElement('canvas'); c.width = 4; c.height = 256; const x = c.getContext('2d');
     const v = x.createLinearGradient(0, 0, 0, 256); v.addColorStop(0, '#9eadc0'); v.addColorStop(0.38, '#c9cfd6'); v.addColorStop(0.5, '#ece7e0'); v.addColorStop(1, '#ece7e0');
@@ -6007,7 +6070,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     const N = 420, krone = new THREE.ConeGeometry(2.2, 6, 8); krone.translate(0, 4, 0);
     const baeume = new THREE.InstancedMesh(krone, M(0xf4f6f8, { flatShading: true }), N), m4 = new THREE.Matrix4();
     for (let i = 0; i < N; i++) {
-      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while (Math.abs(px) < 104 && Math.abs(pz) < 52);
+      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while (Math.abs(px) < 160 && Math.abs(pz) < 52);
       const sc = 0.7 + rnd() * 0.9; m4.makeScale(sc, sc * (0.9 + rnd() * 0.4), sc).setPosition(W.x + px, 0, W.z + pz); baeume.setMatrixAt(i, m4);
     }
     baeume.castShadow = true; scene.add(baeume); WELT_TEILE.wonderland.push(baeume);
@@ -6589,117 +6652,277 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     W_INNEN.push({ grp: innenWurzel, x, z });
   }
 
-  // --- Läden: Supermarkt und Bäckerei, mit Verkäufer/in und Sachen zum Mitnehmen ---
+  // --- Läden: groß wie im echten Leben, weihnachtlich geschmückt, mit Mitarbeiter/innen und Sachen zum Mitnehmen ---
+  const LADEN_ARTEN = {
+    super:      { name: 'Supermarkt', b: 26, t: 18, H: 7.0, wand: 2, boden: 0xe4e0d8, innen: 0xe8e2d6 },
+    baeckerei:  { name: 'Bäckerei', b: 16, t: 12, H: 6.0, wand: 3, boden: 0xcdb79a, innen: 0xe9dcc6 },
+    cafe:       { name: 'Café', b: 16, t: 12, H: 6.0, wand: 1, boden: 0xb89a7a, innen: 0xd8c6b0 },
+    buch:       { name: 'Buchladen', b: 15, t: 12, H: 6.5, wand: 4, boden: 0x9c7a5a, innen: 0xb3b8a2 },
+    spielzeug:  { name: 'Spielzeug', b: 16, t: 12, H: 6.0, wand: 0, boden: 0xd6c3a5, innen: 0xd8cfc4 },
+    blumen:     { name: 'Blumen', b: 14, t: 11, H: 6.0, wand: 2, boden: 0xa9a7a1, innen: 0xcfd3cc },
+    kleider:    { name: 'Mode', b: 16, t: 12, H: 6.0, wand: 3, boden: 0xcbbfae, innen: 0xd8c6b8 },
+  };
   function laden(art, x, z, s) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = s < 0 ? Math.PI : 0; wonder.add(g);
+    const A = LADEN_ARTEN[art];
+    let g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = s < 0 ? Math.PI : 0; wonder.add(g);
     const P = (lx, lz) => [x + lx * s, z + lz * s];
     const fest = (lx, oben, lz, b, t, dicke) => { const [wx, wz] = P(lx, lz); return klotz(statisch, wonder, wx, oben, wz, b, t, 0, { dicke, unsichtbar: true }); };
-    const super_ = art === 'super';
-    const b = super_ ? 18 : 12, t = super_ ? 12 : 10, H = 4.8, D = 0.3, TB = 2.6, F = 0.2, vz = -t / 2;
-    const wand = super_ ? HOLZ[2] : HOLZ[3];
+    const { b, t, H } = A, D = 0.3, TB = 2.8, TH = 3.3, F = 0.2, vz = -t / 2;
+    const wand = HOLZ[A.wand], rz = zufall(x * 7 + z);
     const stueck = (lx, ly, lz, sb, sh, st, mat = wand) => { kasten(g, lx, ly, lz, sb, sh, st, mat); fest(lx, ly + sh / 2, lz, sb, st, sh); };
     stueck(0, H / 2, t / 2 - D / 2, b, H, D);
     for (const sx of [-1, 1]) stueck(sx * (b / 2 - D / 2), H / 2, 0, D, H, t);
-    const seite = (b - TB) / 2;
-    for (const sx of [-1, 1]) {   // Vorderwand: unten Ziegel, große Schaufenster
-      stueck(sx * (TB / 2 + seite / 2), 0.5, vz + D / 2, seite, 1.0, D, ziegelMat);
-      stueck(sx * (TB / 2 + seite / 2), (H + 3.2) / 2, vz + D / 2, seite, H - 3.2, D);
-      const gl = new THREE.Mesh(boxGeo, glasMat); gl.scale.set(seite - 0.4, 2.2, 0.06); gl.position.set(sx * (TB / 2 + seite / 2), 2.1, vz + D / 2); gl.userData.eigen = true; g.add(gl);
-      fest(sx * (TB / 2 + seite / 2), 3.2, vz + D / 2, seite, D, 2.2);
-      for (const ox of [-1, 0, 1]) deko(g, sx * (TB / 2 + seite / 2) + ox * (seite - 0.4) / 2, 2.1, vz + D / 2, 0.1, 2.2, D + 0.04, C.schwarz);
-      deko(g, sx * (TB / 2 + seite / 2), 3.2, vz + D / 2, seite, 0.1, D + 0.04, C.schwarz);
-      girlande(g, V(sx * (TB / 2 + 0.2), 3.35, vz - 0.05), V(sx * (b / 2 - 0.2), 3.35, vz - 0.05), 0.3, 18);
+    const seite = (b - TB) / 2, FO = 4.0;   // Schaufenster bis 4 m hoch
+    for (const sx of [-1, 1]) {   // Vorderwand: unten Ziegel, große Schaufenster mit Kränzen
+      const mx = sx * (TB / 2 + seite / 2);
+      stueck(mx, 0.5, vz + D / 2, seite, 1.0, D, ziegelMat);
+      stueck(mx, (H + FO) / 2, vz + D / 2, seite, H - FO, D);
+      const gl = new THREE.Mesh(boxGeo, glasMat); gl.scale.set(seite - 0.4, FO - 1.0, 0.06); gl.position.set(mx, (FO + 1.0) / 2, vz + D / 2); gl.userData.eigen = true; g.add(gl);
+      fest(mx, FO, vz + D / 2, seite, D, FO - 1.0);
+      for (const ox of [-1, 0, 1]) deko(g, mx + ox * (seite - 0.4) / 2, (FO + 1.0) / 2, vz + D / 2, 0.1, FO - 1.0, D + 0.04, C.schwarz);
+      deko(g, mx, FO, vz + D / 2, seite, 0.12, D + 0.04, C.schwarz);
+      girlande(g, V(sx * (TB / 2 + 0.2), FO + 0.15, vz - 0.05), V(sx * (b / 2 - 0.2), FO + 0.15, vz - 0.05), 0.35, Math.round(seite * 3));
+      for (const ox of [-1, 1]) kranz(g, mx + ox * (seite - 0.4) / 4, FO - 0.7, vz - 0.02, 0.38);   // Kränze an den Schaufenstern (nicht am Schild)
+      weisseLichter(g, kette(V(mx - (seite - 0.4) / 2, FO - 0.3, vz + D + 0.05), V(mx + (seite - 0.4) / 2, FO - 0.3, vz + D + 0.05), 0.3, 0.35), 0.7);
     }
-    stueck(0, (H + 3.0) / 2, vz + D / 2, TB, H - 3.0, D);
-    for (const sx of [-1, 1]) deko(g, sx * (TB / 2 + 0.08), 1.5, vz - 0.02, 0.16, 3.0, 0.14, C.schwarz);
+    stueck(0, (H + TH) / 2, vz + D / 2, TB, H - TH, D);
+    for (const sx of [-1, 1]) deko(g, sx * (TB / 2 + 0.08), TH / 2, vz - 0.02, 0.16, TH, 0.14, C.schwarz);
     kasten(g, 0, F / 2, 0, b, F, t, M(C.hellgrau)); fest(0, F, 0, b, t, F);
-    kasten(g, 0, F + 0.01, 0, b - 2 * D, 0.02, t - 2 * D, M(super_ ? 0xe4e0d8 : 0xcdb79a));
+    kasten(g, 0, F + 0.01, 0, b - 2 * D, 0.02, t - 2 * D, M(A.boden));
     kasten(g, 0, H - 0.05, 0, b - 2 * D, 0.1, t - 2 * D, deckenMat);
-    for (const sx of [-1, 1]) kasten(g, sx * (b / 2 - D - 0.02), H / 2, 0, 0.04, H, t - 2 * D, innenMat);
-    kasten(g, 0, H / 2, t / 2 - D - 0.02, b - 2 * D, H, 0.04, innenMat);
-    // flaches Dach mit Schnee und Schild
-    kasten(g, 0, H + 0.15, 0, b + 0.6, 0.3, t + 0.6, M(C.dunkelgrau)); deko(g, 0, H + 0.34, 0, b + 0.4, 0.1, t + 0.4, 0xfbfcff);
-    const sch = new THREE.Mesh(new THREE.PlaneGeometry(super_ ? 7 : 5, super_ ? 1.3 : 1.1), schild(super_ ? 'Supermarkt' : 'Bäckerei'));
-    sch.rotation.y = Math.PI; sch.position.set(0, H - 0.75, vz - 0.04); sch.userData.eigen = true; g.add(sch);
-    // Markise über der Tür
-    const mk = new THREE.Mesh(boxGeo, M(C.beige)); mk.scale.set(TB + 1.4, 0.08, 1.4); mk.position.set(0, 3.35, vz - 0.7); mk.rotation.x = -0.3; g.add(mk);
-    weisseLichter(g, kette(V(-b / 2 - 0.3, H + 0.3, vz - 0.35), V(b / 2 + 0.3, H + 0.3, vz - 0.35), 0.4, 0.3), 1.1);
-    for (const sx of [-1, 1]) { baeumchen(g, sx * (TB / 2 + 0.7), 0, vz - 0.7, 1.6); laterneW(g, sx * (b / 2 + 0.6), vz - 0.8, 2.6); }
-    kranz(g, 0, 3.75, vz - 0.08, 0.35);
-    // Innen
+    for (const sx of [-1, 1]) { kasten(g, sx * (b / 2 - D - 0.02), H / 2, 0, 0.04, H, t - 2 * D, M(A.innen)); deko(g, sx * (b / 2 - D - 0.05), F + 0.6, 0, 0.04, 1.2, t - 2 * D, dunkler(A.innen, 0.82)); }
+    kasten(g, 0, H / 2, t / 2 - D - 0.02, b - 2 * D, H, 0.04, M(A.innen)); deko(g, 0, F + 0.6, t / 2 - D - 0.05, b - 2 * D, 1.2, 0.04, dunkler(A.innen, 0.82));
+    // flaches Dach mit Schnee, Schild nur mit Text, Markise
+    kasten(g, 0, H + 0.2, 0, b + 0.6, 0.4, t + 0.6, M(C.dunkelgrau)); deko(g, 0, H + 0.44, 0, b + 0.4, 0.1, t + 0.4, 0xfbfcff);
+    const sb = Math.min(b - 2, A.name.length * 0.75 + 1.5);
+    const sch = new THREE.Mesh(new THREE.PlaneGeometry(sb, 1.4), schild(A.name));
+    sch.rotation.y = Math.PI; sch.position.set(0, (H + TH) / 2 + 0.2, vz - 0.04); sch.userData.eigen = true; g.add(sch);
+    weisseLichter(g, kette(V(-sb / 2, (H + TH) / 2 + 0.95, vz - 0.12), V(sb / 2, (H + TH) / 2 + 0.95, vz - 0.12), 0.3, 0.05), 0.8);
+    const mk = new THREE.Mesh(boxGeo, M(wahlF([C.beige, C.dunkelgrau, C.braun, C.creme]))); mk.scale.set(TB + 1.6, 0.08, 1.6); mk.position.set(0, TH + 0.35, vz - 0.75); mk.rotation.x = -0.3; g.add(mk);
+    weisseLichter(g, kette(V(-b / 2 - 0.3, H + 0.4, vz - 0.35), V(b / 2 + 0.3, H + 0.4, vz - 0.35), 0.4, 0.3), 1.1);
+    for (const sx of [-1, 1]) { baeumchen(g, sx * (TB / 2 + 0.8), 0, vz - 0.8, 2.0); laterneW(g, sx * (b / 2 + 0.6), vz - 0.8, 2.8); }
+    function wahlF(a) { return a[Math.floor(rz() * a.length)]; }
+    // ===== Innen (eigene Gruppe: nur sichtbar, wenn man in der Nähe ist – fürs Handy) =====
+    const innenWurzel = new THREE.Group(); wonder.add(innenWurzel);
+    { const gi = new THREE.Group(); gi.position.copy(g.position); gi.rotation.y = g.rotation.y; innenWurzel.add(gi); g = gi; }
     const iV = vz + D, iH = t / 2 - D, iL = -b / 2 + D, iR = b / 2 - D;
-    const mitnehmen = (lx, lz, sache, text) => { const [wx, wz] = P(lx, lz); W_AKTIONEN.push({ x: wx, z: wz, r: 1.6, text: '🛒 ' + text + ' mitnehmen', tun: () => { sacheBekommen(sache); zeigeBanner(text + ' eingepackt! 🛍️', 1600); } }); };
-    const regal = (lx, lz, lang, quer, waren) => {   // Regal mit vielen kleinen Waren
-      const rb = quer ? 0.7 : lang, rt = quer ? lang : 0.7;
-      kasten(g, lx, F + 0.9, lz, rb, 1.8, rt, M(C.dunkel));
-      for (let k = 0; k < 4; k++) {
-        deko(g, lx, F + 0.2 + k * 0.45, lz, rb + 0.04, 0.04, rt + 0.04, C.beige);
-        for (let i = 0; i < Math.floor(lang / 0.32); i++) {
-          const off = -lang / 2 + 0.2 + i * 0.32, f = waren[(i + k * 3) % waren.length], hh = 0.2 + ((i + k) % 3) * 0.05;
-          for (const sd of [-1, 1]) deko(g, lx + (quer ? sd * 0.3 : off), F + 0.22 + k * 0.45 + hh / 2, lz + (quer ? off : sd * 0.3), 0.24, hh, 0.18, f);
+    const mitnehmen = (lx, lz, sache, text) => { const [wx, wz] = P(lx, lz); W_AKTIONEN.push({ x: wx, z: wz, r: 1.8, text: '🛒 ' + text + ' mitnehmen', tun: () => { sacheBekommen(sache); zeigeBanner(text + ' eingepackt! 🛍️', 1600); } }); };
+    let look = Math.floor(rz() * 7);
+    const mitarbeiter = (lx, lz, blickNachVorne = true) => { const [wx, wz] = P(lx, lz); W_VERKAEUFER.push({ x: wx, z: wz, blick: (s < 0 ? Math.PI : 0) + (blickNachVorne ? Math.PI : 0), look: look++ }); };
+    // großes Regal (2,7 m hoch) mit Waren; quer = entlang z
+    const regal = (lx, lz, lang, quer, waren, hoch = 2.7, beidseitig = true) => {
+      const rb = quer ? 0.8 : lang, rt = quer ? lang : 0.8;
+      kasten(g, lx, F + hoch / 2, lz, rb, hoch, rt, M(C.dunkel));
+      const boeden = 5;
+      for (let k = 0; k < boeden; k++) {
+        const by = F + 0.25 + k * (hoch - 0.4) / (boeden - 1);
+        deko(g, lx, by, lz, rb + 0.06, 0.05, rt + 0.06, C.beige);
+        if (k === boeden - 1) continue;
+        for (let i = 0; i < Math.floor(lang / 0.42); i++) {
+          const gruppe2 = Math.floor(i / 4), off = -lang / 2 + 0.24 + i * 0.42, f = waren[(gruppe2 * 5 + k * 3) % waren.length], hh = 0.16 + ((gruppe2 + k) % 3) * 0.08, art2 = (gruppe2 * 3 + k) % 3;
+          for (const sd of (beidseitig ? [-1, 1] : [1])) {
+            const px = lx + (quer ? sd * 0.3 : off), pz = lz + (quer ? off : sd * 0.3);
+            if (art2 === 0) { for (const q of [-0.08, 0.08]) zyl(g, px + (quer ? 0 : q), by + 0.03 + hh / 2, pz + (quer ? q : 0), 0.07, 0.07, hh, f, 10); }   // Dosen / Gläser
+            else if (art2 === 1) { deko(g, px, by + 0.13, pz, 0.3, 0.2, 0.3, f); deko(g, px, by + 0.33, pz, 0.26, 0.18, 0.26, waren[(i + 2) % waren.length]); }   // gestapelte Packungen
+            else deko(g, px, by + 0.03 + hh / 2, pz, 0.3, hh, 0.3, f);
+          }
         }
       }
-      fest(lx, F + 1.8, lz, rb, rt, 1.8);
+      girlande(g, quer ? V(lx, F + hoch + 0.1, lz - lang / 2) : V(lx - lang / 2, F + hoch + 0.1, lz), quer ? V(lx, F + hoch + 0.1, lz + lang / 2) : V(lx + lang / 2, F + hoch + 0.1, lz), 0.0, Math.round(lang * 4));
+      fest(lx, F + hoch, lz, rb, rt, hoch);
     };
-    if (super_) {
-      const WAREN = [C.creme, C.beige, C.braun, C.hellgrau, C.salbei, 0xc9b79a, C.dunkelgrau, 0xe6ddd0, 0xa38d74];
-      for (const lx of [-4.5, -1.0, 2.5]) regal(lx, 0.6, 5.0, true, WAREN);
-      // Kühlregal hinten (leuchtet leicht) mit Milch
-      kasten(g, 2.0, F + 1.0, iH - 0.45, 8, 2.0, 0.8, M(C.hellgrau));
-      const kl = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0xe8eef0, emissive: 0xdfe8ec, emissiveIntensity: 0.4 })); kl.scale.set(7.6, 1.5, 0.05); kl.position.set(2.0, F + 1.1, iH - 0.87); g.add(kl);
-      for (let i = 0; i < 18; i++) { zyl(g, -1.6 + i * 0.42, F + 0.65, iH - 0.6, 0.08, 0.08, 0.3, i % 3 ? 0xfafafa : C.creme, 8); zyl(g, -1.6 + i * 0.42, F + 1.4, iH - 0.6, 0.09, 0.09, 0.24, [C.beige, C.creme, C.hellgrau][i % 3], 8); }
-      fest(2.0, F + 2.0, iH - 0.45, 8, 0.8, 2.0);
-      mitnehmen(2.0, iH - 1.6, 'milch', 'Milch');
-      // Obst- und Gemüsekisten vorne
-      [[iL + 1.4, iV + 3.2, 'apfel', 0xb8574e], [iL + 1.4, iV + 4.6, 'mandarine', 0xd99a5a]].forEach(([lx, lz, sache, f]) => {
-        kasten(g, lx, F + 0.4, lz, 1.2, 0.8, 1.1, M(C.braun));
-        for (let i = 0; i < 12; i++) kugelW(g, lx - 0.4 + (i % 4) * 0.27, F + 0.86, lz - 0.35 + Math.floor(i / 4) * 0.33, 0.12, f);
-        fest(lx, F + 0.8, lz, 1.2, 1.1, 0.8);
-        mitnehmen(lx + 1.3, lz, sache, sache === 'apfel' ? 'Apfel' : 'Mandarine');
+    const kasse = (lx, lz) => {
+      kasten(g, lx, F + 0.55, lz, 2.8, 1.1, 0.9, M(C.braun)); deko(g, lx, F + 1.13, lz, 2.9, 0.06, 1.0, C.beige);
+      deko(g, lx + 0.7, F + 1.35, lz, 0.55, 0.4, 0.45, C.schwarz); deko(g, lx + 0.7, F + 1.62, lz - 0.1, 0.45, 0.25, 0.05, 0x55606a);
+      kerzenGruppe(teil(g, lx - 1.0, F + 1.16, lz, 0, 1)); baeumchen(g, lx - 0.4, F + 1.16, lz, 0.45);
+      fest(lx, F + 1.1, lz, 2.8, 0.9, 1.1);
+    };
+    const weihnachtsbaum = (lx, lz, gr = 0.55) => {
+      tanne(g, lx, lz, gr, false, false);
+      const p = []; for (let i = 0; i < 70; i++) { const w = i * 0.9, hh = i / 70; p.push(V(lx + Math.cos(w) * (gr * 2.3 - hh * gr * 1.9), F + gr * 2 + hh * gr * 5.4, lz + Math.sin(w) * (gr * 2.3 - hh * gr * 1.9))); } weisseLichter(g, p, 0.6);
+      [[C.braun, 0.5, 0.6, -0.5], [C.beige, 0.42, -0.6, -0.5], [C.creme, 0.36, 0.1, -0.9], [C.dunkel, 0.45, -0.8, 0.3]].forEach(([f, gr2, ox, oz]) => wGeschenk(g, lx + ox, F, lz + oz, gr2, f, f === C.creme ? C.beige : C.creme));
+      fest(lx, F + gr * 7, lz, 1.0, 1.0, gr * 7);
+    };
+    // Weihnachtsdeko in jedem Laden: Girlanden oben an allen Wänden, hängende Sterne, Deckenlampen
+    girlande(g, V(iL + 0.1, H - 0.5, iH - 0.1), V(iR - 0.1, H - 0.5, iH - 0.1), 0.35, Math.round(b * 3));
+    for (const sx of [-1, 1]) girlande(g, V(sx * (iR - 0.1), H - 0.5, iV + 0.1), V(sx * (iR - 0.1), H - 0.5, iH - 0.1), 0.35, Math.round(t * 3));
+    for (let i = 0; i < Math.round(b / 4); i++) haengeSterne(g, -b / 2 + 2 + i * 4, H - 0.1, (i % 2 ? -1 : 1) * t / 6, 3);
+    for (let i = 0; i < Math.round(b / 5); i++) for (const lz of [-t / 5, t / 5]) { const lx = -b / 2 + 2.5 + i * 5; zyl(g, lx, H - 0.5, lz, 0.02, 0.02, 0.9, C.dunkel, 4); zyl(g, lx, H - 1.0, lz, 0.25, 0.45, 0.4, lampenMat); }
+    for (const sx of [-1, 1]) kranz(g, sx * (iR - 0.05), H - 1.6, 0, 0.5);
+    const WAREN = [C.creme, C.beige, C.braun, C.hellgrau, C.salbei, 0xc9b79a, C.dunkelgrau, 0xe6ddd0, 0xa38d74, 0x7a5236, 0xb8574e];
+
+    if (art === 'super') {
+      for (const lx of [-8.5, -4.5, -0.5, 3.5]) regal(lx, 1.5, 9.0, true, WAREN);
+      // Kühlregal hinten rechts (leuchtet leicht) mit Milch
+      kasten(g, 8.5, F + 1.2, iH - 0.5, 7.5, 2.4, 0.9, M(C.hellgrau));
+      const kl = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0xe8eef0, emissive: 0xdfe8ec, emissiveIntensity: 0.4 })); kl.scale.set(7.2, 1.9, 0.05); kl.position.set(8.5, F + 1.3, iH - 0.97); g.add(kl);
+      for (let k = 0; k < 3; k++) for (let i = 0; i < 17; i++) zyl(g, 5.2 + i * 0.41, F + 0.55 + k * 0.62, iH - 0.65, 0.08, 0.08, 0.32, [0xfafafa, C.creme, C.beige][(i + k) % 3], 8);
+      fest(8.5, F + 2.4, iH - 0.5, 7.5, 0.9, 2.4);
+      mitnehmen(8.5, iH - 1.8, 'milch', 'Milch');
+      // Obst- und Gemüsekisten vorne links
+      [[iL + 1.6, iV + 4.0, 'apfel', 0xb8574e, 'Apfel'], [iL + 1.6, iV + 6.0, 'mandarine', 0xd99a5a, 'Mandarine'], [iL + 1.6, iV + 8.0, null, 0x9aa36a, ''], [iL + 1.6, iV + 10.0, null, 0xd8c07a, '']].forEach(([lx, lz, sache, f, text]) => {
+        kasten(g, lx, F + 0.5, lz, 1.6, 1.0, 1.6, M(C.braun)); deko(g, lx, F + 0.9, lz - 0.81, 1.6, 0.2, 0.02, C.beige);
+        for (let i = 0; i < 20; i++) kugelW(g, lx - 0.6 + (i % 5) * 0.3, F + 1.08, lz - 0.6 + Math.floor(i / 5) * 0.4, 0.14, f);
+        fest(lx, F + 1.0, lz, 1.6, 1.6, 1.0);
+        if (sache) mitnehmen(lx + 1.5, lz, sache, text);
       });
-      // Kakao-Regal an der Seite
-      regal(iR - 0.4, 1.5, 3.2, true, [0x7a5236, C.creme, C.braun, C.beige]);
-      mitnehmen(iR - 1.6, 1.5, 'kakao', 'Kakao');
-      // Kasse vorne mit Verkäuferin
-      kasten(g, 5.0, F + 0.5, iV + 1.6, 2.6, 1.0, 0.8, M(C.braun)); deko(g, 5.0, F + 1.02, iV + 1.6, 2.7, 0.05, 0.9, C.beige);
-      deko(g, 5.6, F + 1.22, iV + 1.6, 0.5, 0.35, 0.4, C.schwarz); deko(g, 5.6, F + 1.45, iV + 1.5, 0.4, 0.2, 0.05, 0x55606a);
-      fest(5.0, F + 1.0, iV + 1.6, 2.6, 0.8, 1.0);
-      W_VERKAEUFER.push({ ...((([wx, wz]) => ({ x: wx, z: wz }))(P(5.0, iV + 2.5))), blick: (s < 0 ? Math.PI : 0) + Math.PI, look: 0 });
-      for (let i = 0; i < 3; i++) { deko(g, iL + 1.0 + i * 0.1, F + 0.45, iV + 0.9 + i * 0.06, 0.6, 0.5, 0.9, C.hellgrau); }   // Einkaufswagen (einfach)
-      pflanze(g, iL + 0.5, F, iH - 0.5, 1.4); baeumchen(g, iR - 0.6, F, iV + 0.6, 2.0);
-    } else {
-      // Bäckerei: Theke mit Glas, Brote, Brezeln, Kuchen, Regal mit Broten dahinter
-      kasten(g, 0, F + 0.55, 0.6, 7, 1.1, 1.0, M(C.braun)); const gl = new THREE.Mesh(boxGeo, glasMat); gl.scale.set(7, 0.5, 0.9); gl.position.set(0, F + 1.35, 0.6); gl.userData.eigen = true; g.add(gl);
-      deko(g, 0, F + 1.62, 0.6, 7.1, 0.05, 1.0, C.beige);
-      fest(0, F + 1.6, 0.6, 7, 1.0, 1.6);
-      for (let i = 0; i < 10; i++) { const k = kugelW(g, -3 + i * 0.66, F + 1.2, 0.6, 0.18, [0xc49a6c, 0xa8784c, 0xd9b48a][i % 3]); k.scale.set(0.27, 0.13, 0.18); }
-      for (let i = 0; i < 4; i++) { const br = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.05, 6, 12), M(0x9a6a40)); br.position.set(-2.4 + i * 1.6, F + 1.2, 0.85); br.rotation.x = -Math.PI / 2; g.add(br); }
-      kasten(g, 0, F + 1.2, iH - 0.3, 7, 2.4, 0.5, M(C.braun));
-      for (let k = 0; k < 3; k++) for (let i = 0; i < 10; i++) { const bb = kugelW(g, -3.1 + i * 0.68, F + 0.5 + k * 0.72, iH - 0.4, 0.2, [0xb88a5a, 0xc49a6c, 0x8a6446][(i + k) % 3]); bb.scale.set(0.28, 0.15, 0.2); }
-      fest(0, F + 2.4, iH - 0.3, 7, 0.5, 2.4);
-      mitnehmen(0, -0.6, 'brot', 'Brot'); mitnehmen(2.4, -0.6, 'lebkuchen', 'Lebkuchenmann');
-      W_VERKAEUFER.push({ ...((([wx, wz]) => ({ x: wx, z: wz }))(P(0.8, 1.7))), blick: (s < 0 ? Math.PI : 0) + Math.PI, look: 1 });
-      for (const sx of [-1, 1]) { tischchen(g, sx * 3.6, F, iV + 1.4, 0.8, 0.72); stuhl(g, sx * 3.6 - 0.7, F, iV + 1.4, Math.PI / 2, C.dunkel); kerze(g, sx * 3.6, F + 0.75, iV + 1.4, 0.15); }
-      pflanze(g, iL + 0.5, F, iH - 0.5, 1.3); baeumchen(g, iR - 0.6, F, iH - 0.6, 1.6);
+      // Kakao-Regal an der rechten Wand
+      regal(iR - 0.5, -1.0, 5.0, true, [0x7a5236, C.creme, C.braun, C.beige], 2.7, false);
+      mitnehmen(iR - 1.8, -1.0, 'kakao', 'Kakao');
+      // zwei Kassen vorne rechts
+      kasse(5.5, iV + 2.0); kasse(9.5, iV + 2.0);
+      mitarbeiter(5.5, iV + 2.9); mitarbeiter(9.5, iV + 2.9); mitarbeiter(-6.5, 4.0, false);
+      for (let i = 0; i < 4; i++) { deko(g, iL + 4.5 + i * 0.12, F + 0.55, iV + 1.0 + i * 0.07, 0.7, 0.6, 1.0, C.hellgrau); }   // Einkaufswagen
+      weihnachtsbaum(1.6, iV + 1.6, 0.6); pflanze(g, iL + 0.6, F, iH - 0.6, 2.0);
+      // Aufsteller mit Lebkuchen und Plätzchen
+      kasten(g, -2.5, F + 0.45, iV + 2.6, 2.0, 0.9, 1.0, M(C.creme)); for (let i = 0; i < 12; i++) deko(g, -3.3 + (i % 6) * 0.32, F + 1.0, iV + 2.3 + Math.floor(i / 6) * 0.5, 0.26, 0.2, 0.3, [C.braun, C.beige, 0xb88a5a][i % 3]);
+      fest(-2.5, F + 0.9, iV + 2.6, 2.0, 1.0, 0.9);
+    } else if (art === 'baeckerei') {
+      kasten(g, 0, F + 0.6, 1.0, 9, 1.2, 1.1, M(C.braun)); const gl = new THREE.Mesh(boxGeo, glasMat); gl.scale.set(9, 0.6, 1.0); gl.position.set(0, F + 1.5, 1.0); gl.userData.eigen = true; g.add(gl);
+      deko(g, 0, F + 1.82, 1.0, 9.1, 0.06, 1.1, C.beige);
+      fest(0, F + 1.8, 1.0, 9, 1.1, 1.8);
+      for (let i = 0; i < 14; i++) { const k = kugelW(g, -4 + i * 0.62, F + 1.32, 1.0, 0.2, [0xc49a6c, 0xa8784c, 0xd9b48a][i % 3]); k.scale.set(0.27, 0.13, 0.18); }
+      for (let i = 0; i < 6; i++) { const br = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.055, 6, 12), M(0x9a6a40)); br.position.set(-3.6 + i * 1.45, F + 1.32, 1.3); br.rotation.x = -Math.PI / 2; g.add(br); }
+      // Brotregal hinten
+      kasten(g, 0, F + 1.5, iH - 0.35, 9, 3.0, 0.6, M(C.braun));
+      for (let k = 0; k < 4; k++) { deko(g, 0, F + 0.35 + k * 0.8, iH - 0.3, 9, 0.05, 0.65, C.beige); for (let i = 0; i < 13; i++) { const bb = kugelW(g, -4.2 + i * 0.7, F + 0.55 + k * 0.8, iH - 0.4, 0.22, [0xb88a5a, 0xc49a6c, 0x8a6446][(i + k) % 3]); bb.scale.set(0.3, 0.16, 0.22); } }
+      fest(0, F + 3.0, iH - 0.35, 9, 0.6, 3.0);
+      mitnehmen(-1.5, -0.4, 'brot', 'Brot'); mitnehmen(2.0, -0.4, 'lebkuchen', 'Lebkuchenmann');
+      mitarbeiter(-1.5, 2.6); mitarbeiter(2.2, 2.6);
+      for (const sx of [-1, 1]) { tischchen(teil(g, sx * 5.0, F, iV + 1.8), 0, 0, 0, 0.8, 0.72); stuhl(teil(g, sx * 5.0 - 0.9, F, iV + 1.8), 0, 0, 0, Math.PI / 2, C.dunkel); stuhl(teil(g, sx * 5.0 + 0.9, F, iV + 1.8), 0, 0, 0, -Math.PI / 2, C.dunkel); kerze(g, sx * 5.0, F + 0.95, iV + 1.8, 0.15); }
+      weihnachtsbaum(iR - 1.2, iH - 1.4, 0.45); pflanze(g, iL + 0.6, F, iH - 0.6, 2.0);
+    } else if (art === 'cafe') {
+      // Theke mit Kuchenvitrine und Kaffeemaschine
+      kasten(g, 2.5, F + 0.6, 2.2, 7, 1.2, 1.0, M(C.creme)); deko(g, 2.5, F + 1.23, 2.2, 7.1, 0.06, 1.1, C.braun);
+      const gl = new THREE.Mesh(boxGeo, glasMat); gl.scale.set(3, 0.6, 0.9); gl.position.set(1.2, F + 1.56, 2.2); gl.userData.eigen = true; g.add(gl);
+      for (let i = 0; i < 5; i++) { zyl(g, 0.2 + i * 0.55, F + 1.34, 2.2, 0.2, 0.2, 0.16, [0x7a5236, C.creme, 0xd8a8a0, C.beige, 0x5b3a24][i], 16); }
+      deko(g, 4.5, F + 1.6, 2.4, 0.8, 0.7, 0.6, C.dunkelgrau); zyl(g, 4.5, F + 1.32, 2.0, 0.07, 0.06, 0.12, C.creme, 10);
+      fest(2.5, F + 1.2, 2.2, 7, 1.0, 1.2);
+      regal(2.5, iH - 0.5, 7, false, [C.creme, C.beige, 0x7a5236, C.hellgrau], 2.7, false);
+      mitnehmen(1.2, 1.0, 'muffin', 'Muffin'); mitnehmen(4.2, 1.0, 'kakao', 'Kakao');
+      mitarbeiter(1.5, 3.3); mitarbeiter(4.0, 3.3);
+      for (const [tx2, tz2] of [[-4.5, -2.5], [-4.5, 1.0], [-1.2, -2.5], [3.0, -2.4]]) {
+        const r = teil(g, tx2, F, tz2); zyl(r, 0, 0.74, 0, 0.45, 0.45, 0.04, C.braun, 18); zyl(r, 0, 0.37, 0, 0.05, 0.05, 0.74, C.dunkel, 8);
+        stuhl(r, -0.75, 0, 0, Math.PI / 2, C.dunkel); stuhl(r, 0.75, 0, 0, -Math.PI / 2, C.dunkel); kerze(r, 0, 0.76, 0, 0.12); zyl(r, 0.15, 0.81, 0.1, 0.05, 0.04, 0.1, C.creme, 8);
+      }
+      sofa(teil(g, -5.0, F, iH - 0.8, 0), 2.6, C.braun, [C.creme, C.beige]); couchtisch(teil(g, -5.0, F, iH - 2.3), true, C.dunkel);
+      weihnachtsbaum(iR - 1.2, iV + 1.4, 0.45); pflanze(g, iL + 0.6, F, iV + 0.6, 2.0); stehlampe(teil(g, iL + 0.7, F, iH - 0.7));
+    } else if (art === 'buch') {
+      // Bücherwände bis fast zur Decke, Leiter, Tische mit Bücherstapeln, Lesesessel
+      for (const [lx, lz, dreh, br] of [[0, iH - 0.35, Math.PI, 10], [iL + 0.35, 0, Math.PI / 2, 8], [iR - 0.35, 0, -Math.PI / 2, 8]]) {
+        const r = teil(g, lx, F, lz, dreh, 1); deko(r, 0, 2.2, -0.2, br, 4.4, 0.04, C.braun);
+        for (let k = 0; k <= 7; k++) deko(r, 0, k * 0.6 + 0.05, 0, br, 0.05, 0.5, C.braun);
+        for (const sx of [-1, 1]) deko(r, sx * br / 2, 2.2, 0, 0.06, 4.4, 0.5, C.braun);
+        for (let k = 0; k < 7; k++) for (let i = 0; i < Math.floor(br / 0.9); i++) buecher(r, -br / 2 + 0.45 + i * 0.9, k * 0.6 + 0.08, 0.05, 10 + ((i + k) % 3), 0.075);
+        fest(lx, F + 4.4, lz, dreh === Math.PI ? br : 0.6, dreh === Math.PI ? 0.6 : br, 4.4);
+      }
+      { const lt = zyl(g, iR - 0.9, F + 2.0, 1.0, 0.03, 0.03, 4.2, C.dunkel, 6); lt.rotation.z = 0.2; const lt2 = zyl(g, iR - 0.9, F + 2.0, 1.5, 0.03, 0.03, 4.2, C.dunkel, 6); lt2.rotation.z = 0.2; for (let i = 0; i < 9; i++) deko(g, iR - 0.5 - i * 0.09, F + 0.4 + i * 0.45, 1.25, 0.04, 0.04, 0.5, C.dunkel); }
+      for (const tx2 of [-2.5, 1.5]) { kasten(g, tx2, F + 0.45, -1.0, 2.4, 0.9, 1.4, M(C.braun)); fest(tx2, F + 0.9, -1.0, 2.4, 1.4, 0.9); for (let i = 0; i < 6; i++) { const st = teil(g, tx2 - 0.9 + (i % 3) * 0.9, F + 0.9, -1.3 + Math.floor(i / 3) * 0.6, i * 0.4, 1); for (let k = 0; k < 3 + (i % 3); k++) deko(st, 0, k * 0.06 + 0.03, 0, 0.28, 0.055, 0.4, [C.creme, C.dunkel, C.salbei, C.braun, C.beige][(k + i) % 5]); } }
+      sessel(teil(g, -4.5, F, 2.5), 0, 0, 0, Math.PI * 0.8, C.braun); sessel(teil(g, -2.2, F, 3.2), 0, 0, 0, Math.PI, C.beige); stehlampe(teil(g, -5.6, F, 3.5));
+      kasse(4.0, iV + 2.0); mitarbeiter(4.0, iV + 2.9); mitarbeiter(-0.5, 3.0, false);
+      mitnehmen(-0.5, -1.0, 'buch', 'Buch');
+      weihnachtsbaum(-5.0, iV + 1.5, 0.42); rundTeppichL(-3.2, 2.8, 2.0, C.braun, C.beige);
+    } else if (art === 'spielzeug') {
+      const TOYS = [0xb8574e, 0x9aa38a, C.creme, 0xd8c07a, 0xa9c4dc, C.braun, 0xd8a8a0];
+      for (const [lx, lz, quer, l] of [[iL + 0.5, 0, true, 9], [iR - 0.5, -1.0, true, 6], [-1.5, iH - 0.5, false, 8]]) {
+        const rb = quer ? 0.8 : l, rt = quer ? l : 0.8;
+        kasten(g, lx, F + 1.35, lz, rb, 2.7, rt, M(C.creme));
+        for (let k = 0; k < 4; k++) { const by = F + 0.3 + k * 0.62; deko(g, lx, by, lz, rb + 0.05, 0.05, rt + 0.05, C.beige);
+          for (let i = 0; i < Math.floor(l / 0.6); i++) { const off = -l / 2 + 0.35 + i * 0.6, px = lx + (quer ? 0 : off), pz = lz + (quer ? off : 0), f = TOYS[(i + k) % TOYS.length];
+            if ((i + k) % 3 === 0) teddy(teil(g, px, by + 0.03, pz, quer ? (lx < 0 ? Math.PI / 2 : -Math.PI / 2) : Math.PI, 0.9), f === C.creme ? 0xa98763 : 0xc8a882);
+            else if ((i + k) % 3 === 1) { for (let q = 0; q < 3; q++) deko(g, px + (q - 1) * 0.13, by + 0.1, pz, 0.12, 0.12, 0.12, TOYS[(i + q) % TOYS.length]); deko(g, px, by + 0.22, pz, 0.12, 0.12, 0.12, TOYS[(i + 3) % TOYS.length]); }
+            else kugelW(g, px, by + 0.16, pz, 0.14, f); } }
+        fest(lx, F + 2.7, lz, rb, rt, 2.7);
+      }
+      // Holzeisenbahn auf dem Boden, Schaukelpferd, Puppenhäuser
+      { const r = teil(g, 0.5, F, -1.0, 0, 1); const sch = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.04, 6, 40), M(C.braun)); sch.rotation.x = Math.PI / 2; sch.position.y = 0.03; r.add(sch); const sch2 = sch.clone(); sch2.scale.setScalar(0.9); r.add(sch2);
+        for (let i = 0; i < 4; i++) { const w = i * 0.35, wx = Math.cos(w) * 1.52, wzz = Math.sin(w) * 1.52; deko(r, wx, 0.15, wzz, 0.35, 0.22, 0.2, [0xb8574e, 0x1f2a4a, 0x9aa38a, C.creme][i]).rotation.y = -w; } }
+      { const r = teil(g, -3.5, F, 2.5, 0.5); deko(r, 0, 0.55, 0, 1.0, 0.35, 0.3, C.creme); deko(r, 0.5, 0.9, 0, 0.25, 0.5, 0.25, C.creme); deko(r, 0.7, 1.05, 0, 0.35, 0.2, 0.22, C.creme); for (const sz of [-0.2, 0.2]) { const k2 = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.04, 6, 20, Math.PI), M(C.braun)); k2.rotation.z = Math.PI; k2.position.set(0, 0.72, sz); r.add(k2); } deko(r, -0.1, 0.78, 0, 0.4, 0.06, 0.32, 0xb8574e); }
+      puppenhaus(teil(g, 3.5, F, 2.5, Math.PI)); puppenhaus(teil(g, 5.5, F, 2.5, Math.PI, 1.1));
+      kasse(4.0, iV + 2.0); mitarbeiter(4.0, iV + 2.9); mitarbeiter(-2.0, 0.5, false);
+      mitnehmen(0.5, 1.2, 'holzauto', 'Holzauto'); mitnehmen(iL + 1.6, -2.0, 'hase', 'Kuschelhase');
+      weihnachtsbaum(-5.2, iV + 1.5, 0.42); rundTeppichL(0.5, -1.0, 2.2, C.beige, C.creme);
+    } else if (art === 'blumen') {
+      // Pflanzenregale, kleine Tannen zum Mitnehmen, Kränze an der Wand
+      for (const [lx, lz, quer, l] of [[iL + 0.5, 0, true, 8], [iR - 0.5, 0, true, 8]]) {
+        const rb = quer ? 0.9 : l, rt = quer ? l : 0.9; kasten(g, lx, F + 0.05, lz, rb, 0.1, rt, M(C.braun));
+        for (let k = 0; k < 3; k++) { deko(g, lx, F + 0.5 + k * 0.75, lz, rb, 0.05, rt, C.braun); for (let i = 0; i < Math.floor(l / 0.7); i++) { const off = -l / 2 + 0.4 + i * 0.7; if ((i + k) % 2) pflanze(g, lx, F + 0.53 + k * 0.75, lz + off, 1.0); else { zyl(g, lx, F + 0.7 + k * 0.75, lz + off, 0.15, 0.12, 0.3, C.hellgrau, 10); for (let q = 0; q < 5; q++) { const bl = kugelW(g, lx + Math.cos(q * 1.3) * 0.12, F + 0.95 + k * 0.75, lz + off + Math.sin(q * 1.3) * 0.12, 0.1, q % 2 ? 0xb8574e : 0xd8a8a0); bl.scale.y = 0.4; } } } }
+        for (const sx of [-1, 1]) deko(g, lx, F + 1.3, lz + sx * l / 2, rb, 2.6, 0.06, C.braun);
+        fest(lx, F + 2.3, lz, rb, rt, 2.3);
+      }
+      for (let i = 0; i < 6; i++) { const tx2 = -3 + (i % 3) * 2.2, tz2 = -1.6 + Math.floor(i / 3) * 2.4; tanneW(g, tx2, tz2, 0.32 + (i % 2) * 0.08); zyl(g, tx2, F + 0.2, tz2, 0.4, 0.35, 0.4, C.braun, 10); }
+      for (let i = 0; i < 4; i++) kranz(g, -3.5 + i * 2.3, F + 2.8, iH - 0.08, 0.45);
+      kasten(g, 3.8, F + 0.55, iV + 2.0, 2.8, 1.1, 0.9, M(C.braun)); deko(g, 3.8, F + 1.13, iV + 2.0, 2.9, 0.06, 1.0, C.beige); fest(3.8, F + 1.1, iV + 2.0, 2.8, 0.9, 1.1);
+      pflanze(g, 3.2, F + 1.16, iV + 2.0, 0.8); kerzenGruppe(teil(g, 4.6, F + 1.16, iV + 2.0, 0, 1));
+      mitarbeiter(3.8, iV + 2.9); mitarbeiter(-1.0, 3.0, false);
+      mitnehmen(-0.8, -0.4, 'blume', 'Weihnachtsstern'); mitnehmen(1.4, 1.8, 'tannentopf', 'Tännchen im Topf');
+    } else if (art === 'kleider') {
+      // Kleiderstangen mit Jacken und Pullis, Regale mit gefalteten Sachen, Spiegel, Umkleide
+      const STOFFE = [C.beige, C.braun, C.creme, C.dunkelgrau, 0x9aa38a, 0xd8c6b8, 0x1f2a4a, C.hellgrau, 0x7e6a5a];
+      for (const [lx, lz] of [[-3.5, -1.5], [-3.5, 1.5], [1.0, -1.5], [1.0, 1.5]]) {
+        for (const sx of [-1, 1]) deko(g, lx + sx * 1.3, F + 0.95, lz, 0.05, 1.9, 0.05, C.schwarz);
+        deko(g, lx, F + 1.9, lz, 2.7, 0.04, 0.04, C.schwarz);
+        for (let i = 0; i < 9; i++) deko(g, lx - 1.15 + i * 0.29, F + 1.35, lz, 0.08, 1.0, 0.5, STOFFE[(i + Math.round(lx)) % STOFFE.length]);
+        fest(lx, F + 1.9, lz, 2.7, 0.6, 1.9);
+      }
+      for (const [lx, lz, dreh] of [[iL + 0.4, 0, Math.PI / 2], [0, iH - 0.35, Math.PI]]) {
+        const r = teil(g, lx, F, lz, dreh, 1); deko(r, 0, 1.4, -0.15, 6, 2.8, 0.04, C.braun);
+        for (let k = 0; k < 4; k++) { deko(r, 0, 0.3 + k * 0.7, 0, 6, 0.05, 0.45, C.braun); for (let i = 0; i < 12; i++) for (let q = 0; q < 3; q++) deko(r, -2.75 + i * 0.5, 0.36 + k * 0.7 + q * 0.07, 0.02, 0.4, 0.06, 0.32, STOFFE[(i + k + q) % STOFFE.length]); }
+        fest(lx, F + 2.8, lz, dreh === Math.PI ? 6 : 0.5, dreh === Math.PI ? 0.5 : 6, 2.8);
+      }
+      stehSpiegel(teil(g, iR - 0.6, F, 1.0, -Math.PI / 2)); stehSpiegel(teil(g, iR - 0.6, F, 2.0, -Math.PI / 2 - 0.2));
+      for (const oz of [3.2, 4.6]) { deko(g, iR - 1.0, F + 2.4, oz, 1.6, 0.04, 0.04, C.schwarz); deko(g, iR - 1.0, F + 1.25, oz - 0.6, 1.6, 2.3, 0.04, C.dunkelgrau); }
+      kasse(4.5, iV + 2.0); mitarbeiter(4.5, iV + 2.9); mitarbeiter(-1.2, 0, false);
+      mitnehmen(-1.2, -1.5, 'tasche', 'Tasche');
+      weihnachtsbaum(-5.4, iV + 1.5, 0.42); sessel(teil(g, iR - 1.2, F, -2.0), 0, 0, 0, -Math.PI / 2, C.beige);
     }
-    for (const lx of [-b / 4, b / 4]) { zyl(g, lx, H - 0.35, 0, 0.25, 0.4, 0.3, lampenMat); }
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
     HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H });
+    punkteZusammen(innenWurzel); zusammenkleben(innenWurzel); innenWurzel.traverse((o) => { o.userData.eigen = true; });
+    W_INNEN.push({ grp: innenWurzel, x, z, r: 28 + b / 2 });
+    function rundTeppichL(rx, rz2, r2, f, f2) { zyl(g, rx, F + 0.03, rz2, r2, r2, 0.02, f, 32).castShadow = false; zyl(g, rx, F + 0.04, rz2, r2 * 0.75, r2 * 0.75, 0.01, f2, 32).castShadow = false; }
   }
 
-  // --- Die Stadt aufbauen: Häuser links und rechts an der Straße, in der Mitte die Läden ---
+  // --- Die Stadt aufbauen: Häuser links und rechts an der Straße, Läden in der Mitte und an beiden Enden ---
   let nr = 0;
   for (const hx of [-72, -48, -24, 24, 48, 72]) {
     wohnhaus(nr++, W.x + hx, W.z + 25, 1);
     wohnhaus(nr++, W.x + hx, W.z - 25, -1);
   }
-  laden('super', W.x, W.z + 18, 1);
-  laden('baeckerei', W.x, W.z - 17, -1);
-  // Kleiner Platz mit Weihnachtsbaum (weiße Lichter) und Bänken am Ende der Straße
-  tanne(wonder, W.x - 92, W.z, 1.6, false, true);
-  { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x - 92 + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
-  klotz(statisch, wonder, W.x - 92, 4, W.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
-  tanneW(wonder, W.x + 92, W.z - 3, 1.6); tanneW(wonder, W.x + 92, W.z + 3, 1.4);
+  const ladenZ = (art, sx) => sx * (9 + LADEN_ARTEN[art].t / 2);
+  for (const [art, lx, sx] of [['cafe', 0, 1], ['baeckerei', 0, -1], ['super', 106, 1], ['buch', 101, -1], ['spielzeug', 122, -1], ['kleider', -101, 1], ['blumen', -123, 1]]) laden(art, W.x + lx, W.z + ladenZ(art, sx), sx);
+  // --- Bushaltestelle (wie im Weihnachtsdorf) mit Ziegeln, und Autos + Bus auf der Straße ---
+  {
+    const hx = W.x + 88, hz = W.z + 8.6, halt = new THREE.Group(), rahmen = 0x8fa3ba;
+    for (const sx of [-1.8, 1.8]) for (const sz of [-0.7, 0.7]) deko(halt, sx, 1.3, sz, 0.12, 2.6, 0.12, rahmen);
+    const glas = new THREE.MeshStandardMaterial({ color: 0xdfeefa, transparent: true, opacity: 0.4, roughness: 0.1, depthWrite: false });
+    const rw = new THREE.Mesh(boxGeo, glas); rw.scale.set(3.6, 2.0, 0.05); rw.position.set(0, 1.4, 0.7); rw.userData.eigen = true; halt.add(rw);
+    for (const sx of [-1, 1]) { const sw = new THREE.Mesh(boxGeo, glas); sw.scale.set(0.05, 2.0, 1.3); sw.position.set(sx * 1.8, 1.4, 0); sw.userData.eigen = true; halt.add(sw); }
+    deko(halt, 0, 2.65, 0, 4.0, 0.14, 1.8, rahmen); deko(halt, 0, 2.82, 0, 4.0, 0.22, 1.8, 0xffffff);
+    deko(halt, 0, 0.5, 0.4, 2.8, 0.1, 0.45, 0xe9e2d6); deko(halt, 0, 0.56, 0.4, 2.7, 0.04, 0.4, 0xffffff);
+    for (const sx of [-1.2, 1.2]) deko(halt, sx, 0.25, 0.4, 0.08, 0.5, 0.35, rahmen);
+    deko(halt, 1.55, 1.4, 0.66, 0.5, 0.8, 0.04, 0xf5f3ee); for (let i = 0; i < 5; i++) deko(halt, 1.55, 1.65 - i * 0.12, 0.64, 0.36, 0.03, 0.02, 0x9fb3c8);
+    deko(halt, -2.5, 1.5, -0.6, 0.1, 3.0, 0.1, rahmen);
+    const hs = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), schild('H', 128, 128, '#7f9a76', '#f3e7b0')); hs.position.set(-2.5, 3.1, -0.66); hs.rotation.y = Math.PI; hs.userData.eigen = true; halt.add(hs);
+    girlande(halt, V(-2, 2.6, -0.95), V(2, 2.6, -0.95), 0.3, 12);
+    halt.position.set(hx, 0, hz); wonder.add(halt);
+    klotz(statisch, wonder, hx, 2.6, hz + 0.7, 3.6, 0.2, 0, { dicke: 2.6, unsichtbar: true });
+    if (PFLASTER_TEX) { const t = PFLASTER_TEX.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1);
+      const pf = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3 })); pf.rotation.x = -Math.PI / 2; pf.position.set(hx, 0.035, hz - 1.2); pf.receiveShadow = true; pf.userData.eigen = true; wonder.add(pf); }
+    // Autos und ein Bus: oben (z > 0) fährt nach +x (an der Haltestelle vorbei), unten nach -x
+    if (FAHRZEUG_BAU) {
+      const { auto, bus, AUTO_FARBEN } = FAHRZEUG_BAU;
+      const neuW = (g, spur, richtung, tempo, x, istBus = false) => { g.rotation.y = richtung > 0 ? 0 : Math.PI; g.position.set(W.x + x, 0, W.z + spur); g.traverse((o) => { o.userData.eigen = true; }); scene.add(g); WELT_TEILE.wonderland.push(g); W_FAHRZEUGE.push({ g, richtung, tempo, jetzt: tempo, istBus, warte: 0, gehalten: false }); };
+      neuW(auto(AUTO_FARBEN[4]), 2.2, 1, 8, -90); neuW(auto(AUTO_FARBEN[1]), -2.2, -1, 7.5, 30);
+      neuW(auto(AUTO_FARBEN[2]), -2.2, -1, 9, 130); neuW(auto(AUTO_FARBEN[0]), 2.2, 1, 8.5, 40);
+      neuW(bus(), 2.2, 1, 7, -40, true);
+    }
+  }
+  // Kleiner Platz mit Weihnachtsbaum (weiße Lichter) am Ende der Straße
+  tanne(wonder, W.x - 146, W.z, 1.6, false, true);
+  { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x - 146 + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
+  klotz(statisch, wonder, W.x - 146, 4, W.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
+  tanneW(wonder, W.x + 146, W.z - 3, 1.6); tanneW(wonder, W.x + 146, W.z + 3, 1.4);
 }
 // --- Verkäuferinnen in den Läden ---
 {
@@ -6708,7 +6931,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [];
     { figurTyp: 'junge', frisur: 'wuschel', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'pulli', pulli: '#f5f3ee', streifen: '#8a6446', hoseTyp: 'jeans', hose: '#45474a', kopf: 'weihnachtsmuetze', sternAn: false },
   ];
   for (const v of W_VERKAEUFER) {
-    const f = einfacherMensch(LEUTE_LOOKS[v.look * 3]);
+    const f = einfacherMensch(LEUTE_LOOKS[(v.look * 3) % LEUTE_LOOKS.length]);
     f.figur.position.set(v.x, 0.2, v.z); f.figur.rotation.y = v.blick;
     WELT_TEILE.wonderland.push(f.figur);
     figurZusammen(f);
@@ -6804,12 +7027,24 @@ document.getElementById('hausHin').addEventListener('click', zuMeinemHaus);
 document.getElementById('hausZu').addEventListener('click', () => { hausPanel.hidden = true; });
 let aktionJetzt = null;
 function wonderUpdate(dt, pos, imWonder) {
+  if (imWonder) for (const f of W_FAHRZEUGE) {   // Autos und Bus in der Winterstadt
+    const x = f.g.position.x - WONDER.x;
+    if (f.warte > 0) { f.warte -= dt; continue; }
+    let ziel = f.tempo;
+    if (f.istBus && !f.gehalten) { const rest = (88 - 3.6) - x; if (rest < 14 && rest > -1) ziel = Math.max(0.8, f.tempo * rest / 14); if (rest <= 0.1 && rest > -1) { f.warte = 9; f.gehalten = true; f.jetzt = 0; continue; } }
+    const vor = (pos.x - f.g.position.x) * f.richtung, laenge = f.istBus ? 5.5 : 2.6;
+    if (Math.abs(pos.z - f.g.position.z) < 2.2 && vor > 0 && vor < laenge + 6 && pos.y < 3) ziel = 0;   // nicht in Leute fahren
+    for (const a of W_FAHRZEUGE) if (a !== f && a.g.position.z === f.g.position.z) { const d = (a.g.position.x - f.g.position.x) * f.richtung; if (d > 0 && d < (f.istBus || a.istBus ? 10 : 7.5)) ziel = Math.min(ziel, a.jetzt * 0.8); }
+    f.jetzt += (ziel - f.jetzt) * Math.min(1, dt * 2.5);
+    f.g.position.x += f.richtung * f.jetzt * dt;
+    if ((f.g.position.x - WONDER.x) * f.richtung > 150) { f.g.position.x = WONDER.x - f.richtung * 150; f.gehalten = false; f.warte = f.istBus ? 6 + Math.random() * 6 : Math.random() * 5; }
+  }
   hausKnopf.hidden = !imWonder;
   if (!imWonder) { if (!hausPanel.hidden) hausPanel.hidden = true; if (aktionJetzt) { aktionJetzt = null; aktionKnopf.hidden = true; } return; }
   for (const h of W_HAEUSER) {   // Türen weich auf- und zugehen lassen
     const soll = h.tuerZiel ?? -1.9; h.scharnier.rotation.y += (soll - h.scharnier.rotation.y) * Math.min(1, dt * 6);
   }
-  for (const h of W_INNEN) h.grp.visible = Math.hypot(pos.x - h.x, pos.z - h.z) < 32;
+  for (const h of W_INNEN) h.grp.visible = Math.hypot(pos.x - h.x, pos.z - h.z) < (h.r || 32);
   for (const f of W_FEUER) { f.scale.y = 0.9 + Math.sin(zeit * 9 + f.position.x * 5) * 0.1 + Math.sin(zeit * 13) * 0.05; f.scale.x = f.scale.z = 1 + Math.sin(zeit * 7) * 0.05; }
   // Welcher Knopf passt gerade? (Tür von deinem Haus oder Sachen im Laden)
   let neu = null;
