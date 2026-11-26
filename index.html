@@ -198,6 +198,13 @@
   #codeFeld { text-transform: uppercase; letter-spacing: 0.1em; }
   #codeLos, #meinCodeKnopf { font: 800 15px var(--font); border-radius: 10px; cursor: pointer; padding: 6px 12px 4px; }
   #codeLos { background: var(--ink); color: #fff; border: 0; }
+  /* Alles am Rand etwas kleiner, damit man mehr vom Spiel sieht */
+  .hud, #fortschritt, #leiste, #busKnopf { zoom: 0.75; }
+  @media (max-height: 520px) { .hud, #fortschritt, #leiste, #busKnopf { zoom: 0.68; } }
+  #stick { width: 100px; height: 100px; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  #knob { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+  #jump { width: 72px; height: 72px; font-size: 15px; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); }
+  #sprint { width: 52px; height: 52px; font-size: 11px; right: calc(max(16px, env(safe-area-inset-right, 0px)) + 96px); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); }
   #meinCodeKnopf { background: transparent; color: var(--ink); border: 2px solid rgba(31, 42, 74, 0.3); }
   #spielerListe { margin: 0; padding: 0 0 0 18px; font-size: 14px; font-weight: 700; }
   .nameZeile { display: flex; align-items: center; gap: 10px; padding: 4px 18px 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6380; }
@@ -1006,13 +1013,11 @@ function tonStart() {
 addEventListener('pointerdown', tonStart); addEventListener('keydown', tonStart); addEventListener('touchstart', tonStart);
 // Jeder Squishy hat sein eigenes Geräusch
 function squishTon(art) {
-  if (art === 'marshmallow') return pffTon();
-  if (art === 'donut') return boingTon();
-  if (art === 'toast') return knirschTon();
-  if (art === 'erdbeere') return ploppTon();
+  // Die meisten klingen wie das Toastbrot (knuspriges "knirsch"), jeder nur ein bisschen höher oder tiefer.
+  // Nur Butter und Käse haben ihr eigenes Geräusch.
   if (art === 'butter') return butterTon();
   if (art === 'kaese') return kaeseTon();
-  return schhTon(art);
+  return knirschTon({ marshmallow: 0.8, donut: 0.9, erdbeere: 1.15 }[art] || 1);
 }
 function butterTon() {   // Butter: weiches, cremiges "schmatz-squelch" und am Ende klebt es kurz ("tk tk")
   const a = tonKontext; if (!a || a.state !== 'running') return;
@@ -1082,12 +1087,12 @@ function boingTon() {   // Donut: lustiges "boiiing"
   g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
   o.connect(g).connect(a.destination); o.start(t); lfo.start(t); o.stop(t + 0.5); lfo.stop(t + 0.5);
 }
-function knirschTon() {   // Toast: knuspriges "knirsch"
+function knirschTon(hoehe = 1) {   // Toast: knuspriges "knirsch" (hoehe: etwas höher oder tiefer)
   const a = tonKontext; if (!a || a.state !== 'running') return;
   const t0 = a.currentTime;
   for (let k = 0; k < 9; k++) {
     const t = t0 + k * 0.03 + Math.random() * 0.02, q = rauschQuelle(a, 0.04);
-    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 1600; f.Q.value = 2;
+    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = (900 + Math.random() * 1600) * hoehe; f.Q.value = 2;
     const g = a.createGain(); g.gain.setValueAtTime(0.5 * (1 - k / 10), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
     q.connect(f).connect(g).connect(a.destination); q.start(t); q.stop(t + 0.04);
   }
@@ -1998,6 +2003,7 @@ function schildTextur(text) {
   x.fillStyle = '#1f2a4a'; x.font = '800 38px "Baloo 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, 35);
   return new THREE.CanvasTexture(c);
 }
+const MARKT_STAENDE = [];   // für die Verkäufer, die später in die Stände gestellt werden
 function marktStand(x, z, nr, dreh = 0, gross = 1, wagen = false) {   // gross: Größe, wagen: kleiner Verkaufswagen mit Rädern
   const g = new THREE.Group(), holz = 0x9b7350, dunkel = 0x6b4a32;
   const b = 4.2, t = 2.6;
@@ -2014,13 +2020,47 @@ function marktStand(x, z, nr, dreh = 0, gross = 1, wagen = false) {   // gross: 
   // Schild
   const sch = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshStandardMaterial({ map: schildTextur(SCHILDER[nr % SCHILDER.length]), roughness: 0.9 }));
   sch.rotation.y = Math.PI; sch.position.set(0, 2.2, -t / 2 + 0.05); sch.userData.eigen = true; g.add(sch);
-  // Waren auf der Theke
-  for (let i = 0; i < 5; i++) {
-    const wx = -1.5 + i * 0.75, art = (nr + i) % 3;
-    if (art === 0) { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.32, 10), M(i % 2 ? FARBEN.weiss : 0x8f3a44)); h.position.set(wx, 1.22, -t / 2 + 0.25); g.add(h); }   // Tassen
-    else if (art === 1) { const l = kugel(g, wx, 1.22, -t / 2 + 0.25, 0.22, 0xa8693a); l.scale.set(0.24, 0.24, 0.08); }   // Lebkuchenherz
-    else geschenk(g, wx, 1.06, -t / 2 + 0.25, 0.32, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], i);
+  // Waren auf der Theke: passend zum Schild (Kerzen-Stand hat Kerzen, Punsch-Stand hat Tassen, ...)
+  const vorne = -t / 2 + 0.25, oben = 1.06, sorte = SCHILDER[nr % SCHILDER.length];
+  const tasse = (wx, wz, farbe, trank, h = 0.3) => {   // Tasse mit Henkel und Getränk drin
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, h, 12), M(farbe)); c.position.set(wx, oben + h / 2, wz); g.add(c);
+    const d = new THREE.Mesh(new THREE.CircleGeometry(0.13, 12), M(trank)); d.rotation.x = -Math.PI / 2; d.position.set(wx, oben + h - 0.03, wz); g.add(d);
+    const hk = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 6, 10), M(farbe)); hk.position.set(wx + 0.16, oben + h / 2, wz); g.add(hk);
+  };
+  const TASSEN = [0xffffff, 0xc9d9ea, 0xf0d9de, 0xd9cbb5];
+  if (sorte === 'Kerzen') {   // ganz verschiedene Kerzen: dick, dünn, hoch, klein, in Pastell, mit kleiner Flamme
+    const KERZEN = [0xfbf7ef, 0xf0d9de, 0xc9d9ea, 0xe8dcc4, 0xdfe4ea];
+    for (let i = 0; i < 9; i++) {
+      const wx = -1.7 + i * 0.42, wz = vorne + (i % 2 ? 0.15 : -0.12), r = [0.08, 0.14, 0.06, 0.18, 0.1][i % 5], h = [0.5, 0.3, 0.7, 0.25, 0.45][(i * 3) % 5];
+      const k = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 12), M(KERZEN[i % KERZEN.length])); k.position.set(wx, oben + h / 2, wz); g.add(k);
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 6), fensterMat); f.position.set(wx, oben + h + 0.07, wz); g.add(f);
+    }
+  } else if (sorte === 'Punsch' || sorte === 'Kakao') {   // viele Tassen und ein großer Topf
+    const trank = sorte === 'Punsch' ? 0xa86a6a : 0x7a5236;
+    const topf = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.6, 14), M(0xb8c0cc)); topf.position.set(1.3, oben + 0.3, vorne); g.add(topf);
+    const ti = new THREE.Mesh(new THREE.CircleGeometry(0.38, 14), M(trank)); ti.rotation.x = -Math.PI / 2; ti.position.set(1.3, oben + 0.58, vorne); g.add(ti);
+    for (let i = 0; i < 6; i++) {
+      tasse(-1.7 + (i % 3) * 0.45 + (i > 2 ? 0.22 : 0), vorne + (i > 2 ? 0.2 : -0.12), TASSEN[i % TASSEN.length], trank, i % 2 ? 0.3 : 0.24);
+      if (sorte === 'Kakao' && i % 2 === 0) kugel(g, -1.7 + (i % 3) * 0.45 + (i > 2 ? 0.22 : 0), oben + 0.3, vorne + (i > 2 ? 0.2 : -0.12), 0.1, 0xfbf7ef);   // Sahne
+    }
+    for (let i = 0; i < 4; i++) tasse(-0.35 + i * 0.32, t / 2 - 0.5, TASSEN[(i + 1) % 4], trank, 0.26);   // hinten im Regal (Theke-Höhe)
+  } else if (sorte === 'Maronen') {   // Pfanne mit Maronen und Papiertüten
+    const pf = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.45, 0.15, 16), M(0x3a3f4a)); pf.position.set(-0.6, oben + 0.08, vorne); g.add(pf);
+    for (let i = 0; i < 14; i++) { const w = i * 2.4, rr = 0.1 + (i % 4) * 0.1; const m = kugel(g, -0.6 + Math.cos(w) * rr, oben + 0.19, vorne + Math.sin(w) * rr, 0.07, 0x7a4e30); m.scale.y = 0.75; }
+    for (let i = 0; i < 4; i++) { const tu = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 10), M(0xf2ead8)); tu.rotation.x = Math.PI; tu.position.set(0.5 + i * 0.35, oben + 0.2, vorne); g.add(tu); }
+  } else if (sorte === 'Plätzchen' || sorte === 'Lebkuchen' || sorte === 'Waffeln') {   // Teller mit Keksen / Lebkuchenherzen
+    for (let i = 0; i < 3; i++) {
+      const wx = -1.3 + i * 1.3, tl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 18), M(0xfbf7ef)); tl.position.set(wx, oben + 0.02, vorne); g.add(tl);
+      for (let k = 0; k < 5; k++) {
+        const w = k * 1.26, x2 = wx + Math.cos(w) * 0.2, z2 = vorne + Math.sin(w) * 0.2;
+        if (sorte === 'Lebkuchen') { const l = kugel(g, x2, oben + 0.12, z2, 0.22, 0xa8693a); l.scale.set(0.5, 0.5, 0.15); }
+        else { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.04, sorte === 'Waffeln' ? 6 : 5), M([0xe0bf8f, 0xd9a877, 0xf0d9de][k % 3])); c.position.set(x2, oben + 0.07 + (k % 2) * 0.04, z2); g.add(c); }
+      }
+    }
+  } else {   // Sterne und anderes: kleine Geschenke
+    for (let i = 0; i < 5; i++) geschenk(g, -1.5 + i * 0.75, oben, vorne, 0.32, GESCHENK_FARBEN[(nr + i) % GESCHENK_FARBEN.length], i);
   }
+  MARKT_STAENDE.push({ x, z, dreh, gross, sorte });
   // Lichterkette an der Markise
   lichter(g, kette(new THREE.Vector3(-b / 2 - 0.1, 2.75, -t / 2 - 1.05), new THREE.Vector3(b / 2 + 0.1, 2.75, -t / 2 - 1.05), 0.4, 0.3), 1.1);
   if (wagen) for (const sx of [-1, 1]) {   // Räder am Verkaufswagen
@@ -2043,7 +2083,9 @@ function laterne(x, z) {
   g.position.set(x, 0, z); dorf.add(g);
 }
 // Holzbank mit Schnee
+const BAENKE = [];   // für die Leute, die darauf sitzen
 function bank(x, z, dreh = 0) {
+  BAENKE.push({ x, z, dreh });
   const g = new THREE.Group();
   deko(g, 0, 0.5, 0, 2.2, 0.12, 0.6, 0x9b7350); deko(g, 0, 0.9, 0.28, 2.2, 0.5, 0.1, 0x9b7350);
   deko(g, 0, 0.6, 0, 2.2, 0.06, 0.55, 0xfbfcff);
@@ -2367,7 +2409,18 @@ const TIERE = [];
     ei(g, 1.25, 1.45, 0, 0.5, 0.45, 0.45, fell);
     ei(g, 1.7, 1.38, 0, 0.3, 0.22, 0.26, 0xefebe2);
     kugel(g, 1.98, 1.42, 0, 0.08, nase);
-    for (const s of [-1, 1]) { kugel(g, 1.55, 1.62, s * 0.2, 0.05, nase); kugel(g, 1.12, 1.85, s * 0.28, 0.13, fell); }
+    for (const s of [-1, 1]) {
+      // süßes Gesicht: große glänzende Augen, rosa Bäckchen, rosa Ohren innen
+      kugel(g, 1.6, 1.6, s * 0.17, 0.085, nase);
+      kugel(g, 1.67, 1.64, s * 0.15, 0.03, 0xffffff);
+      ei(g, 1.6, 1.42, s * 0.3, 0.04, 0.06, 0.09, 0xf0c8cf);
+      kugel(g, 1.12, 1.85, s * 0.28, 0.13, fell);
+      ei(g, 1.2, 1.86, s * 0.29, 0.03, 0.08, 0.08, 0xf0c8cf);
+    }
+    { // kleines Lächeln unter der Nase
+      const aussen = new THREE.Group(), innen = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI), M(nase));
+      innen.rotation.z = Math.PI; aussen.add(innen); aussen.rotation.y = Math.PI / 2; aussen.position.set(1.97, 1.36, 0); g.add(aussen);
+    }
     const beine = [];
     for (const [x, z] of [[0.75, 0.38], [0.75, -0.38], [-0.75, 0.38], [-0.75, -0.38]]) beine.push(bein(g, x, z, 0.75, 0.2, fell));
     kugel(g, -1.25, 1.3, 0, 0.14, fell);
@@ -2407,29 +2460,51 @@ const TIERE = [];
   }
   // Wo die Tiere herumlaufen dürfen (nicht auf der Straße, nicht in Türmen oder Häusern)
   const SZ = -2 * ABSTAND - 20;
-  const BEREICHE = {
-    vorne: [-110, 110, SZ - 40, SZ - 23],     // Schneefeld zwischen Gehweg und Wald
-    platz: [20, 36, SZ + 3, SZ + 9],          // neben dem Startplatz (Pinguine)
-    baeren: [-40, -22, SZ + 2, SZ + 9],       // links vom Startplatz: Eisbären-Familie
-    links: [-128, -112, -100, 100],           // Seite links
-    rechts: [112, 128, -100, 100],            // Seite rechts
-    hinten: [-100, 100, 112, 128],            // hinter den Türmen
-  };
+  // Die Tiere sind über die ganze Welt verteilt: meistens allein oder zu zweit, jedes in seinem kleinen Revier
+  const ort = (x, z, r = 6) => [x - r, x + r, z - r, z + r];
   const rnd = zufall(31337);
-  const setze = (macher, bereich, anzahl) => {
+  const setze = (macher, zone, anzahl) => {
     for (let i = 0; i < anzahl; i++) {
-      const t = macher(), [x0, x1, z0, z1] = BEREICHE[bereich];
-      t.bereich = BEREICHE[bereich];
+      const t = macher(), [x0, x1, z0, z1] = zone;
+      t.bereich = zone;
       t.g.position.set(x0 + rnd() * (x1 - x0), 0, z0 + rnd() * (z1 - z0));
       t.g.rotation.y = rnd() * 6.3; t.ziel = null; t.pause = rnd() * 3; t.phase = rnd() * 10;
       t.g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       scene.add(t.g); WELT_TEILE.winter.push(t.g); TIERE.push(t);
     }
   };
-  setze(pinguin, 'platz', 4); setze(pinguin, 'vorne', 5); setze(pinguin, 'hinten', 3);
-  setze(eisbaer, 'baeren', 2); setze(eisbaer, 'vorne', 3); setze(eisbaer, 'links', 1); setze(eisbaer, 'rechts', 1); setze(eisbaer, 'hinten', 1);
-  setze(hase, 'vorne', 4); setze(hase, 'links', 2); setze(hase, 'rechts', 2);
-  setze(fuchs, 'vorne', 2); setze(fuchs, 'hinten', 1); setze(fuchs, 'rechts', 1);
+  // Pinguine
+  setze(pinguin, ort(28, SZ + 6, 4), 2);        // zwei neben dem Startplatz
+  setze(pinguin, ort(-12, 24), 1); setze(pinguin, ort(60, -72), 1); setze(pinguin, ort(-60, 72), 2);
+  setze(pinguin, ort(-70, SZ - 32, 8), 1); setze(pinguin, ort(36, 118, 8), 1); setze(pinguin, ort(120, -30, 6), 1);
+  // Eisbären
+  setze(eisbaer, ort(-30, SZ + 5, 5), 1);       // einer links vom Startplatz
+  setze(eisbaer, ort(50, SZ - 32, 9), 2);       // zwei zusammen vor dem Wald
+  setze(eisbaer, ort(-84, -24), 1); setze(eisbaer, ort(84, 24), 1); setze(eisbaer, ort(-120, 50, 7), 1); setze(eisbaer, ort(-30, 120, 8), 1);
+  // Schneehasen und Polarfüchse
+  setze(hase, ort(-36, -72), 1); setze(hase, ort(12, -24), 1); setze(hase, ort(-100, SZ - 30, 8), 2); setze(hase, ort(120, 70, 6), 1); setze(hase, ort(60, 118, 8), 1);
+  setze(fuchs, ort(36, 72), 1); setze(fuchs, ort(-120, -60, 6), 1); setze(fuchs, ort(0, SZ - 34, 10), 1);
+}
+// Die Tiere laufen frei durch die ganze Welt: sie suchen sich immer wieder ein neues Ziel irgendwo in der Nähe,
+// aber nicht über die Straße, nicht in Türme, Häuser oder Stände hinein
+let TIER_HINDERNISSE = null;
+function tierBlockiert(x, z) {
+  if (!TIER_HINDERNISSE) TIER_HINDERNISSE = statisch.filter((k) => k.oben > 0.3 && k.unten < 1.6 && (k.maxX - k.minX) < 200);
+  for (const k of TIER_HINDERNISSE) if (x > k.minX - 0.9 && x < k.maxX + 0.9 && z > k.minZ - 0.9 && z < k.maxZ + 0.9) return true;
+  return false;
+}
+function tierZiel(p) {
+  const SZ = -2 * ABSTAND - 20, vorne = p.z > SZ - 10;   // vor der Straße (Dorf) oder dahinter (Wald)
+  for (let versuch = 0; versuch < 10; versuch++) {
+    const w = Math.random() * Math.PI * 2, r = 8 + Math.random() * 30;
+    const x = Math.max(-125, Math.min(125, p.x + Math.cos(w) * r));
+    const z = vorne ? Math.max(SZ - 3, Math.min(125, p.z + Math.sin(w) * r)) : Math.max(SZ - 60, Math.min(SZ - 20, p.z + Math.sin(w) * r));
+    let frei = true;
+    const d = Math.hypot(x - p.x, z - p.z), n = Math.ceil(d / 1.5);
+    for (let i = 1; i <= n && frei; i++) if (tierBlockiert(p.x + (x - p.x) * i / n, p.z + (z - p.z) * i / n)) frei = false;
+    if (frei) return new THREE.Vector2(x, z);
+  }
+  return null;
 }
 function tiereUpdate(dt) {
   for (const t of TIERE) {
@@ -2441,9 +2516,12 @@ function tiereUpdate(dt) {
       g.position.y = 0; g.rotation.x = g.rotation.z = 0;
       continue;
     }
-    if (!t.ziel) { const [x0, x1, z0, z1] = t.bereich; t.ziel = new THREE.Vector2(x0 + Math.random() * (x1 - x0), z0 + Math.random() * (z1 - z0)); }
+    if (!t.ziel) { t.ziel = tierZiel(g.position); if (!t.ziel) { t.pause = 1; continue; } }
     const dx = t.ziel.x - g.position.x, dz = t.ziel.y - g.position.z, d = Math.hypot(dx, dz);
     if (d < 0.3) { t.ziel = null; t.pause = 1.5 + Math.random() * 5; continue; }
+    // nächster Schritt wäre in einer Wand? Dann stehen bleiben und woanders hin
+    const nx = g.position.x + (dx / d) * 0.6, nz = g.position.z + (dz / d) * 0.6;
+    if (tierBlockiert(nx, nz)) { t.ziel = null; t.pause = 0.5 + Math.random(); continue; }
     // langsam in die Laufrichtung drehen (die Tiere schauen nach +x)
     const soll = Math.atan2(-dz, dx);
     let diff = soll - g.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -4744,7 +4822,10 @@ function update(dt) {
     const rs = held.rock ? 0.35 : 1;
     held.beinL.rotation.x = schwung * rs; held.beinR.rotation.x = -schwung * rs;
     held.knieL.rotation.x = Math.max(0, -schwung) * (held.rock ? 1.3 : 0.9); held.knieR.rotation.x = Math.max(0, schwung) * (held.rock ? 1.3 : 0.9);
-    held.armL.rotation.x = -schwung; held.armR.rotation.x = schwung;
+    // Arme schwingen ruhiger und langsamer als die Beine (auch beim Rennen)
+    s.armSchritt = (s.armSchritt || 0) + dt * Math.min(tempo, LAUF_TEMPO) * 0.8;
+    const armS = Math.sin(s.armSchritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.5;
+    held.armL.rotation.x = -armS; held.armR.rotation.x = armS;
   }
 
   // Fußspuren: nur draußen auf dem Boden (nicht in Türmen oder Häusern)
@@ -4799,7 +4880,7 @@ function update(dt) {
   schneeUpdate(dt, s.pos);
   verkehrUpdate(dt, s.pos);
   busPruefen(s.pos);
-  tiereUpdate(dt);
+  tiereUpdate(dt); leuteUpdate(dt);
   for (const w of wolken) { w.position.x += w.userData.tempo * dt; if (w.position.x > 260) w.position.x = -260; }
   lichtMatA.opacity = 0.6 + 0.4 * Math.sin(zeit * 2.5);
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
@@ -5024,6 +5105,74 @@ const startFiguren = [];
       if (i >= 2 && i % 2 === 0) f.armR.rotation.x = -2.6;   // ein paar winken
       startFiguren.push(f);
     });
+  }
+}
+// ---------- Leute im Weihnachtsdorf: Verkäufer in den Ständen, Besucher mit Punsch, Leute auf den Bänken ----------
+// Alle warm angezogen (Jacke, Schal, Mütze, Handschuhe), in ruhigen Farben
+const LEUTE = [];
+{
+  const WARM = [
+    { figurTyp: 'maedchen', frisur: 'zoepfe', haare: '#5b3a24', haut: '#f1c9a5', oberteilTyp: 'kapuzenjacke', jacke: '#1f2a4a', pulli: '#f5f3ee', hoseTyp: 'jeans', hose: '#3b5b8c', kopf: 'weihnachtsmuetze', schal: 'schal', haende: 'faeustlinge', schuhTyp: 'uggs', sternAn: false },
+    { figurTyp: 'junge', frisur: 'wuschel', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'jacke', jacke: '#6b4a32', pulli: '#d9cbb5', hoseTyp: 'jeans', hose: '#1f2a4a', kopf: 'ohrenschuetzer', schal: 'karo', haende: 'faeustlinge', sternAn: false },
+    { figurTyp: 'maedchen', frisur: 'langlocken', haare: '#c48a4a', haut: '#f6d7bd', oberteilTyp: 'strickpulli', pulli: '#a9c4dc', hoseTyp: 'jogging', hose: '#f5f3ee', kopf: 'ohrwaermer', schal: 'schal', haende: 'faeustlinge', schuhTyp: 'uggs', sternAn: false },
+    { figurTyp: 'junge', frisur: 'jlocken', haare: '#2b1d14', haut: '#9a6440', oberteilTyp: 'kapuzenjacke', jacke: '#d9cbb5', pulli: '#4a3326', hoseTyp: 'jeans', hose: '#4a3326', kopf: 'weihnachtsmuetze', schal: 'karo', haende: 'faeustlinge', sternAn: false },
+    { figurTyp: 'maedchen', frisur: 'dutt', haare: '#2b1d14', haut: '#6b4329', oberteilTyp: 'jacke', jacke: '#f0d9de', pulli: '#f5f3ee', hoseTyp: 'jeans', hose: '#3b5b8c', kopf: 'ohrenschuetzer', schal: 'schal', haende: 'faeustlinge', schuhTyp: 'puschel', sternAn: false },
+    { figurTyp: 'junge', frisur: 'wuschel', haare: '#e6c27a', haut: '#f1c9a5', oberteilTyp: 'strickpulli', pulli: '#f5f3ee', hoseTyp: 'jogging', hose: '#1f2a4a', kopf: 'rentierreif', schal: 'schal', haende: 'faeustlinge', sternAn: false },
+    { figurTyp: 'maedchen', frisur: 'bob', haare: '#5b3a24', haut: '#f6d7bd', oberteilTyp: 'kapuzenjacke', jacke: '#a9c4dc', pulli: '#f5f3ee', hoseTyp: 'rock', hose: '#d9cbb5', struempfe: 'lang', kopf: 'weihnachtsmuetze', schal: 'karo', haende: 'faeustlinge', schuhTyp: 'uggs', sternAn: false },
+  ];
+  const TRANK = { Punsch: 0xa86a6a, Kakao: 0x7a5236 };
+  let n = 0;
+  const mensch = (x, z, blick, art, extra = {}) => {
+    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...WARM[n++ % WARM.length] }, scene);
+    f.figur.position.set(x, 0, z); f.figur.rotation.y = blick;
+    WELT_TEILE.winter.push(f.figur);
+    const l = { f, art, phase: n * 1.7, ...extra };
+    if (extra.tasse) {   // Tasse mit Punsch oder Kakao in der Hand
+      const t = new THREE.Group(), c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.14, 10), M([0xffffff, 0xc9d9ea, 0xf0d9de][n % 3]));
+      t.add(c); const d = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10), M(extra.tasse)); d.rotation.x = -Math.PI / 2; d.position.y = 0.06; t.add(d);
+      t.position.set(0, -0.72, 0.1); f.armR.add(t); l.tasseObj = t;
+      f.armR.rotation.x = -1.1; t.rotation.x = 1.1;
+    }
+    if (art === 'sitzen') {   // Oberschenkel nach vorne, Unterschenkel nach unten
+      f.beinL.rotation.x = f.beinR.rotation.x = -Math.PI / 2; f.knieL.rotation.x = f.knieR.rotation.x = Math.PI / 2;
+      f.figur.position.y = -0.24;
+    } else if (art !== 'verkaufen') klotz(statisch, scene, x, 2, z, 0.7, 0.7, 0, { dicke: 2, unsichtbar: true });   // man läuft nicht durch
+    LEUTE.push(l);
+    return l;
+  };
+  // Verkäufer hinter der Theke jedes Marktstands
+  MARKT_STAENDE.forEach((m, i) => {
+    const lz = 0.15 * m.gross;
+    mensch(m.x + Math.sin(m.dreh) * lz, m.z + Math.cos(m.dreh) * lz, m.dreh + Math.PI, 'verkaufen');
+    // vor ein paar Ständen steht jemand und kauft etwas
+    if (i % 2 === 1) {
+      const vx = 0.7, vz = -(2.6 / 2) * m.gross - 1.1;
+      const wx = m.x + (vx * Math.cos(m.dreh) + vz * Math.sin(m.dreh)), wz = m.z + (-vx * Math.sin(m.dreh) + vz * Math.cos(m.dreh));
+      mensch(wx, wz, m.dreh, 'stehen', { tasse: TRANK[m.sorte] || TRANK.Punsch });
+    }
+  });
+  // Zwei Leute am großen Baum, die sich mit Punsch unterhalten
+  mensch(PLATZ.x + 5.5, PLATZ.z + 6, -Math.PI / 2 - 0.3, 'stehen', { tasse: TRANK.Punsch });
+  mensch(PLATZ.x + 3.4, PLATZ.z + 6.6, Math.PI / 2 - 0.3, 'stehen', { tasse: TRANK.Kakao });
+  // Auf den Bänken sitzen (Bank-Lehne ist hinten, man schaut nach vorne)
+  BAENKE.slice(0, 6).forEach((b, i) => {
+    if (i % 2 && i > 2) return;
+    const seite = i % 2 ? 0.45 : -0.45, fx = Math.sin(b.dreh) * 0.12 + Math.cos(b.dreh) * seite, fz = Math.cos(b.dreh) * 0.12 - Math.sin(b.dreh) * seite;
+    mensch(b.x + fx, b.z + fz, b.dreh + Math.PI, 'sitzen', { tasse: i % 2 ? TRANK.Kakao : TRANK.Punsch });
+  });
+}
+function leuteUpdate(dt) {
+  for (const l of LEUTE) {
+    l.phase += dt;
+    const f = l.f;
+    if (l.art === 'verkaufen') {   // Verkäufer reichen ab und zu etwas über die Theke
+      const w = Math.max(0, Math.sin(l.phase * 0.6));
+      f.armR.rotation.x = -w * 1.3; f.armL.rotation.x = -w * 0.5;
+      f.figur.rotation.z = Math.sin(l.phase * 0.8) * 0.02;
+    } else if (l.tasseObj) {   // ab und zu einen Schluck trinken
+      const schluck = Math.max(0, Math.sin(l.phase * 0.5) - 0.85) / 0.15;
+      f.armR.rotation.x = -1.1 - schluck * 1.2; l.tasseObj.rotation.x = 1.1 + schluck * 0.6;
+    }
   }
 }
 const START_FLUG = [   // Reihenfolge: zuerst das Weihnachtsdorf, dann Aesthetic ASMR (Sommer ist aus)
@@ -5467,7 +5616,9 @@ function mehrspielerUpdate(dt) {
       const rs = a.held.rock ? 0.35 : 1;
       a.held.beinL.rotation.x = s * rs; a.held.beinR.rotation.x = -s * rs;
       a.held.knieL.rotation.x = Math.max(0, -s) * (a.held.rock ? 1.3 : 0.9); a.held.knieR.rotation.x = Math.max(0, s) * (a.held.rock ? 1.3 : 0.9);
-      a.held.armL.rotation.x = -s; a.held.armR.rotation.x = s;
+      a.armSchritt = (a.armSchritt || 0) + dt * Math.min(tempo, LAUF_TEMPO) * 0.8;
+      const armS = Math.sin(a.armSchritt) * Math.min(1, tempo / LAUF_TEMPO) * 0.5;
+      a.held.armL.rotation.x = -armS; a.held.armR.rotation.x = armS;
     }
   }
   // Eigene Position etwa 10 Mal pro Sekunde schicken (nur wenn sich etwas bewegt hat)
@@ -5606,7 +5757,7 @@ renderer.setAnimationLoop(() => {
     for (const st of drehSterne) st.rotation.y += dt * 1.2;
     schneeUpdate(dt, startKamera.position);
     verkehrUpdate(dt, null);
-    tiereUpdate(dt);
+    tiereUpdate(dt); leuteUpdate(dt);
     renderer.render(scene, startKamera);
   } else {
     if (startFiguren[0].figur.visible) for (const f of startFiguren) f.figur.visible = false;
