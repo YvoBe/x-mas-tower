@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Towerround</title>
+<title>Wonder World</title>
 <!-- Handy: Seite genau so breit wie der Bildschirm, kein Reinzoomen durch Doppeltippen oder Ziehen -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -353,7 +353,7 @@
     -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px);
   }
   #start .kugel .t1, #start .kugel .t2 { position: absolute; left: 0; right: 0; text-align: center; font-family: 'Mountains of Christmas', var(--font); font-weight: 700; line-height: 1; }
-  #start .kugel .t1 { top: 17%; font-size: min(54px, 13.5cqw, 12vw); letter-spacing: 0.18em; padding-left: 0.18em; color: #fbf8f2; text-shadow: 0 3px 0 var(--ink); }
+  #start .kugel .t1 { top: 17%; font-size: min(46px, 11.5cqw, 10vw); letter-spacing: 0.12em; padding-left: 0.12em; color: #fbf8f2; text-shadow: 0 3px 0 var(--ink); }
   #start .kugel .t2 { top: 34%; font-size: min(128px, 32cqw, 26vw); color: #fff; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); }
   #start .logo { container-type: inline-size; }
   #start .kugel .boden { position: absolute; left: -5%; right: -5%; bottom: -8%; height: 32%; background: #fff; border-radius: 50% 50% 0 0; }
@@ -438,11 +438,11 @@
   <div class="karte">
     <div class="kugelSeite">
       <h2 class="logo">
-        <span class="sr">Tower World</span>
+        <span class="sr">Wonder World</span>
         <!-- Logo in einer Schneekugel: TOWER klein, World groß, unten Schnee mit Tannen und Lebkuchenhaus -->
         <span class="kugel" aria-hidden="true">
           <span class="glanz"></span>
-          <span class="t1">TOWER</span><span class="t2">World</span>
+          <span class="t1">WONDER</span><span class="t2">World</span>
           <svg class="baum" style="left:17%" viewBox="0 0 40 60"><path d="M20 2 L34 26 H27 L38 46 H2 L13 26 H6Z" fill="#7a8450"/><path d="M12 25 Q20 29 28 25 M8 44 Q20 49 32 44" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><rect x="17" y="46" width="6" height="10" fill="#6b4a32"/></svg>
           <svg class="baum" style="right:17%;width:8%" viewBox="0 0 40 60"><path d="M20 2 L34 26 H27 L38 46 H2 L13 26 H6Z" fill="#8f9b52"/><path d="M12 25 Q20 29 28 25 M8 44 Q20 49 32 44" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><rect x="17" y="46" width="6" height="10" fill="#6b4a32"/></svg>
           <svg class="haus" viewBox="0 0 60 50"><rect x="8" y="22" width="44" height="28" fill="#a8693a"/><path d="M2 24 L30 3 L58 24Z" fill="#fbf8f2"/><path d="M10 24 l4 4 4-4 4 4 4-4 4 4 4-4 4 4 4-4 4 4 4-4" fill="none" stroke="#fbf8f2" stroke-width="2"/><rect x="25" y="34" width="10" height="16" fill="#6b3d22"/><rect x="13" y="31" width="8" height="7" fill="#ffd98a"/><rect x="39" y="31" width="8" height="7" fill="#ffd98a"/></svg>
@@ -465,7 +465,7 @@
       <div class="zwei">
         <button type="button" id="startWinter">🎄 Weihnachten</button>
         <button type="button" id="startAesthetic">☁️ Aesthetic ASMR</button>
-        <button type="button" id="startWonder" class="breit">❄️ Wonderland</button>
+        <button type="button" id="startWonder" class="breit">❄️ Winterstadt</button>
       </div>
       <button type="button" id="startFigur"><svg class="figurIcon" viewBox="0 0 34 36" aria-hidden="true">
         <path d="M17 3 C8 3 6 10 7 18 L8 24 L26 24 L27 18 C28 10 26 3 17 3Z" fill="#7a4a2a"/>
@@ -498,7 +498,7 @@
     <svg width="28" height="30" viewBox="0 0 28 30" aria-hidden="true"><circle cx="14" cy="7" r="6" fill="currentColor"/><path d="M4 29v-9a10 10 0 0 1 20 0v9z" fill="#e7a3b7" stroke="currentColor" stroke-width="2"/><path d="M8 19h12M7 23h14" stroke="currentColor" stroke-width="2"/></svg>
   </button>
   <div class="tag">
-    <h1>Towerround</h1>
+    <h1>Wonder World</h1>
     <p class="keys-hint">WASD laufen · Shift sprinten · Leertaste springen · Maus ziehen dreht die Kamera</p>
     <p class="touch-hint">Joystick laufen · RENN sprinten · Knopf springen · Wischen dreht die Kamera</p>
   </div>
@@ -507,7 +507,7 @@
     <div class="welten" role="group" aria-label="Welt aussuchen">
       <button type="button" id="weltWinter" aria-pressed="true">🎄 Weihnachten</button>
       <button type="button" id="weltAesthetic" aria-pressed="false">☁️ Aesthetic ASMR</button>
-      <button type="button" id="weltWonder" aria-pressed="false">❄️ Wonderland</button>
+      <button type="button" id="weltWonder" aria-pressed="false">❄️ Winterstadt</button>
     </div>
     <button type="button" class="tag zahl" id="codeKnopf" aria-label="Mit Freunden spielen">
       <span class="anzahl">👥 1</span> · Code <span class="code">-----</span>
@@ -5069,7 +5069,7 @@ function update(dt) {
   lichtMatB.opacity = 0.6 - 0.4 * Math.sin(zeit * 2.5);
   for (const st of drehSterne) st.rotation.y += dt * 1.2;
 
-  hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : weltVon(s.pos) === 'aesthetic' ? 'Auf der Wolke' : weltVon(s.pos) === 'wonderland' ? 'Wonderland' : 'Draußen';
+  hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : weltVon(s.pos) === 'aesthetic' ? 'Auf der Wolke' : weltVon(s.pos) === 'wonderland' ? 'Winterstadt' : 'Draußen';
   fortschrittZeigen(T, s);
   const welt = weltVon(s.pos);
   if (welt !== zeigeWelt) weltZeigen(welt);
@@ -5535,14 +5535,14 @@ const W_FEUER = [], W_VERKAEUFER = [];
     const boden = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), M(0xf3f5f8, { roughness: 1 }));
     boden.rotation.x = -Math.PI / 2; boden.position.set(W.x, 0, W.z); boden.receiveShadow = true; wonder.add(boden);
     klotz(statisch, wonder, W.x, 0, W.z, 420, 420, 0, { dicke: 1, unsichtbar: true });
-    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(170, 9), M(0xb9b8b3, { roughness: 0.95 }));
+    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(200, 9), M(0xb9b8b3, { roughness: 0.95 }));
     strasse.rotation.x = -Math.PI / 2; strasse.position.set(W.x, 0.02, W.z); strasse.receiveShadow = true; wonder.add(strasse);
     for (let i = 0; i < 40; i++) {   // Schneereste am Straßenrand
       const f = new THREE.Mesh(new THREE.PlaneGeometry(2 + rnd() * 3, 0.8 + rnd()), M(0xf3f5f8)); f.rotation.x = -Math.PI / 2;
       f.position.set(W.x - 84 + rnd() * 168, 0.03, W.z + (rnd() < 0.5 ? -1 : 1) * (4.1 + rnd() * 0.4)); wonder.add(f);
     }
     for (const s of [-1, 1]) {   // Bürgersteig mit Ziegeln
-      const b = new THREE.Mesh(new THREE.PlaneGeometry(170, 3), new THREE.MeshStandardMaterial({ map: (() => { const t = ziegelTextur(); t.repeat.set(60, 1); return t; })(), roughness: 0.95, color: 0xd8d2cc }));
+      const b = new THREE.Mesh(new THREE.PlaneGeometry(200, 3), new THREE.MeshStandardMaterial({ map: (() => { const t = ziegelTextur(); t.repeat.set(60, 1); return t; })(), roughness: 0.95, color: 0xd8d2cc }));
       b.rotation.x = -Math.PI / 2; b.position.set(W.x, 0.025, W.z + s * 6); wonder.add(b);
       for (let i = -4; i <= 4; i++) if (i % 2 === 0) laterneW(wonder, W.x + i * 18 + 9, W.z + s * 7.2, 3.2);
     }
@@ -5557,11 +5557,64 @@ const W_FEUER = [], W_VERKAEUFER = [];
     const N = 420, krone = new THREE.ConeGeometry(2.2, 6, 8); krone.translate(0, 4, 0);
     const baeume = new THREE.InstancedMesh(krone, M(0xf4f6f8, { flatShading: true }), N), m4 = new THREE.Matrix4();
     for (let i = 0; i < N; i++) {
-      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while (Math.abs(px) < 92 && Math.abs(pz) < 46);
+      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while (Math.abs(px) < 104 && Math.abs(pz) < 52);
       const sc = 0.7 + rnd() * 0.9; m4.makeScale(sc, sc * (0.9 + rnd() * 0.4), sc).setPosition(W.x + px, 0, W.z + pz); baeume.setMatrixAt(i, m4);
     }
     baeume.castShadow = true; scene.add(baeume); WELT_TEILE.wonderland.push(baeume);
   }
+
+
+  // --- Volles Regal: auf jedem Brett ganz verschiedene Sachen (vorne = lokal +z) ---
+  const vase = (g, x, y, z, h = 0.3, farbe = C.creme) => { zyl(g, x, y + h / 2, z, 0.06, 0.09, h, farbe, 10); zyl(g, x, y + h + 0.03, z, 0.04, 0.04, 0.06, farbe, 8); };
+  const glasLichter = (g, x, y, z) => { zyl(g, x, y + 0.12, z, 0.08, 0.08, 0.24, glasMat); const p = []; for (let i = 0; i < 6; i++) p.push(V(x + Math.cos(i * 2) * 0.04, y + 0.05 + i * 0.03, z + Math.sin(i * 2) * 0.04)); weisseLichter(g, p, 0.35); };
+  const holzStern = (g, x, y, z, r = 0.12, farbe = C.beige) => { const st = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.03, 5), M(farbe)); st.rotation.x = Math.PI / 2; st.position.set(x, y + r, z); g.add(st); };
+  function regalVoll(g, x, y, z, br, ho, dreh, seed, holz = C.braun) {
+    const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; g.add(r);
+    const rz = zufall(seed), bretter = Math.max(3, Math.round(ho / 0.5));
+    kasten(r, 0, ho / 2, -0.2, br, ho, 0.04, M(holz));
+    for (const sx of [-1, 1]) kasten(r, sx * br / 2, ho / 2, 0, 0.05, ho, 0.44, M(holz));
+    for (let k = 0; k <= bretter; k++) kasten(r, 0, k * ho / bretter, 0, br, 0.04, 0.44, M(holz === C.braun ? C.beige : C.creme));
+    for (let k = 0; k < bretter; k++) {
+      const by = k * ho / bretter + 0.02, platz = ho / bretter - 0.08;
+      let px = -br / 2 + 0.08;
+      while (px < br / 2 - 0.2) {
+        const a = Math.floor(rz() * 11), mitte = px + 0.12;
+        if (a < 3) { const n = 3 + Math.floor(rz() * 5); buecher(r, px + n * 0.035, by, 0, n, 0.065); px += n * 0.07 + 0.05; continue; }
+        if (a === 3) kerze(r, mitte, by, 0, Math.min(platz, 0.12 + rz() * 0.15));
+        else if (a === 4) pflanze(r, mitte, by, 0, Math.min(1, platz / 0.6));
+        else if (a === 5) bild(r, mitte, by + Math.min(0.18, platz / 2), -0.1, 0.2, Math.min(0.26, platz - 0.05), ['foto', 'berge', 'reh', 'stern'][Math.floor(rz() * 4)]);
+        else if (a === 6) vase(r, mitte, by, 0, Math.min(platz - 0.08, 0.2 + rz() * 0.15), [C.creme, C.beige, C.hellgrau, C.dunkel][Math.floor(rz() * 4)]);
+        else if (a === 7) reh(r, mitte, by, 0, Math.min(0.22, platz / 1.8), rz() * 0.6 - 0.3);
+        else if (a === 8) baeumchen(r, mitte, by, 0, Math.min(0.45, platz / 1.2), rz() < 0.6);
+        else if (a === 9) duftstaebchen(r, mitte, by, 0);
+        else if (rz() < 0.5) glasLichter(r, mitte, by, 0); else wGeschenk(r, mitte, by, 0, Math.min(0.22, platz - 0.05), [C.braun, C.beige, C.hellgrau][Math.floor(rz() * 3)]);
+        px += 0.26;
+      }
+    }
+    girlande(r, V(-br / 2, ho + 0.05, 0.22), V(br / 2, ho + 0.05, 0.22), 0.18, Math.round(br * 6));
+    return r;
+  }
+  const kommode = (g, x, y, z, br, dreh, farbe = C.creme) => {   // Kommode mit Schubladen und Deko oben drauf
+    const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; g.add(r);
+    kasten(r, 0, 0.45, 0, br, 0.8, 0.5, M(farbe));
+    for (let k = 0; k < 3; k++) { deko(r, 0, 0.2 + k * 0.25, 0.26, br - 0.12, 0.2, 0.02, farbe === C.creme ? C.beige : C.creme); kugelW(r, 0, 0.2 + k * 0.25, 0.28, 0.03, C.dunkel); }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) deko(r, sx * (br / 2 - 0.06), 0.03, sz * 0.2, 0.06, 0.06, 0.06, C.dunkel);
+    kerze(r, -br / 2 + 0.2, 0.85, 0, 0.25); kerze(r, -br / 2 + 0.35, 0.85, 0.05, 0.16); vase(r, br / 2 - 0.25, 0.85, 0, 0.3);
+    for (let i = 0; i < 5; i++) kugelW(r, br / 2 - 0.45 - i * 0.1, 0.89, 0.1, 0.035, i % 2 ? C.dunkel : C.beige);   // Zapfen
+    baeumchen(r, 0.1, 0.85, -0.05, 0.4); bild(r, 0, 1.55, -0.22, 0.7, 0.5, ['berge', 'reh', 'stern'][Math.round(x * 3) % 3 < 0 ? 0 : Math.round(x * 3) % 3]);
+    girlande(r, V(-br / 2, 0.88, 0.2), V(br / 2, 0.88, 0.2), 0.12, Math.round(br * 6));
+    return r;
+  };
+  const schwibbogen = (g, x, y, z, dreh) => {   // Lichterbogen fürs Fenster
+    const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; g.add(r);
+    deko(r, 0, 0.03, 0, 0.9, 0.06, 0.12, C.braun);
+    for (let i = 0; i < 7; i++) { const w = Math.PI * (i / 6); kerze(r, -Math.cos(w) * 0.38, 0.06, 0, 0.08 + Math.sin(w) * 0.12, 0.02); }
+    const bogen = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 6, 16, Math.PI), M(C.braun)); bogen.position.y = 0.08; r.add(bogen);
+  };
+  const haengeSterne = (g, x, y, z, n = 3) => {   // hängende helle Sterne an Fäden
+    for (let i = 0; i < n; i++) { const hy = y - 0.4 - (i % 2) * 0.35, hx = x + (i - (n - 1) / 2) * 0.35; zyl(g, hx, (y + hy) / 2 + 0.1, z, 0.004, 0.004, y - hy, C.dunkel, 3); holzStern(g, hx, hy - 0.12, z, 0.1, i % 2 ? C.creme : C.beige); }
+  };
+  const teppichEckig = (g, x, y, z, b, t, farbe, rand) => { kasten(g, x, y + 0.02, z, b, 0.025, t, M(rand)); kasten(g, x, y + 0.03, z, b - 0.3, 0.025, t - 0.3, M(farbe)); for (let i = 0; i < Math.round(b / 0.12); i++) for (const sz of [-1, 1]) deko(g, x - b / 2 + 0.06 + i * 0.12, y + 0.015, z + sz * (t / 2 + 0.06), 0.03, 0.01, 0.12, rand); };
 
   // --- Die Holzhäuser (2 Etagen, Kamin, Treppe, Kinderzimmer ...) ---
   // s = 1: Haustür zeigt nach -z (Straße im Süden), s = -1: gedreht, Tür zeigt nach +z
@@ -5569,7 +5622,7 @@ const W_FEUER = [], W_VERKAEUFER = [];
     const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = s < 0 ? Math.PI : 0; wonder.add(g);
     const P = (lx, lz) => [x + lx * s, z + lz * s];
     const fest = (lx, oben, lz, b, t, dicke) => { const [wx, wz] = P(lx, lz); return klotz(statisch, wonder, wx, oben, wz, b, t, 0, { dicke, unsichtbar: true }); };
-    const b = 10, t = 9, F = 0.6, E = 4.0, H = 7.2, D = 0.3, TB = 1.6, TH = 2.5;
+    const b = 16, t = 14, F = 0.6, E = 5.0, H = 9.2, D = 0.3, TB = 2.0, TH = 2.9;
     const wand = HOLZ[nr % HOLZ.length], vz = -t / 2;
     // Außenwände (mit Türöffnung vorne) + Kollision
     const stueck = (lx, ly, lz, sb, sh, st) => { kasten(g, lx, ly, lz, sb, sh, st, wand); fest(lx, ly + sh / 2, lz, sb, st, sh); };
@@ -5586,7 +5639,7 @@ const W_FEUER = [], W_VERKAEUFER = [];
     fest(0, F, 0, b, t, F);
     kasten(g, 0, F + 0.01, 0, b - 2 * D, 0.02, t - 2 * D, bodenMat);
     kasten(g, 0, H - 0.05, 0, b - 2 * D, 0.1, t - 2 * D, deckenMat);
-    dach(g, b, t, H, 3.0, DAECHER[nr % DAECHER.length], 0.55);
+    dach(g, b, t, H, 4.2, DAECHER[nr % DAECHER.length], 0.55);
     // Kamin aus Ziegeln auf dem Dach
     kasten(g, 2.6, H + 1.9, 1.8, 0.9, 2.6, 0.9, ziegelMat); deko(g, 2.6, H + 3.25, 1.8, 1.05, 0.15, 1.05, 0xfbfcff);
     // Fenster (unten und oben), außen und innen leuchtend
@@ -5595,26 +5648,26 @@ const W_FEUER = [], W_VERKAEUFER = [];
       deko(g, lx, ly, lz, quer ? 0.1 : 0.07, fh, quer ? 0.07 : 0.1, C.creme); deko(g, lx, ly, lz, quer ? 0.1 : fb, 0.07, quer ? fb : 0.1, C.creme);
       deko(g, lx, ly - fh / 2 - 0.06, lz, quer ? 0.3 : fb + 0.2, 0.1, quer ? fb + 0.2 : 0.3, C.creme);
     };
-    for (const [ly, fh] of [[F + 1.7, 1.3], [E + 1.6, 1.2]]) {
-      for (const sx of [-1, 1]) { fensterW(sx * 3.0, ly, vz - 0.01, 1.4, fh); fensterW(sx * 2.6, ly, t / 2 + 0.01, 1.3, fh); fensterW(sx * (b / 2 + 0.01), ly, 1.2, 1.3, fh, true); }
+    for (const [ly, fh] of [[F + 1.9, 1.6], [E + 1.9, 1.5]]) {
+      for (const sx of [-1, 1]) { fensterW(sx * 4.6, ly, vz - 0.01, 1.8, fh); fensterW(sx * 4.2, ly, t / 2 + 0.01, 1.6, fh); for (const fz of [-3.2, 3.2]) fensterW(sx * (b / 2 + 0.01), ly, fz, 1.6, fh, true); }
     }
-    for (const sx of [-1, 1]) for (const [ly, fh] of [[F + 1.7, 1.3], [E + 1.6, 1.2]]) {   // Fensterläden
-      for (const ox of [-0.95, 0.95]) deko(g, sx * 3.0 + ox, ly, vz - 0.08, 0.4, fh + 0.1, 0.06, C.dunkelgrau);
+    for (const sx of [-1, 1]) for (const [ly, fh] of [[F + 1.9, 1.6], [E + 1.9, 1.5]]) {   // Fensterläden
+      for (const ox of [-1.18, 1.18]) deko(g, sx * 4.6 + ox, ly, vz - 0.08, 0.5, fh + 0.1, 0.06, C.dunkelgrau);
     }
     // --- Vorne: Veranda mit Treppe, Geländer, Tür, Girlanden, Kranz, Laternen, Steinweg ---
-    const VT = 2.2, VB = 4.4;
+    const VT = 2.6, VB = 6.0;
     kasten(g, 0, F / 2, vz - VT / 2, VB, F, VT, M(C.braun)); fest(0, F, vz - VT / 2, VB, VT, F);
-    for (let i = 0; i < 3; i++) { const h = (i + 1) * 0.15, tz = vz - VT - 0.35 * (3 - i) + 0.175; kasten(g, 0, h / 2, tz, 2.2, h, 0.35, M(C.braun)); deko(g, 0, h + 0.02, tz, 2.2, 0.04, 0.35, 0xfbfcff); fest(0, h, tz, 2.2, 0.35, h); }
+    for (let i = 0; i < 3; i++) { const h = (i + 1) * 0.15, tz = vz - VT - 0.35 * (3 - i) + 0.175; kasten(g, 0, h / 2, tz, 3.0, h, 0.35, M(C.braun)); deko(g, 0, h + 0.02, tz, 3.0, 0.04, 0.35, 0xfbfcff); fest(0, h, tz, 3.0, 0.35, h); }
     for (const sx of [-1, 1]) {   // Geländer an der Veranda und an der Treppe
       for (let k = 0; k < 4; k++) deko(g, sx * (VB / 2 - 0.08), F + 0.45, vz - 0.1 - k * 0.68, 0.08, 0.9, 0.08, C.creme);
       deko(g, sx * (VB / 2 - 0.08), F + 0.92, vz - VT / 2, 0.1, 0.08, VT, C.creme);
       girlande(g, V(sx * (VB / 2 - 0.08), F + 0.95, vz - 0.05), V(sx * (VB / 2 - 0.08), F + 0.95, vz - VT + 0.05), 0.25, 10);
       fest(sx * (VB / 2 - 0.08), F + 0.95, vz - VT / 2, 0.12, VT, 0.95);
-      for (const sz of [vz - VT + 0.3]) deko(g, sx * 1.15, F / 2 + 0.5, sz - 0.6, 0.08, 1.0, 0.08, C.creme);
+      for (const sz of [vz - VT + 0.3]) deko(g, sx * 1.55, F / 2 + 0.5, sz - 0.6, 0.08, 1.0, 0.08, C.creme);
     }
     // Vordach über der Tür mit Schnee
-    kasten(g, 0, F + TH + 0.45, vz - 0.7, 2.6, 0.12, 1.5, M(C.dunkelgrau)); deko(g, 0, F + TH + 0.54, vz - 0.7, 2.5, 0.08, 1.4, 0xfbfcff);
-    for (const sx of [-1, 1]) deko(g, sx * 1.2, F + (TH + 0.4) / 2, vz - 1.35, 0.1, TH + 0.4, 0.1, C.creme);
+    kasten(g, 0, F + TH + 0.45, vz - 0.7, 3.0, 0.12, 1.5, M(C.dunkelgrau)); deko(g, 0, F + TH + 0.54, vz - 0.7, 2.9, 0.08, 1.4, 0xfbfcff);
+    for (const sx of [-1, 1]) deko(g, sx * 1.4, F + (TH + 0.4) / 2, vz - 1.35, 0.1, TH + 0.4, 0.1, C.creme);
     // Türrahmen und dunkelgraue Tür (als eigene Gruppe, damit sie aufgehen kann)
     for (const sx of [-1, 1]) deko(g, sx * (TB / 2 + 0.08), F + TH / 2, vz - 0.04, 0.16, TH, 0.12, C.creme);
     deko(g, 0, F + TH + 0.08, vz - 0.04, TB + 0.32, 0.16, 0.12, C.creme);
@@ -5702,7 +5755,7 @@ const W_FEUER = [], W_VERKAEUFER = [];
       deko(so, 0.3, 0.5, 0.1, 0.9, 0.05, 0.6, C.creme); }   // Decke
     bild(g, -0.6, F + 1.9, iV + 0.03, 0.9, 0.6, 'stern');
     // ===== Treppe in den 2. Stock (an der linken Wand), Geländer mit Girlande, Bilder an der Wand =====
-    const SN = 14, SR = (E - F) / SN, ST = 0.44, sx0 = iL + 0.6, sz0 = iV + 1.1;
+    const SN = 18, SR = (E - F) / SN, ST = 0.44, sx0 = iL + 0.6, sz0 = iV + 1.1;
     for (let i = 0; i < SN; i++) {
       const oben = F + (i + 1) * SR, lz = sz0 + (i + 0.5) * ST;
       kasten(g, sx0, oben - 0.06, lz, 1.2, 0.12, ST, M(C.braun)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, 1.2, oben - 0.12 - F, ST - 0.02, M(C.creme));
@@ -5771,6 +5824,78 @@ const W_FEUER = [], W_VERKAEUFER = [];
     kerze(g, 0.3, O + 1.83, iH - 0.15, 0.15); reh(g, 0.75, O + 1.83, iH - 0.15, 0.18, 0); bild(g, 1.2, O + 1.98, iH - 0.17, 0.28, 0.22, 'foto', Math.PI);
     stuhl(g, iL + 0.6, O, iH - 0.4, Math.PI, C.creme); pflanze(g, lochR + 0.5, O, sEnde + 0.3, 0.9);
     bild(g, iL + 0.03, O + 1.5, 0.5, 0.6, 0.45, 'berge', Math.PI / 2);
+
+    // ===== Viel mehr Einrichtung (richtig voll) =====
+    const sd = nr * 31 + 7;
+    // Erdgeschoss: Esstisch mit Stühlen hinter der Treppe
+    { const ex = -3.6, ez = iH - 2.4;
+      teppichEckig(g, ex, F, ez, 3.6, 2.8, C.beige, C.creme);
+      kasten(g, ex, F + 0.76, ez, 2.4, 0.07, 1.2, M(C.braun));
+      for (const [ox, oz] of [[-1.05, -0.5], [1.05, -0.5], [-1.05, 0.5], [1.05, 0.5]]) deko(g, ex + ox, F + 0.38, ez + oz, 0.08, 0.76, 0.08, C.dunkel);
+      for (const ox of [-0.6, 0.6]) { stuhl(g, ex + ox, F, ez - 0.95, 0, C.dunkel); stuhl(g, ex + ox, F, ez + 0.95, Math.PI, C.dunkel); }
+      deko(g, ex, F + 0.8, ez, 1.8, 0.01, 0.35, C.creme);   // Tischläufer
+      for (let i = 0; i < 5; i++) kerze(g, ex - 0.5 + i * 0.25, F + 0.8, ez, 0.12 + (i % 3) * 0.06, 0.035);
+      girlande(g, V(ex - 0.8, F + 0.83, ez - 0.08), V(ex + 0.8, F + 0.83, ez - 0.08), 0.0, 10);
+      for (const ox of [-0.6, 0.6]) for (const oz of [-0.4, 0.4]) { zyl(g, ex + ox, F + 0.81, ez + oz, 0.16, 0.16, 0.02, C.creme, 14); zyl(g, ex + ox + 0.05, F + 0.86, ez + oz - 0.05, 0.035, 0.03, 0.09, C.beige, 8); }
+      for (const ox of [-0.5, 0, 0.5]) { zyl(g, ex + ox, F + 2.6, ez, 0.01, 0.01, 1.4, C.dunkel, 4); zyl(g, ex + ox, F + 1.85, ez, 0.12, 0.18, 0.2, lampenMat, 10); }
+    }
+    // Volle Regale an den Wänden
+    regalVoll(g, iR - 0.25, F, -0.8, 2.2, 2.4, -Math.PI / 2, sd + 1);
+    regalVoll(g, -1.6, F, iH - 0.25, 1.8, 2.2, Math.PI, sd + 2, C.creme);
+    regalVoll(g, 3.8, F, iV + 0.25, 1.6, 2.0, 0, sd + 3);
+    kommode(g, iR - 0.3, F, 3.3, 2.0, -Math.PI / 2);
+    kommode(g, -4.6, F, iV + 0.3, 1.6, 0, C.braun);
+    // Wandregale über dem Sofa und neben dem Kamin, Bilderwand
+    for (const [wx, wy] of [[-1.2, F + 2.5], [0.2, F + 2.9]]) { deko(g, wx, wy, iV + 0.15, 1.0, 0.04, 0.22, C.beige); kerze(g, wx - 0.3, wy + 0.02, iV + 0.15, 0.14); vase(g, wx, wy + 0.02, iV + 0.15, 0.2); holzStern(g, wx + 0.3, wy + 0.02, iV + 0.15); }
+    [[3.3, F + 2.0, 'foto'], [4.0, F + 2.4, 'reh'], [3.3, F + 2.8, 'stern'], [4.1, F + 1.6, 'berge']].forEach(([bx3, by3, art]) => bild(g, bx3, by3, iH - 0.03, 0.45, 0.35, art, Math.PI));
+    // Schwibbögen in den Fenstern und hängende Sterne
+    for (const sx of [-1, 1]) { schwibbogen(g, sx * 4.6, F + 1.02, iV + 0.12, 0); haengeSterne(g, sx * 4.6, F + 2.7, iV + 0.2); }
+    for (const fz of [-3.2, 3.2]) { schwibbogen(g, iR - 0.12, F + 1.02, fz, -Math.PI / 2); }
+    // Girlanden mit Lichtern oben an den Wänden
+    girlande(g, V(iL + 0.1, E - 0.35, iH - 0.1), V(iR - 0.1, E - 0.35, iH - 0.1), 0.25, 50);
+    girlande(g, V(iR - 0.1, E - 0.35, iV + 0.1), V(iR - 0.1, E - 0.35, iH - 0.1), 0.25, 46);
+    // Körbe mit Holz und Decken, Laterne, große Pflanzen, Bodenkissen
+    { deko(g, kx + 1.9, F + 0.25, iH - 0.6, 0.7, 0.5, 0.5, C.beige); for (let i = 0; i < 4; i++) { const l = zyl(g, kx + 1.75 + (i % 2) * 0.25, F + 0.55 + Math.floor(i / 2) * 0.1, iH - 0.6, 0.06, 0.06, 0.55, C.dunkel, 7); l.rotation.x = Math.PI / 2; } }
+    { zyl(g, -2.6, F + 0.25, iV + 0.6, 0.3, 0.25, 0.5, C.beige, 12); for (let i = 0; i < 3; i++) deko(g, -2.6, F + 0.55 + i * 0.07, iV + 0.6, 0.45, 0.06, 0.35, [C.creme, C.grau, C.beige][i]); }
+    deko(g, kx - 2.0, F + 0.3, iH - 0.6, 0.4, 0.6, 0.4, C.schwarz); { const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.3, 0.45, 0.42); l.position.set(kx - 2.0, F + 0.3, iH - 0.6); g.add(l); }
+    pflanze(g, iR - 0.5, F, iV + 2.2, 2.0); pflanze(g, -0.2, F, iH - 0.5, 1.6); pflanze(g, iL + 1.6, F, 3.0, 1.5);
+    for (const [px2, pz2, f] of [[kx - 0.6, 1.7, C.creme], [kx + 0.6, 1.75, C.beige]]) { const k2 = kugelW(g, px2, F + 0.15, pz2, 0.32, f); k2.scale.y = 0.14; }
+    // Stehlampen
+    for (const [lx2, lz2] of [[iR - 0.6, 1.4], [iL + 2.0, iV + 2.2]]) { zyl(g, lx2, F + 0.03, lz2, 0.18, 0.2, 0.06, C.dunkel); zyl(g, lx2, F + 0.85, lz2, 0.025, 0.025, 1.7, C.dunkel, 6); zyl(g, lx2, F + 1.8, lz2, 0.2, 0.32, 0.38, lampenMat); }
+
+    // 2. Stock: noch mehr fürs Kinderzimmer
+    regalVoll(g, -2.6, O, iH - 0.25, 2.0, 2.4, Math.PI, sd + 4, C.creme);
+    regalVoll(g, iR - 0.25, O, -3.2, 2.0, 1.6, -Math.PI / 2, sd + 5);
+    regalVoll(g, 4.2, O, iV + 0.25, 1.8, 2.2, 0, sd + 6, C.creme);
+    kommode(g, iR - 0.3, O, 3.6, 1.6, -Math.PI / 2, C.creme);
+    // Spielzelt (Tipi) in Beige mit Kissen und Lichterkette
+    { const tx = -3.2, tz = iV + 2.2;
+      const zelt = new THREE.Mesh(new THREE.ConeGeometry(1.0, 2.2, 6, 1, true), M(C.creme, { side: THREE.DoubleSide })); zelt.position.set(tx, O + 1.1, tz); g.add(zelt);
+      for (let i = 0; i < 6; i++) { const w = i / 6 * Math.PI * 2, st = zyl(g, tx + Math.cos(w) * 0.55, O + 1.3, tz + Math.sin(w) * 0.55, 0.02, 0.02, 2.6, C.braun, 4); st.rotation.z = -Math.cos(w) * 0.45; st.rotation.x = Math.sin(w) * 0.45; }
+      for (const [ox, f] of [[-0.25, C.beige], [0.2, C.hellgrau]]) { const k2 = kugelW(g, tx + ox, O + 0.15, tz + 0.1, 0.3, f); k2.scale.y = 0.15; }
+      weisseLichter(g, kette(V(tx - 0.9, O + 0.3, tz - 0.6), V(tx + 0.9, O + 0.3, tz - 0.6), 0.12, 0.1), 0.6);
+      holzStern(g, tx, O + 2.15, tz - 0.3, 0.12, C.beige); }
+    // Spielzeugkiste, Teddy, Holzpferd, Puppenhaus
+    { deko(g, 2.0, O + 0.3, iV + 0.5, 1.0, 0.6, 0.6, C.beige); deko(g, 2.0, O + 0.62, iV + 0.5, 1.05, 0.05, 0.65, C.braun);
+      kugelW(g, 1.75, O + 0.85, iV + 0.5, 0.18, 0xa98763); kugelW(g, 1.75, O + 1.1, iV + 0.5, 0.13, 0xa98763); for (const sx of [-1, 1]) kugelW(g, 1.75 + sx * 0.1, O + 1.22, iV + 0.5, 0.05, 0xa98763);
+      deko(g, 2.3, O + 0.75, iV + 0.5, 0.3, 0.2, 0.3, C.hellgrau); }
+    { const px3 = iR - 1.4, pz3 = iV + 1.0; deko(g, px3, O + 0.45, pz3, 1.0, 0.9, 0.6, C.creme); const d2 = new THREE.Mesh(dachGeo, M(C.dunkelgrau)); d2.rotation.y = Math.PI / 2; d2.scale.set(0.8, 0.45, 1.1); d2.position.set(px3, O + 0.9, pz3); g.add(d2);
+      for (const [ox, oy] of [[-0.25, 0.3], [0.25, 0.3], [-0.25, 0.65], [0.25, 0.65]]) { const f = new THREE.Mesh(boxGeo, fensterMat); f.scale.set(0.16, 0.16, 0.02); f.position.set(px3 + ox, O + oy, pz3 - 0.31); g.add(f); } }
+    // Kleiderschrank
+    { kasten(g, 1.0, O + 1.1, iH - 0.4, 1.6, 2.2, 0.7, M(C.creme)); deko(g, 1.0, O + 1.1, iH - 0.75, 0.02, 2.0, 0.02, C.beige); for (const sx of [-1, 1]) kugelW(g, 1.0 + sx * 0.1, O + 1.1, iH - 0.77, 0.03, C.dunkel);
+      wGeschenk(g, 0.7, O + 2.2, iH - 0.4, 0.35, C.beige); wGeschenk(g, 1.2, O + 2.2, iH - 0.4, 0.28, C.braun); }
+    // Sitzsack, Kissen, Körbe
+    { const sk = kugelW(g, iR - 2.4, O + 0.3, -1.8, 0.55, C.hellgrau); sk.scale.y = 0.35; kugelW(g, iR - 2.2, O + 0.5, -1.6, 0.18, C.creme); }
+    zyl(g, -0.8, O + 0.2, iH - 0.5, 0.25, 0.2, 0.4, C.beige, 12);
+    // Wandgirlanden, hängende Sterne, Bilder, Schwibbögen oben
+    girlande(g, V(lochR + 0.2, H - 0.35, iH - 0.1), V(iR - 0.1, H - 0.35, iH - 0.1), 0.3, 44);
+    girlande(g, V(lochR + 0.2, H - 0.35, iV + 0.1), V(iR - 0.1, H - 0.35, iV + 0.1), 0.3, 44);
+    for (const sx of [-1, 1]) { schwibbogen(g, sx * 4.6, E + 1.08, iV + 0.12, 0); haengeSterne(g, sx * 4.6, E + 2.8, iV + 0.2, 4); }
+    [[-0.8, E + 1.9, 'reh'], [-0.2, E + 2.1, 'foto'], [-0.5, E + 1.5, 'stern']].forEach(([bx3, by3, art]) => bild(g, bx3, by3, iH - 0.03, 0.4, 0.3, art, Math.PI));
+    pflanze(g, -5.8 + 0.6, O, iV + 0.5, 1.6); baeumchen(g, 5.4, O, 1.8, 1.2); pflanze(g, iR - 0.5, O, 5.6, 1.3);
+    // Treppe: Bilder auch weiter oben, Laterne und Körbe auf dem Absatz
+    ['berge', 'foto', 'stern', 'reh'].forEach((art, i) => bild(g, iL + 0.03, F + 2.5 + i * 0.6, sz0 + 3.3 + i * 1.1, 0.35, 0.28, art, Math.PI / 2));
+    deko(g, iL + 0.6, O + 0.25, iH - 1.2, 0.35, 0.5, 0.35, C.schwarz); { const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.26, 0.36, 0.37); l.position.set(iL + 0.6, O + 0.25, iH - 1.2); g.add(l); }
     // Lampe an der Decke unten und oben
     for (const ly of [E - 0.55, H - 0.5]) { zyl(g, 0.5, ly + 0.25, 0, 0.02, 0.02, 0.5, C.dunkel, 6); zyl(g, 0.5, ly, 0, 0.18, 0.35, 0.3, lampenMat); }
     // Für die Kamera merken
@@ -5879,17 +6004,17 @@ const W_FEUER = [], W_VERKAEUFER = [];
 
   // --- Die Stadt aufbauen: Häuser links und rechts an der Straße, in der Mitte die Läden ---
   let nr = 0;
-  for (const hx of [-66, -44, -22, 22, 44, 66]) {
-    wohnhaus(nr++, W.x + hx, W.z + 20, 1);
-    wohnhaus(nr++, W.x + hx, W.z - 20, -1);
+  for (const hx of [-72, -48, -24, 24, 48, 72]) {
+    wohnhaus(nr++, W.x + hx, W.z + 25, 1);
+    wohnhaus(nr++, W.x + hx, W.z - 25, -1);
   }
   laden('super', W.x, W.z + 18, 1);
   laden('baeckerei', W.x, W.z - 17, -1);
   // Kleiner Platz mit Weihnachtsbaum (weiße Lichter) und Bänken am Ende der Straße
-  tanne(wonder, W.x - 84, W.z, 1.6, false, true);
-  { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x - 84 + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
-  klotz(statisch, wonder, W.x - 84, 4, W.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
-  tanneW(wonder, W.x + 84, W.z - 3, 1.6); tanneW(wonder, W.x + 84, W.z + 3, 1.4);
+  tanne(wonder, W.x - 92, W.z, 1.6, false, true);
+  { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x - 92 + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
+  klotz(statisch, wonder, W.x - 92, 4, W.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
+  tanneW(wonder, W.x + 92, W.z - 3, 1.6); tanneW(wonder, W.x + 92, W.z + 3, 1.4);
 }
 // --- Verkäuferinnen in den Läden ---
 {
@@ -5903,6 +6028,15 @@ const W_FEUER = [], W_VERKAEUFER = [];
     WELT_TEILE.wonderland.push(f.figur);
     LEUTE.push({ f, art: 'verkaufen', phase: v.look * 2 });
   }
+}
+// Fürs Handy: alle weißen Lichter-Punkte mit gleichem Material zu EINEM Teil zusammenfassen
+{
+  wonder.updateMatrixWorld(true);
+  const proMat = new Map(), weg = [], v = new THREE.Vector3();
+  wonder.traverse((o) => { if (!o.isPoints) return; const a = o.geometry.attributes.position; if (!proMat.has(o.material)) proMat.set(o.material, []);
+    for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld); proMat.get(o.material).push(v.x, v.y, v.z); } weg.push(o); });
+  for (const o of weg) { o.parent.remove(o); o.geometry.dispose(); }
+  for (const [mat, pos] of proMat) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wonder.add(new THREE.Points(geo, mat)); }
 }
 zusammenkleben(wonder);
 alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
@@ -6536,7 +6670,7 @@ function weltWechseln(welt) {
   if (welt === weltVon(spieler.pos)) return;
   if (welt === 'sommer') { spieler.pos.set(DREH_TURM.cx, 0, DREH_TURM.cz - DREH_TURM.innen - 8); zeigeBanner('Sommerwelt 🌸', 2000); }
   else if (welt === 'aesthetic') { spieler.pos.set(WOLKEN_TURM.cx, 0, WOLKEN_TURM.cz - WOLKEN_TURM.innen - 10); zeigeBanner('Aesthetic ASMR ☁️', 2000); }
-  else if (welt === 'wonderland') { spieler.pos.copy(W_START); zeigeBanner(meinHaus < 0 ? 'Wonderland ❄️\nLinks bei 🏠 Häuser kannst du dir ein Haus aussuchen' : 'Wonderland ❄️', 3000); }
+  else if (welt === 'wonderland') { spieler.pos.copy(W_START); zeigeBanner(meinHaus < 0 ? 'Winterstadt ❄️\nLinks bei 🏠 Häuser kannst du dir ein Haus aussuchen' : 'Winterstadt ❄️', 3000); }
   else { spieler.pos.copy(START); zeigeBanner('Weihnachtswelt 🎄', 2000); }
   spieler.checkpoint.copy(spieler.pos);
   spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;

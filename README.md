@@ -1,4 +1,4 @@
-# Towerround 🎄
+# Wonder World 🎄
 
 Ein 3D-Parkour-Spiel im Browser: ein Adventskalender mit 24 Türmen im Schnee.
 
