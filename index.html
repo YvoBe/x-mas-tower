@@ -3300,7 +3300,7 @@ function baueFigur(look, ziel = scene) {
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
     gelenk.rotation.z = 0; gelenk.scale.x = 1; knie.rotation.z = 0;
-    gelenk.position.x = seite * 0.125;
+    gelenk.position.x = seite * 0.145;
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
       const seiteM = mat('#ffffff', { map: klotzTextur(look, hoseTyp, beinHaut, false) });
@@ -3318,12 +3318,15 @@ function baueFigur(look, ziel = scene) {
     };
     const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(0.23, OBEN, 0.26, 1 - teilung, 1, obenFarbe, unterFarbe);
+    const ober = block(0.28, OBEN, 0.3, 1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
+    { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
+      for (let k = 0; k < p.count; k++) if (p.getY(k) > -0.01) { p.setX(k, p.getX(k) * 0.82 - seite * 0.012); p.setZ(k, p.getZ(k) * 0.78); }
+      ober.geometry.computeVertexNormals(); }
     ober.rotation.x = -KNICK;                         // Oberschenkel etwas nach vorne
     gelenk.add(ober);
     knie.position.set(0, -OBEN * Math.cos(KNICK), OBEN * Math.sin(KNICK));
-    const unter = block(0.215, UNTEN, 0.245, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
+    const unter = block(0.265, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     unter.geometry.translate(0, -UNTEN / 2, 0);
     unter.rotation.x = KNICK;                         // Unterschenkel wieder zurück: das Knie zeigt leicht nach vorne
     knie.add(unter);
@@ -3335,7 +3338,7 @@ function baueFigur(look, ziel = scene) {
   // Stern auf dem rechten Hosenbein
   if (look.sternAn !== false && hoseTyp !== 'rock') {
     const stern = teil(sternForm(0.075, 0.034), look.stern, { metalness: 0.5, roughness: 0.35 });
-    stern.position.set(0, hoseTyp === 'kurz' ? -0.1 : -0.26, (hoseTyp === 'kurz' ? 0.01 : 0.026) + 0.135); beinL.add(stern);
+    stern.position.set(0, hoseTyp === 'kurz' ? -0.1 : -0.26, (hoseTyp === 'kurz' ? 0.01 : 0.026) + 0.155); beinL.add(stern);
   }
 
   // Hüfte
@@ -3354,7 +3357,7 @@ function baueFigur(look, ziel = scene) {
   huefte.position.y = 0.84;
   figur.add(huefte);
   if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
-    const hoehe = 0.42, oben = rumpfBreite(-0.44) - 0.025, unten = 0.4, falten = 18;   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
+    const hoehe = 0.42, oben = rumpfBreite(-0.44) - 0.025, unten = 0.45, falten = 18;   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -3365,7 +3368,7 @@ function baueFigur(look, ziel = scene) {
       // oben gleiche Form wie der Körper (kissenförmig, flach), nach unten runder und weiter
       const kissen = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), RUMPF_EXP) + Math.pow(Math.abs(Math.sin(w)), RUMPF_EXP), 1 / RUMPF_EXP);
       const k = kissen + (1 - kissen) * Math.min(1, t * 1.5);
-      const tief = 0.56 + (0.78 - 0.56) * Math.min(1, t * 1.5);
+      const tief = 0.56 + (0.88 - 0.56) * Math.min(1, t * 1.2);
       pos.setX(i, x * f * k); pos.setZ(i, z * f * k * tief);
     }
     geo.computeVertexNormals();
