@@ -3792,7 +3792,7 @@ function schaftTextur(farbe) {
 function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
   const typ = look.schuhTyp || 'turnschuh', farbe = look.schuhe;
   const hinten = vorne === 'hinten'; if (hinten) vorne = false;
-  const sternDa = vorne === true && seite < 0 && look.sternAn !== false && hoseTyp !== 'rock' && hoseTyp !== 'jeansshorts';
+  const sternDa = false && vorne === true && seite < 0 && look.sternAn !== false && hoseTyp !== 'rock' && hoseTyp !== 'jeansshorts';
   const key = ['klotz', vorne, hinten, seite, hoseTyp, look.hose, look.umschlag, haut, look.struempfe, typ, farbe, sternDa && look.stern].join('|');
   if (SCHUH_TEX[key]) return SCHUH_TEX[key];
   const W = 256, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -7229,8 +7229,6 @@ const AUSWAHL = [
   { titel: 'Hose', key: 'hoseTyp', worte: [['jeans', 'Jeans'], ['jogging', 'Jogginghose'], ['kurz', 'Kurze Hose'], ['jeansshorts', 'Kurze Jeans'], ['rock', 'Rock']] },
   { titel: 'Farbe Hose / Rock', key: 'hose', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd', '#6e2a35'] },
   { titel: 'Saum und Streifen', key: 'umschlag', farben: ['#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd', '#6e2a35'] },
-  { titel: 'Stern auf der Hose', key: 'sternAn', ohne: ['hoseTyp', ['rock', 'jeansshorts']], worte: [[true, 'Ja'], [false, 'Nein']] },
-  { titel: 'Sternfarbe', key: 'stern', nur: ['sternAn', true], ohne: ['hoseTyp', ['rock', 'jeansshorts']], farben: ['#c9a25a', '#f5f3ee', '#a9c4dc', '#b08a64'] },
   { titel: 'Kopfschmuck', key: 'kopf', worte: [['ohne', 'Nichts'], ['ohrwaermer', 'Ohrwärmer'], ['weihnachtsmuetze', 'Weihnachtsmütze'], ['rentierreif', 'Rentier-Haarreif'], ['ohrenschuetzer', 'Ohrenschützer'], ['haarreif', 'Dicker Haarreif'], ['klappmuetze', 'Mütze mit Ohrenklappen']] },
   { titel: 'Schmuck', key: 'kette', worte: [['ohne', 'Keiner'], ['gold', 'Goldkette'], ['perlen', 'Perlenkette'], ['herz', 'Kette mit Herz']] },
   { titel: 'Handschuhe', key: 'haende', worte: [['ohne', 'Keine'], ['faeustlinge', 'Fäustlinge']] },
