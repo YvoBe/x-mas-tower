@@ -605,7 +605,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', beinForm: 'eckig', handForm: 'lego', kette: 'ohne', groesse: 'mittel' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'schichten', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3461,6 +3461,7 @@ function kopfFormen(geo, mitteY = 0) {   // alle Punkte nach der Kopfform weiten
 // und je nach Frisur nach unten fällt. u = rundherum (0 = vorne), v = vom Scheitel bis zur Spitze.
 const HAAR_STUECKE = {
   glatt:      { name: 'Lang glatt', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.78, seiteLang: 0.66, dicke: 0.035, flare: 0.05, scheitel: 0, rillen: 0.005 },
+  schichten:  { name: 'Lang mit Stufen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.8, seiteLang: 0.7, dicke: 0.035, flare: 0.04, scheitel: 0, rillen: 0.006, volumen: 0.004, einrollen: 0.02, stufen: [[0.5, 0.42], [0.3, 0.24], [0.14, 0.1]] },   // Mittelscheitel, vorne gestufte Strähnen, die nach innen fallen
   wellen:     { name: 'Lange Wellen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.72, seiteLang: 0.6, dicke: 0.04, flare: 0.07, scheitel: 0.38, welle: 0.018, rillen: 0.006, volumen: 0.006 },
   langlocken: { name: 'Lange Locken', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.68, seiteLang: 0.56, dicke: 0.05, flare: 0.09, locken: 0.022, lockenGross: true, scheitel: 0, volumen: 0.01 },
   stufen:     { name: 'Schulterlang', thF: 0.29, thS: 0.5, thB: 0.6, lang: 0.4, seiteLang: 0.32, dicke: 0.035, flare: 0.05, scheitel: 0.38, rillen: 0.007, volumen: 0.005 },
@@ -4701,6 +4702,11 @@ function baueFigur(look, ziel = scene) {
       }
     }
   } else kopf.add(teil(haarFaerben(haarStueck(look.kopf === 'klappmuetze' || look.kopf === 'weihnachtsmuetze' ? { ...stueck, buschel: 0 } : stueck, Object.keys(HAAR_STUECKE).indexOf(frisur) + 1), look.haare), '#ffffff', { ...haarMat, vertexColors: true }));   // die ganze Frisur ist EIN Teil, in mehreren Haarfarben
+  if (stueck.stufen) stueck.stufen.forEach(([lg, sl], i) => {   // Stufen: kürzere Haarschichten darüber, die unten nach innen fallen
+    const geo = haarStueck({ ...stueck, lang: stueck.lang - 0.02 * (i + 1), seiteLang: sl, einrollen: 0.055, flare: 0.06, stufen: null }, 40 + i);
+    const g = 1.02 + i * 0.016; geo.scale(g, 1 + i * 0.006, g);
+    kopf.add(teil(haarFaerben(geo, look.haare), '#ffffff', { ...haarMat, vertexColors: true }));
+  });
   if (stueck.flecht) for (const s of [-1, 1]) {      // Haargummis unten an den Flechtzöpfen
     const gummi = teil(new THREE.TorusGeometry(0.022, 0.009, 8, 14), look.streifen);
     gummi.position.set(s * 0.18, -0.78, 0.2); gummi.rotation.x = Math.PI / 2;
