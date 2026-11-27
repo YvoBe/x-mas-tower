@@ -6063,7 +6063,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
   };
   const stuhl = (g, x, y, z, dreh, farbe = C.braun) => {
     const s = new THREE.Group(); s.position.set(x, y, z); s.rotation.y = dreh; g.add(s);
-    deko(s, 0, 0.45, 0, 0.45, 0.05, 0.45, farbe); deko(s, 0, 0.75, 0.2, 0.45, 0.55, 0.05, farbe);
+    deko(s, 0, 0.45, 0, 0.45, 0.05, 0.45, farbe); deko(s, 0, 0.75, -0.2, 0.45, 0.55, 0.05, farbe);   // Lehne hinten (-z), man sitzt nach vorne (+z)
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) deko(s, sx * 0.19, 0.22, sz * 0.19, 0.05, 0.45, 0.05, farbe);
   };
   const buecher = (g, x, y, z, n, breite = 0.06, dreh = 0) => {   // Bücherreihe in ruhigen Farben
@@ -6194,7 +6194,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
   const teppichEckig = (g, x, y, z, b, t, farbe, rand) => { kasten(g, x, y + 0.02, z, b, 0.025, t, M(rand)); kasten(g, x, y + 0.03, z, b - 0.3, 0.025, t - 0.3, M(farbe)); for (let i = 0; i < Math.round(b / 0.12); i++) for (const sz of [-1, 1]) deko(g, x - b / 2 + 0.06 + i * 0.12, y + 0.015, z + sz * (t / 2 + 0.06), 0.03, 0.01, 0.12, rand); };
 
   // --- Möbel in echter Größe: gebaut in "Menschen-Größe", dann mit K vergrößert (die Figur ist 2,2 m groß) ---
-  const K = 1.3;
+  const K = 1.45;
   const teil = (g, x, y, z, dreh = 0, k = K) => { const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; r.scale.setScalar(k); g.add(r); return r; };
   const spiegelMat = new THREE.MeshStandardMaterial({ color: 0xd3dde3, metalness: 0.1, roughness: 0.08, emissive: 0x9aa7ae, emissiveIntensity: 0.45 });
   const fliesenTextur = (a, b, n = 8) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = b; x.fillRect(0, 0, 128, 128); x.fillStyle = a; const q = 128 / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) x.fillRect(i * q + 1, j * q + 1, q - 2, q - 2); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
@@ -6258,7 +6258,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     deko(r, 0, 0.74, 0, 1.4, 0.05, 0.65, farbe); for (const sx of [-1, 1]) deko(r, sx * 0.66, 0.37, 0, 0.05, 0.74, 0.6, farbe);
     lampeTisch(r, -0.5, 0.77, -0.15, 0.8); buecher(r, 0.35, 0.77, -0.2, 5, 0.05); baeumchen(r, 0.05, 0.77, -0.2, 0.35);
     deko(r, -0.05, 0.775, 0.1, 0.3, 0.01, 0.22, C.creme); zyl(r, 0.55, 0.83, 0.12, 0.04, 0.04, 0.12, C.hellgrau, 8);
-    stuhl(r, 0, 0, 0.55, 0, farbe === C.braun ? C.dunkel : C.braun);
+    stuhl(r, 0, 0, 0.55, Math.PI, farbe === C.braun ? C.dunkel : C.braun);
   };
   const kueche = (r, br, front = C.hellgrau, platte = 0xd8d2c8) => {   // Küchenzeile an der Wand (vorne = +z)
     deko(r, 0, 0.45, 0, br, 0.9, 0.62, front); deko(r, 0, 0.92, 0.02, br + 0.04, 0.05, 0.66, platte);
@@ -6333,18 +6333,10 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
       for (const sx of [-1, 1]) { fensterW(sx * 4.6, ly, vz - 0.01, 1.8, fh); fensterW(sx * 4.2, ly, t / 2 + 0.01, 1.6, fh); for (const fz of [-3.2, 3.2]) fensterW(sx * (b / 2 + 0.01), ly, fz, 1.6, fh, true); }
       for (const sx of [-1, 1]) for (const ox of [-1.18, 1.18]) deko(g, sx * 4.6 + ox, ly, vz - 0.08, 0.5, fh + 0.1, 0.06, C.dunkelgrau);
     }
-    // --- Anbauten: jedes Haus bekommt andere (Türmchen, Seitenflügel, Erker, Garage, Wintergarten) ---
-    const ANBAU_ARTEN = [['turmL', 'fluegelR'], ['erker', 'garageL'], ['fluegelL', 'turmR'], ['wintergarten', 'erker'], ['turmR', 'garageL'], ['fluegelR', 'erker'], ['turmL', 'wintergarten'], ['garageR', 'fluegelL'], ['erker', 'turmR'], ['fluegelL', 'wintergarten'], ['turmL', 'garageR'], ['fluegelR', 'turmL']];
+    // --- Anbauten: jedes Haus bekommt eine Garage und dazu andere Anbauten (Seitenflügel, Erker, Wintergarten) ---
+    const ANBAU_ARTEN = [['garageL', 'fluegelR'], ['erker', 'garageL'], ['fluegelL', 'garageR'], ['wintergarten', 'erker', 'garageR'], ['fluegelR', 'garageL'], ['fluegelR', 'erker', 'garageL'], ['garageL', 'wintergarten'], ['garageR', 'fluegelL'], ['erker', 'garageR'], ['fluegelL', 'wintergarten', 'garageR'], ['fluegelL', 'garageR'], ['fluegelR', 'garageL']];
     for (const art of ANBAU_ARTEN[nr % ANBAU_ARTEN.length]) {
-      if (art === 'turmL' || art === 'turmR') {   // rundes Türmchen an der vorderen Ecke mit Spitzdach
-        const sx = art === 'turmL' ? -1 : 1, tx = sx * (b / 2 + 1.15), tz = vz + 0.9, th = H + 1.2;   // außen an der Ecke (nicht ins Haus hinein)
-        zyl(g, tx, th / 2, tz, 1.7, 1.7, th, wand, 16); fest(tx, th, tz, 2.4, 2.4, th);
-        const sp = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.6, 16), M(DAECHER[nr % DAECHER.length])); sp.position.set(tx, th + 1.8, tz); sp.castShadow = true; g.add(sp);
-        const sn = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.6, 16), M(0xfbfcff)); sn.position.set(tx, th + 2.2, tz); g.add(sn);
-        holzStern(g, tx, th + 3.6, tz, 0.25, C.creme);
-        for (const [ly, fh] of REIHEN) for (const w of [-0.6, 0.6]) { const a = Math.PI * (sx < 0 ? 1.25 : 1.75) + w * sx, fx = tx + Math.cos(a) * 1.72, fz = tz + Math.sin(a) * 1.72; const f = new THREE.Mesh(boxGeo, fensterMat); f.scale.set(0.8, fh * 0.8, 0.06); f.position.set(fx, ly, fz); f.rotation.y = -a - Math.PI / 2; g.add(f); }
-        for (const ey of [E, E2, th]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(1.72, 0.07, 6, 24), M(C.creme)); ring.rotation.x = Math.PI / 2; ring.position.set(tx, ey, tz); g.add(ring); }
-      } else if (art === 'fluegelL' || art === 'fluegelR') {   // Seitenflügel mit eigenem Dach
+      if (art === 'fluegelL' || art === 'fluegelR') {   // Seitenflügel mit eigenem Dach
         const sx = art === 'fluegelL' ? -1 : 1, fb = 3.2, ft = 8, fh = 6.2, fx = sx * (b / 2 + fb / 2 - 0.1), fz = 1.5;
         kasten(g, fx, fh / 2, fz, fb, fh, ft, wand); fest(fx, fh, fz, fb, ft, fh);
         const fd = new THREE.Group(); fd.position.set(fx, 0, fz); fd.rotation.y = Math.PI / 2; g.add(fd); dach(fd, ft, fb, fh, 2.4, DAECHER[(nr + 2) % DAECHER.length], 0.4);
@@ -6708,6 +6700,19 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
       pflanze(g, iR - 0.5, O3, iH - 0.5, 1.8); rundTeppich(3.0, O3, 3.3, 1.2, tf(), tf());
       girlande(g, V(XW + 0.2, H - 0.4, iH - 0.12), V(iR - 0.1, H - 0.4, iH - 0.12), 0.35, 40); }
 
+    // Möbel sind fest: man kann nicht mehr durch sie hindurchlaufen (unsichtbarer Klotz um jedes große Möbelstück)
+    {
+      const mw = g.matrixWorld.clone(); g.matrixWorld.identity();
+      const box = new THREE.Box3();
+      for (const m of g.children) {
+        if (!m.isGroup || Math.abs(m.scale.x - K) > 0.01) continue;
+        m.updateMatrixWorld(true); box.setFromObject(m);
+        const hoch = box.max.y - box.min.y, w = box.max.x - box.min.x - 0.15, d = box.max.z - box.min.z - 0.15;
+        if (hoch < 0.3 || w < 0.25 || d < 0.25) continue;   // Teppiche und ganz kleine Sachen nicht
+        fest((box.min.x + box.max.x) / 2, Math.min(box.max.y, box.min.y + 2.4), (box.min.z + box.max.z) / 2, w, d, Math.min(hoch, 2.4)).moebel = true;
+      }
+      g.matrixWorld.copy(mw); g.updateMatrixWorld(true);
+    }
     // Für die Kamera merken
     W_HAEUSER.push({ nr, x, z, s, scharnier, tuer, tuerKlotz, offen: false, tuerPos: P(0, vz - 1.2), name: HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: aussen, vz, F, TH });
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
