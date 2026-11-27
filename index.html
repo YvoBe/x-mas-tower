@@ -5063,6 +5063,14 @@ function kleidFrei(id) {
 }
 let meineSachen = [];
 try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n]); } catch (e) { meineSachen = []; }
+// Sachen aus den Läden (Supermarkt usw.) sind nach dem Verlassen der Seite wieder weg.
+// Was man im Adventskalender gewonnen hat, bleibt aber.
+{
+  const LADEN_SACHEN = ['milch', 'apfel', 'mandarine', 'kakao', 'brot', 'lebkuchen', 'muffin', 'buch', 'holzauto', 'hase', 'blume', 'tannentopf', 'tasche'];
+  const gewonnen = new Set(Object.keys(GESCHENKE).filter((nr) => geschafft.includes(Number(nr))).map((nr) => GESCHENKE[nr].sache).filter(Boolean));
+  meineSachen = meineSachen.filter((n) => !LADEN_SACHEN.includes(n) || gewonnen.has(n));
+  try { localStorage.setItem('turmparkour-sachen', JSON.stringify(meineSachen)); } catch (e) {}
+}
 let inDerHand = null;
 try { inDerHand = localStorage.getItem('turmparkour-hand'); } catch (e) {}
 if (!meineSachen.includes(inDerHand)) inDerHand = null;
