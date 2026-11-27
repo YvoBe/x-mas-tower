@@ -3146,8 +3146,8 @@ function gesichtTextur(look, mass) {
   // Augen
   const schoen = augen === 'schoen';   // große schöne Augen mit Lidschatten, Lidstrich und vielen Wimpern
   // Kleinere, offene Augen: klein (rund), mandel (schmal), sanft (klein mit zarten Wimpern), punkt (ganz einfach)
-  const KLEIN = { klein: 0.7, mandel: 0.78, sanft: 0.72, punkt: 0.6 }[augen] || 1;
-  const rx = schoen ? 0.052 : 0.046, ry = (schoen ? 0.035 : 0.03) * (augen === 'mandel' ? 0.72 : 1);
+  const KLEIN = { klein: 0.7, mandel: 0.9, sanft: 0.72, punkt: 0.6 }[augen] || 1;
+  const rx = schoen ? 0.052 : 0.046, ry = (schoen ? 0.035 : 0.03) * (augen === 'mandel' ? 0.78 : 1);
   for (const s of [-1, 1]) bei(s * 0.085, 0.015, () => {
     g.rotate(s * -0.06);              // außen etwas höher
     if (schoen) g.scale(0.78, 0.78);   // schöne Augen nicht so groß (Wunsch)
@@ -4335,7 +4335,7 @@ function baueFigur(look, ziel = scene) {
   huefte.position.y = 0.84;
   figur.add(huefte);
   if (hoseTyp === 'rock') {        // Faltenrock: echtes Teil, wird nach unten weiter, ringsum Falten
-    const hoehe = 0.27, oben = rumpfBreite(-0.44) - 0.025, unten = 0.4, falten = 18;   // kurzer Rock   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
+    const hoehe = 0.27, oben = rumpfBreite(-0.44) - 0.025, unten = 0.32, falten = 18;   // kurzer Rock, steht nicht so weit raus   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -4346,7 +4346,7 @@ function baueFigur(look, ziel = scene) {
       // oben gleiche Form wie der Körper (kissenförmig, flach), nach unten runder und weiter
       const kissen = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), RUMPF_EXP) + Math.pow(Math.abs(Math.sin(w)), RUMPF_EXP), 1 / RUMPF_EXP);
       const k = kissen + (1 - kissen) * Math.min(1, t * 1.5);
-      const tief = 0.56 + (0.85 - 0.56) * Math.min(1, t * 1.2);
+      const tief = 0.56 + (0.74 - 0.56) * Math.min(1, t * 1.2);
       pos.setX(i, x * f * k); pos.setZ(i, z * f * k * tief);
     }
     geo.computeVertexNormals();
