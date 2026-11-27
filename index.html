@@ -1056,6 +1056,16 @@ function tonStart() {
   return tonKontext;
 }
 addEventListener('pointerdown', tonStart); addEventListener('keydown', tonStart); addEventListener('touchstart', tonStart);
+// Pokal-Melodie: kleines Glockenspiel nach oben (ohne Sounddatei)
+function pokalTon() {
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  [523, 659, 784, 1047, 784, 1047].forEach((f, i) => {
+    const t = a.currentTime + i * 0.14 + (i > 3 ? 0.1 : 0), o = a.createOscillator(), g = a.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.22, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.55);
+  });
+}
 // Jeder Squishy hat sein eigenes Geräusch
 function squishTon(art) {
   // Die meisten klingen wie das Toastbrot (knuspriges "knirsch"), jeder nur ein bisschen höher oder tiefer.
@@ -5066,6 +5076,7 @@ const SACHEN = {
   blume: { emoji: '🌺', name: 'Weihnachtsstern' },
   tannentopf: { emoji: '🌲', name: 'Tännchen im Topf' },
   tasche: { emoji: '👜', name: 'Tasche' },
+  pokal: { emoji: '🏆', name: 'Pokal: Bester Einkäufer der Stadt' },
 };
 // Adventskalender: hinter jedem Türchen ein Geschenk, jedes dritte Türchen ist Kleidung. sache = zum In-die-Hand-Nehmen, kleid = neu in der Umkleide
 const GESCHENKE = {
@@ -5095,8 +5106,9 @@ let meineSachen = [];
 try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n]); } catch (e) { meineSachen = []; }
 // Sachen aus den Läden (Supermarkt usw.) sind nach dem Verlassen der Seite wieder weg.
 // Was man im Adventskalender gewonnen hat, bleibt aber.
+const LADEN_SACHEN = ['milch', 'apfel', 'mandarine', 'kakao', 'brot', 'lebkuchen', 'muffin', 'buch', 'holzauto', 'hase', 'blume', 'tannentopf', 'tasche'];
+const eingekauft = new Set();   // was man bei diesem Besuch schon aus den Läden mitgenommen hat (für den Pokal)
 {
-  const LADEN_SACHEN = ['milch', 'apfel', 'mandarine', 'kakao', 'brot', 'lebkuchen', 'muffin', 'buch', 'holzauto', 'hase', 'blume', 'tannentopf', 'tasche'];
   const gewonnen = new Set(Object.keys(GESCHENKE).filter((nr) => geschafft.includes(Number(nr))).map((nr) => GESCHENKE[nr].sache).filter(Boolean));
   meineSachen = meineSachen.filter((n) => !LADEN_SACHEN.includes(n) || gewonnen.has(n));
   try { localStorage.setItem('turmparkour-sachen', JSON.stringify(meineSachen)); } catch (e) {}
@@ -5254,6 +5266,14 @@ function handDingBauen(name) {
       teil(new THREE.SphereGeometry(0.015, 8, 6), weiss, 0, 0.33, 0);
       break;
     }
+    case 'pokal': {   // goldener Pokal: Fuß, Stiel, Becher, zwei Henkel, Stern oben
+      zy(0.08, 0.09, 0.04, M(0x4a3326), 0, 0.02, 0, 16); zy(0.06, 0.07, 0.03, gold, 0, 0.055, 0, 16);
+      zy(0.015, 0.025, 0.1, gold, 0, 0.12, 0, 12);
+      zy(0.09, 0.035, 0.14, gold, 0, 0.24, 0, 20);
+      for (const s of [-1, 1]) { const h = teil(new THREE.TorusGeometry(0.045, 0.01, 6, 14, Math.PI), gold, s * 0.095, 0.25, 0); h.rotation.z = s * Math.PI / 2; }
+      const st = teil(new THREE.CylinderGeometry(0.035, 0.035, 0.012, 5), gold, 0, 0.34, 0); st.rotation.x = Math.PI / 2;
+      break;
+    }
     case 'tasche': {
       teil(new THREE.BoxGeometry(0.24, 0.18, 0.08), M(0x8a6446), 0, 0.09, 0); const h = teil(new THREE.TorusGeometry(0.07, 0.01, 6, 14, Math.PI), M(0x4a3326), 0, 0.18, 0);
       teil(new THREE.BoxGeometry(0.03, 0.03, 0.085), gold, 0, 0.14, 0);
@@ -5359,6 +5379,15 @@ function sacheBekommen(name) {
   inDerHand = name;
   try { localStorage.setItem('turmparkour-hand', name); } catch (e) {}
   handAktualisieren(); leisteZeigen();
+}
+// Einkaufen in der Winterstadt: wer bei einem Besuch alles aus allen Läden geholt hat, bekommt einen Pokal
+function einkaufZaehlen(sache, text) {
+  eingekauft.add(sache);
+  const n = eingekauft.size, alle = LADEN_SACHEN.length;
+  if (n < alle) { zeigeBanner(`${text} eingepackt! 🛍️\n${n} von ${alle} Sachen – sammle alle für den Pokal 🏆`, 2200); return; }
+  const schonGehabt = meineSachen.includes('pokal');
+  sacheBekommen('pokal'); pokalTon();
+  zeigeBanner(schonGehabt ? '🏆 Wieder alles eingekauft!\nDu bleibst Bester Einkäufer der Stadt!' : '🏆 Du hast einen Pokal bekommen!\nBester Einkäufer der Stadt – du hast alles aus allen Läden!', 6000);
 }
 // Wer schon Türchen geschafft hat (vor dieser Neuerung), bekommt die Geschenke nachträglich
 for (const nr of geschafft) {
@@ -6808,7 +6837,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     const innenWurzel = new THREE.Group(); wonder.add(innenWurzel);
     { const gi = new THREE.Group(); gi.position.copy(g.position); gi.rotation.y = g.rotation.y; innenWurzel.add(gi); g = gi; }
     const iV = vz + D, iH = t / 2 - D, iL = -b / 2 + D, iR = b / 2 - D;
-    const mitnehmen = (lx, lz, sache, text) => { const [wx, wz] = P(lx, lz); W_AKTIONEN.push({ x: wx, z: wz, r: 1.8, text: '🛒 ' + text + ' mitnehmen', tun: () => { sacheBekommen(sache); zeigeBanner(text + ' eingepackt! 🛍️', 1600); } }); };
+    const mitnehmen = (lx, lz, sache, text) => { const [wx, wz] = P(lx, lz); W_AKTIONEN.push({ x: wx, z: wz, r: 1.8, text: '🛒 ' + text + ' mitnehmen', tun: () => { sacheBekommen(sache); einkaufZaehlen(sache, text); } }); };
     let look = Math.floor(rz() * 7);
     const mitarbeiter = (lx, lz, blickNachVorne = true) => { const [wx, wz] = P(lx, lz); W_VERKAEUFER.push({ x: wx, z: wz, blick: (s < 0 ? Math.PI : 0) + (blickNachVorne ? Math.PI : 0), look: look++ }); };
     // großes Regal (2,7 m hoch) mit Waren; quer = entlang z
