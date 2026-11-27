@@ -14,7 +14,7 @@
     --pad-edge: rgba(255, 255, 255, 0.85);
     --pop: #1f2a4a;
     --gold: #f2c230;
-    --rosa: #e7a3b7;
+    --rosa: #2f5a40;   /* dunkelgrün (früher rosa) */
     --font: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
     color-scheme: light;
   }
@@ -204,7 +204,7 @@
     display: grid; place-items: center;
     cursor: pointer;
   }
-  .welten { pointer-events: auto; display: flex; padding: 3px; gap: 3px; border-radius: 999px; background: var(--panel); border: 3px solid var(--rosa); }
+  .welten { display: none !important; /* Welten wechselt man jetzt mit dem Bus */ pointer-events: auto; padding: 3px; gap: 3px; border-radius: 999px; background: var(--panel); border: 3px solid var(--rosa); }
   .welten button { font: 800 14px var(--font); color: var(--ink); background: transparent; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
   .welten button[aria-pressed="true"] { background: var(--ink); color: #fff; }
   @media (max-height: 520px) { .welten button { font-size: 12px; padding: 4px 9px; } }
@@ -214,6 +214,12 @@
   /* Mitspielen */
   #codeKnopf { pointer-events: auto; border: 3px solid var(--rosa); cursor: pointer; font-family: var(--font); color: var(--ink); }
   #codeKnopf .code { letter-spacing: 0.12em; }
+  #ladeSchirm { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(180deg, #dbe8f4, #f6f1e7); color: #1f2a4a; font: 700 20px var(--font, sans-serif); }
+  #ladeSchirm[hidden] { display: none; }
+  #ladeSchirm .flocke { font-size: 54px; animation: ladeDreh 2.4s linear infinite; }
+  @keyframes ladeDreh { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #ladeSchirm .flocke { animation: none; } }
   #musikKnopf { pointer-events: auto; cursor: pointer; font-family: var(--font); color: var(--ink); border: 3px solid transparent; }
   #musikKnopf[aria-pressed="false"] { opacity: 0.6; }
   [hidden] { display: none !important; }
@@ -268,7 +274,7 @@
   #bereiche button .symbol { display: block; font-size: 22px; margin-bottom: 2px; line-height: 1; }
   #bereiche button .symbol svg { display: block; margin: 0 auto; color: var(--ink); width: 1.2em; height: 1.2em; }
   .worte button.zu .schloss { font-size: 0.95em; color: var(--ink); line-height: 1; }
-  #bereiche button.an { background: var(--rosa); border-color: var(--rosa); }
+  #bereiche button.an { background: var(--rosa); border-color: var(--rosa); color: #fff; }
   #optionen { flex: 1; overflow-y: auto; padding: 4px 16px 12px 14px; display: flex; flex-direction: column; gap: 12px; }
   #optionen h3 { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6380; }
   .farben, .worte { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -578,6 +584,7 @@
 <button class="touch" id="jump" aria-label="Springen">SPRING</button>
 <button class="touch" id="sprint" aria-pressed="false" aria-label="Sprinten an oder aus">RENN</button>
 
+<div id="ladeSchirm"><div class="flocke">❄️</div><p>Wonder World lädt …</p></div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 addEventListener('error', (e) => { if (document.body) fehlerMelden(e.error || e.message); });   // Fehler unten klein anzeigen (siehe fehlerMelden)
@@ -1649,13 +1656,14 @@ function tuerchenZuBauen(T) {   // große geschlossene Holztür mit Schleife und
   T.tuerZu = { g, k };
 }
 function tuerchenPruefen() {
-  const offen = heuteOffenBis();
+  const offen = heuteOffenBis(); let neu = false;
   for (const T of TUERME) {
     if (T.normal || T.welt || !(T.nr >= 1 && T.nr <= 24)) continue;
-    const zu = T.nr > offen && !geschafft.includes(T.nr);
-    if (zu && !T.tuerZu) tuerchenZuBauen(T);
+    const zu = T.nr > offen;   // auch schon geschaffte Türme bleiben bis zu ihrem Tag zu
+    if (zu && !T.tuerZu) { tuerchenZuBauen(T); neu = true; }
     else if (!zu && T.tuerZu) { scene.remove(T.tuerZu.g); T.tuerZu.k.aus = true; T.tuerZu = null; }
   }
+  if (neu && alleKloetze !== statisch) alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
   return offen;
 }
 tuerchenPruefen();
@@ -2443,7 +2451,26 @@ function busHalt(welt) {   // wo in jeder Welt die Haltestelle ist
   if (welt === 'wonderland') return { x: WONDER.x + 60, z: WONDER.z + 8.6 };
   return null;
 }
+// Großes Schild über jeder Haltestelle, damit man weiß: hier kommt man in andere Welten
+const busSchilder = {};
+function busSchildBauen(welt) {
+  const h = busHalt(welt); if (!h) return;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,253,248,0.94)'; x.strokeStyle = '#2f5a40'; x.lineWidth = 12;
+  x.beginPath(); if (x.roundRect) x.roundRect(8, 8, 496, 200, 40); else x.rect(8, 8, 496, 200); x.fill(); x.stroke();
+  x.beginPath(); x.moveTo(226, 206); x.lineTo(256, 248); x.lineTo(286, 206); x.closePath(); x.fillStyle = '#2f5a40'; x.fill();
+  x.fillStyle = '#2f5a40'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = '800 54px "Baloo 2", sans-serif'; x.fillText('🚌 Andere Welten', 256, 72);
+  x.font = '700 34px "Baloo 2", sans-serif'; x.fillStyle = '#4a3a2c'; x.fillText('Stell dich hierher und', 256, 132); x.fillText('such dir eine Welt aus', 256, 172);
+  const t = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+  sp.scale.set(6.4, 3.2, 1); sp.position.set(h.x, 5.4, h.z); sp.renderOrder = 3; scene.add(sp);
+  busSchilder[welt] = sp;
+}
 function busPruefen(pos) {
+  if (!busSchilder.winter) busSchildBauen('winter');
+  if (!busSchilder.aesthetic && BUS_AE.tuer.lengthSq() > 0) busSchildBauen('aesthetic');
+  if (!busSchilder.wonderland && stadtGebaut) busSchildBauen('wonderland');
   if (busFaehrt) return;
   const welt = weltVon(pos), h = busHalt(welt);
   const da = h && Math.hypot(pos.x - h.x, pos.z - h.z) < 4.8 && pos.y < 2 ? welt : null;
@@ -5739,6 +5766,17 @@ function update(dt) {
   s.pos.z += s.vel.z * dt; seitlichWegschieben('z');
   // Turmwände sind dicht: wer im Turm ist, kommt nur durch die Tür (oder oben) wieder raus.
   // (Sonst konnte man an den Ecken durch die Wand geschoben werden.)
+  // Häuser in der Winterstadt genauso: wer drin ist, kommt nur durch die Haustür raus
+  const HH = s.imHaus;
+  if (HH) {
+    const lx = (s.pos.x - HH.x) * HH.s, lz = (s.pos.z - HH.z) * HH.s, gx = HH.hb - RADIUS, gz = HH.ht - RADIUS;
+    const tuer = Math.abs(lx) < HH.tb / 2 - RADIUS + 0.1 && s.pos.y < HH.th;
+    const nah = Math.abs(lx) < HH.hb + 1.5 && Math.abs(lz) < HH.ht + 1.5;   // nach Bus/Neustart nicht zurückziehen
+    if (nah) {
+    const nx = tuer && lz < -gz ? lx : Math.max(-gx, Math.min(gx, lx));
+    const nz = Math.min(gz, tuer ? lz : Math.max(-gz, lz));
+    s.pos.x = HH.x + nx * HH.s; s.pos.z = HH.z + nz * HH.s; }
+  }
   const TT = s.turm;
   if (TT && s.pos.y < TT.hoehe) {
     const g = TT.innen - RADIUS;
@@ -5767,6 +5805,8 @@ function update(dt) {
   }
   if (s.amBoden) s.coyote = 0.12;
 
+  s.imHaus = null;
+  for (const q of HAEUSER) { const I = q.innen; if (!I) continue; const lx = (s.pos.x - I.x) * I.s, lz = (s.pos.z - I.z) * I.s; if (Math.abs(lx) < I.hb && Math.abs(lz) < I.ht && s.pos.y < q.h) { s.imHaus = I; break; } }
   // 4) In welchem Turm bin ich? Beim Reingehen ist der Eingang der erste Checkpoint.
   const T = turmBei(s.pos);
   for (const t of TUERME) if (t.deckel) t.deckel.visible = t !== T;
@@ -5896,6 +5936,7 @@ function update(dt) {
   hoehe.textContent = T ? `${T.normal ? T.name : 'Turm ' + T.nr} · ${Math.max(0, Math.round(s.pos.y))} m` : imSommer(s.pos) ? 'Sommerwiese' : weltVon(s.pos) === 'aesthetic' ? 'Auf der Wolke' : weltVon(s.pos) === 'wonderland' ? 'Winterstadt' : 'Draußen';
   fortschrittZeigen(T, s);
   const welt = weltVon(s.pos);
+  if (welt === 'wonderland' && !stadtGebaut) baueWinterstadt();   // z. B. mit dem Bus angekommen
   if (welt !== zeigeWelt) weltZeigen(welt);
 }
 
@@ -6282,7 +6323,9 @@ const W_AKTIONEN = [];   // Stellen, an denen ein Knopf erscheint (Sachen mitneh
 const W_START = new THREE.Vector3(WONDER.x, 0, WONDER.z - 3);
 const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
 let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
-{
+// Die Winterstadt wird erst gebaut, wenn man sie zum ersten Mal besucht (damit das Spiel schneller startet)
+let stadtGebaut = false;
+function baueStadtTeile() {
   const W = WONDER, rnd = zufall(4711);
   const C = {   // Farben der Stadt
     beige: 0xd9cbb5, hell: 0xeee6d8, creme: 0xf6f1e7, braun: 0x8a6446, dunkel: 0x4a3326, schoko: 0x5b3a24,
@@ -7251,7 +7294,8 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     // Für die Kamera merken
     W_HAEUSER.push({ nr, x, z, s, scharnier, tuer, tuerKlotz, offen: false, tuerPos: P(0, vz - 1.2), name: villa ? 'Weiße Villa' : HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: aussen, vz, F, TH });
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
-    HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H, etage: E, etagen: [F, E, E2], unten: F, waende: innenK });
+    HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H, etage: E, etagen: [F, E, E2], unten: F, waende: innenK,
+      innen: { x, z, s, hb: b / 2 - D, ht: t / 2 - D, tb: TB, th: F + TH } });   // für dichte Wände: drinnen bleibt man drin (außer durch die Tür)
     punkteZusammen(innenWurzel); zusammenkleben(innenWurzel); innenWurzel.traverse((o) => { o.userData.eigen = true; });
     W_INNEN.push({ grp: innenWurzel, x, z });
   }
@@ -7904,7 +7948,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
   }
 }
 // --- Verkäuferinnen in den Läden ---
-{
+function verkaeuferBauen() {
   const LOOKS = [
     { figurTyp: 'maedchen', frisur: 'dutt', haare: '#5b3a24', haut: '#f1c9a5', oberteilTyp: 'strickpulli', pulli: '#d9cbb5', hoseTyp: 'jeans', hose: '#4a3326', schal: 'schal', sternAn: false, mund: 'laecheln' },
     { figurTyp: 'junge', frisur: 'wuschel', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'pulli', pulli: '#f5f3ee', streifen: '#8a6446', hoseTyp: 'jeans', hose: '#45474a', kopf: 'weihnachtsmuetze', sternAn: false },
@@ -7926,15 +7970,30 @@ function punkteZusammen(gruppe) {
   for (const o of weg) { o.parent.remove(o); o.geometry.dispose(); }
   for (const [mat, pos] of proMat) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gruppe.add(new THREE.Points(geo, mat)); }
 }
-punkteZusammen(wonder);
-zusammenkleben(wonder);
-alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
+function baueWinterstadt() {
+  if (stadtGebaut) return;
+  stadtGebaut = true;
+  const t0 = performance.now();
+  baueStadtTeile(); verkaeuferBauen();
+  punkteZusammen(wonder);
+  zusammenkleben(wonder);
+  alleKloetze = statisch.concat(...TUERME.map((T) => T.platten));
+  tuerenStellen();
+  weltZeigen(zeigeWelt);
+  console.log('Winterstadt gebaut in', Math.round(performance.now() - t0), 'ms');
+}
+// Mit kurzer Anzeige bauen (damit man sieht, dass etwas passiert), danach weitermachen
+function mitStadt(weiter) {
+  if (stadtGebaut) { weiter(); return; }
+  const z = document.getElementById('ladeSchirm'); z.querySelector('p').textContent = 'Die Winterstadt wird aufgebaut …'; z.hidden = false;
+  requestAnimationFrame(() => setTimeout(() => { baueWinterstadt(); z.hidden = true; weiter(); }, 30));
+}
 
 // --- Dein Haus: aussuchen, auf- und abschließen ---
 const hausKnopf = document.getElementById('hausKnopf'), hausPanel = document.getElementById('hausPanel'), aktionKnopf = document.getElementById('aktionKnopf');
 let meinHaus = -1, hausZu = false;
 try { meinHaus = Number(localStorage.getItem('wonderland-haus') ?? -1); hausZu = localStorage.getItem('wonderland-zu') === '1'; } catch (e) {}
-if (!(meinHaus >= 0 && meinHaus < W_HAEUSER.length)) meinHaus = -1;
+if (!(meinHaus >= 0 && meinHaus < 12)) meinHaus = -1;   // 12 Häuser (die Stadt wird erst später gebaut)
 const deinSchild = (() => {   // schwebendes Schild "Dein Haus" über deiner Tür
   const c = document.createElement('canvas'); c.width = 256; c.height = 80; const x = c.getContext('2d');
   x.fillStyle = '#4a3326'; x.beginPath(); x.moveTo(24, 4); x.arcTo(252, 4, 252, 76, 20); x.arcTo(252, 76, 4, 76, 20); x.arcTo(4, 76, 4, 4, 20); x.arcTo(4, 4, 252, 4, 20); x.closePath(); x.fill();   // runde Ecken (ohne roundRect, das kennen ältere iPads nicht)
@@ -8572,7 +8631,7 @@ document.getElementById('startLos').addEventListener('click', () => startSchlies
 document.getElementById('startWinter').addEventListener('click', () => startSchliessen(false));
 document.getElementById('startSommer')?.addEventListener('click', () => startSchliessen(true));
 document.getElementById('startAesthetic').addEventListener('click', () => startSchliessen('aesthetic'));
-document.getElementById('startWonder').addEventListener('click', () => startSchliessen('wonderland'));
+document.getElementById('startWonder').addEventListener('click', () => mitStadt(() => startSchliessen('wonderland')));
 document.getElementById('startFigur').addEventListener('click', () => { startSchliessen(); editorOeffnen(); });
 addEventListener('keydown', (e) => { if (startOffen && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); startSchliessen(); } });
 document.getElementById('startLos').focus();
@@ -8608,7 +8667,7 @@ function weltWechseln(welt) {
 weltWinter.addEventListener('click', () => weltWechseln(false));
 weltSommer?.addEventListener('click', () => weltWechseln(true));
 weltAesthetic.addEventListener('click', () => weltWechseln('aesthetic'));
-weltWonder.addEventListener('click', () => weltWechseln('wonderland'));
+weltWonder.addEventListener('click', () => mitStadt(() => weltWechseln('wonderland')));
 weltZeigen('winter');
 
 // Fürs Handy: alle festen Teile direkt in der Szene (Turmwände, Dächer, Tannen an den Türen ...)
@@ -8671,8 +8730,10 @@ function fehlerMelden(e) {
 renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); fehlerSchon = 0; fehlerMelden('Die Grafik ist kurz ausgefallen (zu viel fürs Gerät). Sie startet gleich neu.'); });
 renderer.domElement.addEventListener('webglcontextrestored', () => location.reload());
 renderer.setAnimationLoop(() => { try { schleife(); } catch (e) { fehlerMelden(e); try { renderer.render(scene, startOffen ? startKamera : camera); } catch (e2) {} } });
+let ersterFrame = true;
 function schleife() {
   const dt = Math.min(uhr.getDelta(), 0.05);
+  if (ersterFrame) { ersterFrame = false; requestAnimationFrame(() => { document.getElementById('ladeSchirm').hidden = true; }); }
   if (editor.offen) {
     zeit += dt;
     editorFigur.figur.rotation.y += (editor.dreh - editorFigur.figur.rotation.y) * Math.min(1, dt * 8);
