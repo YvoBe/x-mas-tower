@@ -1619,6 +1619,47 @@ PLAN.forEach((reihe, r) => reihe.forEach((nr, c) => {
   baueHuelle(T);
   TUERME.push(T);
 }));
+// ---------- Adventskalender nach echtem Datum (deutsche Zeit) ----------
+// Am 1. Dezember geht Türchen 1 auf, am 2. Dezember Türchen 2 und so weiter. Vorher sind alle Türen zu.
+// Zum Ausprobieren: hinten an die Adresse ?tag=5 schreiben, dann sind die Türchen 1 bis 5 offen.
+function heuteOffenBis() {
+  try { const t = new URLSearchParams(location.search).get('tag'); if (t !== null && t !== '' && !isNaN(+t)) return Math.max(0, Math.min(24, Math.floor(+t))); } catch (e) {}
+  try {
+    const teile = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+    const monat = +teile.find((q) => q.type === 'month').value, tag = +teile.find((q) => q.type === 'day').value;
+    if (monat === 12) return Math.min(24, tag);
+    if (monat === 1) return 24;   // nach Weihnachten bleibt alles offen
+    return 0;
+  } catch (e) { return 0; }
+}
+function tuerchenZuBauen(T) {   // große geschlossene Holztür mit Schleife und Schild "öffnet am ..."
+  const r = T.innen + WAND / 2, z = T.cz - r - 0.08, g = new THREE.Group(); scene.add(g);
+  for (const s of [-1, 1]) {
+    deko(g, T.cx + s * TUER_BREIT / 4, TUER_HOCH / 2, z, TUER_BREIT / 2 - 0.04, TUER_HOCH, 0.3, 0x5b3a24);
+    for (const py of [1.4, 3.9]) deko(g, T.cx + s * TUER_BREIT / 4, py, z - 0.17, TUER_BREIT / 2 - 0.6, 1.8, 0.05, 0x4a3326);
+    deko(g, T.cx + s * 0.35, 2.7, z - 0.2, 0.12, 0.35, 0.08, 0xd9cbb5);   // Griffe
+  }
+  deko(g, T.cx, TUER_HOCH / 2, z - 0.22, 0.4, TUER_HOCH, 0.04, 0xf6f1e7);   // Schleifenband senkrecht
+  deko(g, T.cx, 2.7, z - 0.23, TUER_BREIT, 0.4, 0.04, 0xf6f1e7);          // und waagerecht
+  for (const s of [-1, 1]) { const sl = deko(g, T.cx + s * 0.45, 3.15, z - 0.26, 0.8, 0.45, 0.06, 0xf6f1e7); sl.rotation.z = s * 0.5; }
+  deko(g, T.cx, 3.0, z - 0.27, 0.25, 0.25, 0.08, 0xd9cbb5);
+  const schild = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: schildTextur(`ab ${T.nr}. Dez.`) }));
+  schild.rotation.y = Math.PI; schild.position.set(T.cx, 1.0, z - 0.25); g.add(schild);
+  const k = klotz(statisch, scene, T.cx, TUER_HOCH, T.cz - r, TUER_BREIT, WAND + 0.4, 0, { dicke: TUER_HOCH, unsichtbar: true });
+  T.tuerZu = { g, k };
+}
+function tuerchenPruefen() {
+  const offen = heuteOffenBis();
+  for (const T of TUERME) {
+    if (T.normal || T.welt || !(T.nr >= 1 && T.nr <= 24)) continue;
+    const zu = T.nr > offen && !geschafft.includes(T.nr);
+    if (zu && !T.tuerZu) tuerchenZuBauen(T);
+    else if (!zu && T.tuerZu) { scene.remove(T.tuerZu.g); T.tuerZu.k.aus = true; T.tuerZu = null; }
+  }
+  return offen;
+}
+tuerchenPruefen();
+setInterval(tuerchenPruefen, 60000);   // um Mitternacht geht das nächste Türchen von allein auf
 // Die andere Seite: ein normaler Turm, den man immer spielen kann, mit drehenden Plattformen
 // Die Sommerwelt liegt weit weg von der Weihnachtswelt, damit man sie nicht sieht
 const SOMMER = { x: 0, z: 2400 };
@@ -5209,7 +5250,20 @@ function zeigeBanner(text, ms = 3000) {
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => { banner.hidden = true; }, ms);
 }
-zeigeBanner('Lauf in einen Turm! 🎄', 3500);
+zeigeBanner(heuteOffenBis() > 0 ? 'Lauf in einen Turm! 🎄' : 'Am 1. Dezember geht das erste Türchen auf! 🎄', 3500);
+// Wer vor einer geschlossenen Tür steht, sieht, wann sie aufgeht
+let tuerHinweisZeit = 0;
+setInterval(() => {
+  if (typeof spieler === 'undefined' || startOffen) return;
+  for (const T of TUERME) {
+    if (!T.tuerZu) continue;
+    const r = T.innen + WAND / 2;
+    if (Math.abs(spieler.pos.x - T.cx) < TUER_BREIT / 2 + 0.8 && spieler.pos.z < T.cz - r + 0.2 && spieler.pos.z > T.cz - r - 2.2 && spieler.pos.y < TUER_HOCH && performance.now() - tuerHinweisZeit > 4000) {
+      tuerHinweisZeit = performance.now();
+      zeigeBanner(`Türchen ${T.nr} ist noch zu 🎁\nEs geht am ${T.nr}. Dezember auf`, 2500);
+    }
+  }
+}, 300);
 
 // Anzeige oben: wie viele Checkpoints es gibt, welche schon geschafft sind und wie weit es bis zum Ziel ist
 const fortschritt = document.getElementById('fortschritt');
