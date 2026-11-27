@@ -6225,7 +6225,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
   const teppichEckig = (g, x, y, z, b, t, farbe, rand) => { kasten(g, x, y + 0.02, z, b, 0.025, t, M(rand)); kasten(g, x, y + 0.03, z, b - 0.3, 0.025, t - 0.3, M(farbe)); for (let i = 0; i < Math.round(b / 0.12); i++) for (const sz of [-1, 1]) deko(g, x - b / 2 + 0.06 + i * 0.12, y + 0.015, z + sz * (t / 2 + 0.06), 0.03, 0.01, 0.12, rand); };
 
   // --- Möbel in echter Größe: gebaut in "Menschen-Größe", dann mit K vergrößert (die Figur ist 2,2 m groß) ---
-  const K = 1.45;
+  const K = 1.6;
   const teil = (g, x, y, z, dreh = 0, k = K) => { const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; r.scale.setScalar(k); g.add(r); return r; };
   const spiegelMat = new THREE.MeshStandardMaterial({ color: 0xd3dde3, metalness: 0.1, roughness: 0.08, emissive: 0x9aa7ae, emissiveIntensity: 0.45 });
   const fliesenTextur = (a, b, n = 8) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = b; x.fillRect(0, 0, 128, 128); x.fillStyle = a; const q = 128 / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) x.fillRect(i * q + 1, j * q + 1, q - 2, q - 2); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
@@ -6502,35 +6502,37 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     const vorhang = sf();
 
     // ===== Treppen und Decken =====
-    const SN = 18, SR = (E - F) / SN, ST = 0.44, sx0 = iL + 0.6, sz0 = iV + 1.1, sEnde = sz0 + SN * ST;
+    const SN = 18, SR = (E - F) / SN, ST = 0.44, SB = 1.5, sx0 = iL + SB / 2, sz0 = iV + 1.1, sEnde = sz0 + SN * ST;
     for (let i = 0; i < SN; i++) {   // Treppe 1: Erdgeschoss -> 1. Stock (linke Wand, nach hinten hoch)
       const oben = F + (i + 1) * SR, lz = sz0 + (i + 0.5) * ST;
-      kasten(g, sx0, oben - 0.06, lz, 1.2, 0.12, ST, M(C.braun)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, 1.2, oben - 0.12 - F, ST - 0.02, M(C.creme));
-      deko(g, sx0, oben + 0.004, lz, 0.8, 0.008, ST - 0.04, 0x8c7a68);   // Treppenläufer
-      fest(sx0, oben, lz, 1.2, ST, oben - F);
+      kasten(g, sx0, oben - 0.06, lz, SB, 0.12, ST, M(C.braun)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, SB, oben - 0.12 - F, ST - 0.02, M(C.creme));
+      deko(g, sx0, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x8c7a68);   // Treppenläufer
+      fest(sx0, oben, lz, SB, ST, oben - F);
+      if (i >= 4) fest(sx0 + SB / 2 + 0.03, oben + 1.1, lz, 0.1, ST, oben + 1.1 - F);   // unsichtbares Geländer: man fällt nicht seitlich runter und stößt nicht an die Decke
     }
-    const s2x = sx0 + 1.25, SR2 = (E2 - E) / SN;
+    const s2x = sx0 + SB + 0.1, SR2 = (E2 - E) / SN;
     for (let i = 0; i < SN; i++) {   // Treppe 2: 1. Stock -> 2. Stock (daneben, nach vorne hoch)
       const oben = E + (i + 1) * SR2, lz = sEnde - (i + 0.5) * ST;
-      kasten(g, s2x, oben - 0.06, lz, 1.2, 0.12, ST, M(C.braun)); kasten(g, s2x, (oben - 0.12 + E) / 2, lz, 1.2, oben - 0.12 - E, ST - 0.02, M(C.creme));
-      deko(g, s2x, oben + 0.004, lz, 0.8, 0.008, ST - 0.04, 0x8c7a68);
-      fest(s2x, oben, lz, 1.2, ST, oben - E);
+      kasten(g, s2x, oben - 0.06, lz, SB, 0.12, ST, M(C.braun)); kasten(g, s2x, (oben - 0.12 + E) / 2, lz, SB, oben - 0.12 - E, ST - 0.02, M(C.creme));
+      deko(g, s2x, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x8c7a68);
+      fest(s2x, oben, lz, SB, ST, oben - E);
+      if (i >= 4) for (const sx of [-1, 1]) fest(s2x + sx * (SB / 2 + 0.03), oben + 1.1, lz, 0.1, ST, sx < 0 ? 1.1 + 0.5 : oben + 1.1 - E);   // unsichtbares Geländer
     }
     // Geländer mit Girlanden an beiden Treppen
     const handlauf = (a, e) => { const m = a.clone().lerp(e, 0.5), l = a.distanceTo(e); const hl = new THREE.Mesh(boxGeo, M(C.dunkel)); hl.scale.set(0.08, 0.08, l); hl.position.copy(m); hl.lookAt(e); g.add(hl);
       const pk = kette(a, e, l / 20, 0.2), lp = []; pk.forEach((p, i) => { kugelW(g, p.x + 0.04, p.y - 0.05, p.z, 0.08, [C.creme, C.beige, C.braun][i % 3]); if (i % 2) lp.push(V(p.x + 0.05, p.y, p.z)); }); weisseLichter(g, lp, 0.6); };
-    for (let i = 0; i <= SN; i += 3) deko(g, sx0 + 0.62, F + i * SR + 0.5, sz0 + i * ST, 0.07, 1.0, 0.07, C.creme);
-    handlauf(V(sx0 + 0.62, F + 1.0, sz0), V(sx0 + 0.62, E + 1.0, sEnde));
-    for (let i = 0; i <= SN; i += 3) deko(g, s2x + 0.62, E + i * SR2 + 0.5, sEnde - i * ST, 0.07, 1.0, 0.07, C.creme);
-    handlauf(V(s2x + 0.62, E + 1.0, sEnde), V(s2x + 0.62, E2 + 1.0, sz0));
+    for (let i = 0; i <= SN; i += 3) deko(g, sx0 + SB / 2 - 0.05, F + i * SR + 0.5, sz0 + i * ST, 0.07, 1.0, 0.07, C.creme);
+    handlauf(V(sx0 + SB / 2 - 0.05, F + 1.0, sz0), V(sx0 + SB / 2 - 0.05, E + 1.0, sEnde));
+    for (let i = 0; i <= SN; i += 3) for (const sx of [-1, 1]) deko(g, s2x + sx * (SB / 2 - 0.05), E + i * SR2 + 0.5, sEnde - i * ST, 0.07, 1.0, 0.07, C.creme);
+    handlauf(V(s2x + SB / 2 - 0.05, E + 1.0, sEnde), V(s2x + SB / 2 - 0.05, E2 + 1.0, sz0)); handlauf(V(s2x - SB / 2 + 0.05, E + 1.0, sEnde), V(s2x - SB / 2 + 0.05, E2 + 1.0, sz0));
     // Decke/Boden 1. Stock (Loch über Treppe 1)
     const decke = (lx, lz, db, dt, y) => { kasten(g, lx, y - 0.125, lz, db, 0.25, dt, deckenMat); kasten(g, lx, y + 0.005, lz, db, 0.01, dt, bodenMat); fest(lx, y, lz, db, dt, 0.25); };
-    const lochR = sx0 + 0.6;
+    const lochR = sx0 + SB / 2 + 0.1;
     decke((lochR + iR) / 2, 0, iR - lochR, iH - iV, E);
     decke((iL + lochR) / 2, (sEnde + iH) / 2, lochR - iL, iH - sEnde, E);
     decke((iL + lochR) / 2, (iV + sz0) / 2, lochR - iL, sz0 - iV, E);
     // Decke/Boden 2. Stock (Loch über Treppe 2)
-    const l2L = s2x - 0.6, l2R = s2x + 0.65;
+    const l2L = s2x - SB / 2 - 0.1, l2R = s2x + SB / 2 + 0.1;
     decke((iL + l2L) / 2, 0, l2L - iL, iH - iV, E2);
     decke((l2R + iR) / 2, 0, iR - l2R, iH - iV, E2);
     decke((l2L + l2R) / 2, (iV + sz0) / 2, l2R - l2L, sz0 - iV, E2);
@@ -6633,7 +6635,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     { const p = []; for (let i = 0; i < 70; i++) { const w = i * 0.9, hh = i / 70; p.push(V(bx + Math.cos(w) * (1.2 - hh * 1.0), F + 1.0 + hh * 2.8, bz + Math.sin(w) * (1.2 - hh * 1.0))); } weisseLichter(g, p, 0.6); }
     [[C.braun, 0.5, 0.5, -0.6], [C.beige, 0.42, -0.6, -0.5], [C.hellgrau, 0.35, 0.1, -0.95], [C.creme, 0.33, -0.9, 0.2], [C.dunkel, 0.45, 0.8, 0.4]].forEach(([f, gr, ox, oz]) => wGeschenk(g, bx + ox, F, bz + oz, gr, f, f === C.creme ? C.beige : C.creme));
     regalVoll(teil(g, 2.6, F, iV + 0.35, 0), 0, 0, 0, (2.0 * K * 0.85) / K, (2.4 * K) / K, 0, nr * 31 + 2, wahl([C.braun, C.creme]));
-    if (nr % 3 === 0) klavier(teil(g, -0.5, F, -0.4, Math.PI)); else holzHirsch(teil(g, 0.4, F, -2.0, Math.PI / 2, 1.2));
+    holzHirsch(teil(g, 0.4, F, -2.0, Math.PI / 2, 1.2));
     // Esszimmer hinten links
     { const ex = -3.0, ez = 4.5, tischF = wahl([C.braun, C.dunkel, 0xb08a64]), stuhlF = wahl([C.dunkel, C.creme, C.braun, C.schwarz]);
       const r = teil(g, ex, F, ez);
@@ -6708,7 +6710,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       sofa(teil(g, 1.5, O3, -1.6, Math.PI), 2.6, wahl(STOFF), [C.creme, wahl(STOFF)]);
       couchtisch(teil(g, 1.5, O3, -3.2), true, C.braun); rundTeppich(1.5, O3, -3.0, 1.9, tf(), tf());
       sessel(teil(g, 4.2, O3, -3.2), 0, 0, 0, -Math.PI / 2, wahl(STOFF)); stehlampe(teil(g, 4.4, O3, -1.6));
-      if (nr % 3 === 1) klavier(teil(g, iR - 0.6, O3, -3.4, -Math.PI / 2)); else { schreibtisch(teil(g, iR - 0.6, O3, -3.4, -Math.PI / 2), C.creme); }
+      schreibtisch(teil(g, iR - 0.6, O3, -3.4, -Math.PI / 2), C.creme);
       holzHirsch(teil(g, iR - 1.0, O3, 0.4, Math.PI, 1.4));
       stehSpiegel(teil(g, -1.0, O3, 0.8, Math.PI));
       tanne(g, -5.0, 3.6, 0.4, false, false); { const p = []; for (let i = 0; i < 50; i++) { const w = i * 0.9, hh = i / 50; p.push(V(-5.0 + Math.cos(w) * (0.95 - hh * 0.8), O3 + 0.8 + hh * 2.2, 3.6 + Math.sin(w) * (0.95 - hh * 0.8))); } weisseLichter(g, p, 0.5); }
