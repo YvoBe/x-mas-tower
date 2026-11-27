@@ -3794,7 +3794,7 @@ function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
   const strumpf = (hoseTyp === 'rock' || hoseTyp === 'kurz' || shorts) && look.struempfe === 'lang';
   g.fillStyle = strumpf ? '#d9cbb5' : haut; g.fillRect(0, 0, W, H);
   if (strumpf) { g.fillStyle = 'rgba(0,0,0,0.06)'; for (let x = 0; x < W; x += 8) g.fillRect(x, 0, 3, H); }
-  const hoseBis = shorts ? 0.15 : hoseTyp === 'kurz' ? 0.3 : hoseTyp === 'rock' ? 0.24 : schuhVon;
+  const hoseBis = shorts ? 0.15 : hoseTyp === 'kurz' ? 0.3 : hoseTyp === 'rock' ? 0 : schuhVon;   // Rock ist ein echtes Teil (Wunsch)
   if (hoseBis > 0) {
     g.fillStyle = look.hose; g.fillRect(0, 0, W, H * hoseBis);
     if (jeansArt) {                       // echter Jeansstoff: schräge Webung, helle Fasern, ausgewaschen in der Mitte, Nähte
@@ -4269,9 +4269,9 @@ function baueFigur(look, ziel = scene) {
       mesh.castShadow = true;
       return mesh;
     };
-    const obenFarbe = look.hose;
+    const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(0.29, OBEN, 0.33,   // Oberschenkel etwas dicker
+    const ober = block(hoseTyp === 'rock' ? 0.27 : 0.29, OBEN, hoseTyp === 'rock' ? 0.27 : 0.33,   // Oberschenkel etwas dicker
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
@@ -4316,7 +4316,7 @@ function baueFigur(look, ziel = scene) {
   const huefte = teil(hGeo, look.hose, hoseM(10, 2));
   huefte.position.y = 0.84;
   figur.add(huefte);
-  if (false) {        // Rock ist jetzt aufgemalt (Textur auf Hüfte und Beinen)
+  if (hoseTyp === 'rock') {        // Faltenrock: echtes Teil, wird nach unten weiter, ringsum Falten
     const hoehe = 0.27, oben = rumpfBreite(-0.44) - 0.025, unten = 0.4, falten = 18;   // kurzer Rock   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
@@ -4809,7 +4809,7 @@ function baueFigur(look, ziel = scene) {
   }
 
   ziel.add(figur);
-  return { figur, beinL, beinR, armL, armR, knieL, knieR, rock: false };   // rock: Beine schwingen weniger, damit sie unter dem Rock bleiben
+  return { figur, beinL, beinR, armL, armR, knieL, knieR, rock: hoseTyp === 'rock' };   // rock: Beine schwingen weniger, damit sie unter dem Rock bleiben
 }
 // Gespeichertes Aussehen laden (falls schon im Editor geändert)
 try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
