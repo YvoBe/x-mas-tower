@@ -132,8 +132,8 @@
     left: 50%;
     top: 30%;
     transform: translate(-50%, -50%);
-    background: var(--gold);
-    color: var(--ink);
+    background: #8e8c88;
+    color: #fbf8f2;
     font-size: clamp(26px, 6.5vw, 46px);
     font-weight: 800;
     padding: 8px 28px 2px;
@@ -189,7 +189,7 @@
     border: 3px solid var(--pad-edge); background: var(--panel); color: var(--ink);
     font: 800 13px var(--font);
   }
-  #sprint[aria-pressed="true"] { background: var(--rosa); color: #fff; }
+  #sprint[aria-pressed="true"] { background: #1f2a4a; color: #fff; }
 
   /* Figur-Knopf oben links */
   .links { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
@@ -6066,7 +6066,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
   const HOLZ_NAMEN = ['Beiges Holzhaus', 'Braunes Holzhaus', 'Graues Holzhaus', 'Schoko-Holzhaus', 'Cremeweißes Holzhaus'];
   const DAECHER = [C.dunkelgrau, C.schwarz, C.dunkel, C.dunkelgrau, C.schoko];
   const innenMat = new THREE.MeshStandardMaterial({ map: holzTextur('#efe7da', '#e0d5c2'), roughness: 0.95 });
-  const bodenMat = new THREE.MeshStandardMaterial({ map: holzTextur('#a98763', '#8a6a4b'), roughness: 0.9, color: 0xc9c0b6 });
+  const bodenMat = new THREE.MeshStandardMaterial({ map: holzTextur('#5a4636', '#3a2d23'), roughness: 0.85, color: 0xe0d8d0 });   // dunkler Holzboden (wie auf der Vorlage)
   const deckenMat = M(C.creme, { emissive: 0x9a9184, emissiveIntensity: 0.35 });
   const lampenMat = new THREE.MeshStandardMaterial({ color: 0xf6ead2, emissive: 0xf3dcb0, emissiveIntensity: 0.7 });
   const feuerMat = new THREE.MeshStandardMaterial({ color: 0xe8b98a, emissive: 0xd9955a, emissiveIntensity: 0.55, transparent: true, opacity: 0.9 });
@@ -6258,6 +6258,14 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
   const teil = (g, x, y, z, dreh = 0, k = K) => { const r = new THREE.Group(); r.position.set(x, y, z); r.rotation.y = dreh; r.scale.setScalar(k); g.add(r); return r; };
   const spiegelMat = new THREE.MeshStandardMaterial({ color: 0xd3dde3, metalness: 0.1, roughness: 0.08, emissive: 0x9aa7ae, emissiveIntensity: 0.45 });
   const fliesenTextur = (a, b, n = 8) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = b; x.fillRect(0, 0, 128, 128); x.fillStyle = a; const q = 128 / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) x.fillRect(i * q + 1, j * q + 1, q - 2, q - 2); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+  // Weiße Metro-Fliesen (längliche Kacheln, versetzt) für die Küche
+  const metroMat = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#d6d0c6'; x.fillRect(0, 0, 128, 128);
+    for (let rr = 0; rr < 8; rr++) for (let k = -1; k < 5; k++) { x.fillStyle = (rr * 3 + k) % 4 ? '#f6f3ee' : '#f1ede6'; x.fillRect(k * 32 + (rr % 2) * 16 + 1.5, rr * 16 + 1.5, 29, 13); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 4); return t; })(), roughness: 0.3 });
+  const holzHellMat = new THREE.MeshStandardMaterial({ map: (() => { const t = holzTextur('#c8b49c', '#a8937a'); t.repeat.set(4, 3); return t; })(), roughness: 0.85 });
+  const deckeHolzMat = new THREE.MeshStandardMaterial({ map: holzTextur('#ece2d3', '#d2c4ae'), roughness: 0.9 });
+  const schrankHolz = new THREE.MeshStandardMaterial({ map: holzTextur('#8a7360', '#6e5a4a'), roughness: 0.85 });
+  const steinPlatte = M(0xe9e5de, { roughness: 0.35 });
   const kachelMat = new THREE.MeshStandardMaterial({ map: (() => { const t = fliesenTextur('#f1ede6', '#cfc8bd', 10); t.repeat.set(3, 2); return t; })(), roughness: 0.4 });
   const schachMat = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? '#4a4744' : '#ece6da'; x.fillRect(i * 16, j * 16, 16, 16); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 2); return t; })(), roughness: 0.6 });
   const WAND_FARBEN = [0xe6dccb, 0xd8cfc4, 0xcfd3cc, 0xc9ced3, 0xece4d6, 0xc4b19b, 0xb3b8a2, 0xd8c6b8, 0x9c8676, 0xbfb6aa, 0xd2c2a4, 0xa9b3b8];
@@ -6333,6 +6341,58 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     deko(r, -br / 2 + 0.35, 1.07, -0.1, 0.25, 0.25, 0.25, C.dunkel);   // Brotkasten
     pflanze(r, br / 2 - 0.3, 0.95, -0.1, 0.6); kerze(r, 0.1, 0.95, -0.15, 0.14);
     girlande(r, V(-br / 2 + 0.1, 2.42, 0.08), V(br / 2 - 0.1, 2.42, 0.08), 0.2, Math.round(br * 6));
+  };
+  // Landhaus-Küche (wie auf der Vorlage): Holzschränke, helle Steinplatte, weiße Keramik-Spüle, schwarzer Herd mit Haube, offene Holzregale
+  const landhausKueche = (r, br) => {
+    const herdB = 0.9, hx = br * 0.1, sx = -br * 0.27;
+    const schraenke = (x0, x1) => {
+      const w = x1 - x0, m = (x0 + x1) / 2; kasten(r, m, 0.45, 0, w, 0.9, 0.62, schrankHolz); kasten(r, m, 0.92, 0.02, w + 0.02, 0.05, 0.66, steinPlatte);
+      deko(r, m, 0.05, 0.27, w, 0.1, 0.06, 0x4a3a2e);   // Sockel
+      const n = Math.max(1, Math.round(w / 0.55));
+      for (let i = 0; i < n; i++) { const px = x0 + (i + 0.5) * w / n, pw = w / n - 0.06;
+        deko(r, px, 0.76, 0.315, pw, 0.18, 0.012, 0x6e5a4a); deko(r, px, 0.37, 0.315, pw, 0.5, 0.012, 0x6e5a4a); deko(r, px, 0.37, 0.323, pw - 0.12, 0.38, 0.012, 0x84705d);
+        kugelW(r, px, 0.76, 0.335, 0.022, C.schwarz); kugelW(r, px + pw / 2 - 0.08, 0.5, 0.335, 0.02, C.schwarz); }
+    };
+    schraenke(-br / 2, hx - herdB / 2); schraenke(hx + herdB / 2, br / 2);
+    // weiße Keramik-Spüle vorne vorstehend, schwarzer Wasserhahn
+    kasten(r, sx, 0.76, 0.06, 0.75, 0.32, 0.6, M(0xf7f5f0, { roughness: 0.3 })); deko(r, sx, 0.93, 0.04, 0.62, 0.012, 0.44, 0xdcd8d0);
+    zyl(r, sx, 1.12, -0.24, 0.022, 0.022, 0.36, C.schwarz, 8);
+    { const h = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 6, 12, Math.PI), M(C.schwarz)); h.rotation.y = Math.PI / 2; h.position.set(sx, 1.3, -0.14); r.add(h); }
+    // schwarzer Herd mit Backofen
+    kasten(r, hx, 0.47, 0.0, herdB, 0.94, 0.64, M(0x2a2a2c)); deko(r, hx, 0.42, 0.325, 0.7, 0.34, 0.01, 0x121216); deko(r, hx, 0.66, 0.35, 0.66, 0.03, 0.03, 0xb9b9b9);
+    for (let i = 0; i < 5; i++) zyl(r, hx - 0.3 + i * 0.15, 0.83, 0.33, 0.03, 0.03, 0.03, 0x8e8f8c, 8).rotation.x = Math.PI / 2;
+    for (let i = 0; i < 4; i++) zyl(r, hx + (i % 2) * 0.36 - 0.18, 0.95, 0.12 - Math.floor(i / 2) * 0.26, 0.11, 0.11, 0.01, 0x121216, 12);
+    deko(r, hx, 1.03, -0.29, herdB, 0.16, 0.05, 0x2a2a2c);
+    zyl(r, hx - 0.18, 1.04, 0.1, 0.15, 0.13, 0.18, C.dunkelgrau, 14);   // Topf
+    // Dunstabzug: helles Holz-Band als Ablage, darüber schräge weiße Haube bis zur Decke
+    kasten(r, hx, 1.78, -0.12, herdB + 0.5, 0.14, 0.48, schrankHolz);
+    { const hg = new THREE.Group(); hg.position.set(hx, 2.2, -0.2); hg.scale.set(1, 1, 0.6); r.add(hg); const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * Math.SQRT2, 0.62 * Math.SQRT2, 0.7, 4), M(0xefe9df)); hm.rotation.y = Math.PI / 4; hg.add(hm);
+      for (const s of [-1, 1]) { const st = new THREE.Mesh(boxGeo, schrankHolz); st.scale.set(0.07, 0.75, 0.07); st.position.set(s * 0.44, 2.2, -0.02); st.rotation.z = s * 0.4; r.add(st); } }
+    kasten(r, hx, 2.75, -0.24, 0.6, 0.4, 0.15, M(0xefe9df));
+    pflanze(r, hx - 0.5, 1.85, -0.12, 0.4); pflanze(r, hx + 0.5, 1.85, -0.12, 0.45); korb(teil(r, hx + 0.15, 1.85, -0.1, 0, 0.35));
+    girlande(r, V(hx - 0.7, 1.72, 0.13), V(hx + 0.7, 1.72, 0.13), 0.12, 12);
+    // offene Holzregale links und rechts mit Gläsern, Schüsseln und Pflanzen
+    for (const ox of [-br / 2 + 0.6, br / 2 - 0.55]) for (let k = 0; k < 3; k++) {
+      const y = 1.5 + k * 0.42; kasten(r, ox, y, -0.16, 1.0, 0.05, 0.28, schrankHolz);
+      for (const s of [-0.4, 0.4]) deko(r, ox + s, y - 0.06, -0.2, 0.03, 0.1, 0.2, C.schwarz);
+      for (let i = 0; i < 4; i++) { const px = ox - 0.36 + i * 0.24, a = (k * 4 + i + (ox > 0 ? 2 : 0)) % 5;
+        if (a === 0 || a === 3) { zyl(r, px, y + 0.11, -0.16, 0.06, 0.06, 0.17, glasMat, 10); zyl(r, px, y + 0.2, -0.16, 0.062, 0.062, 0.03, 0x8a7360, 10); zyl(r, px, y + 0.07, -0.16, 0.055, 0.055, 0.08, [C.beige, 0xd8c6a0, C.braun][k], 10); }
+        else if (a === 1) { zyl(r, px, y + 0.06, -0.16, 0.1, 0.07, 0.08, C.creme, 12); }
+        else if (a === 2) pflanze(r, px, y + 0.03, -0.16, 0.3);
+        else { zyl(r, px, y + 0.1, -0.16, 0.05, 0.05, 0.16, C.creme, 10); } }
+    }
+    // auf der Arbeitsplatte: Schneidebrett, Löffel-Topf, Flaschen, Kerze
+    deko(r, sx + 0.7, 1.15, -0.26, 0.32, 0.42, 0.03, 0xa8865e); zyl(r, br / 2 - 0.4, 1.04, -0.15, 0.07, 0.07, 0.18, C.creme, 10);
+    for (let i = 0; i < 3; i++) deko(r, br / 2 - 0.4 + (i - 1) * 0.03, 1.22, -0.15, 0.02, 0.22, 0.02, 0x8a6446);
+    for (let i = 0; i < 3; i++) zyl(r, hx + 0.65 + i * 0.09, 1.1, -0.2, 0.03, 0.03, 0.26, [0x5d6656, C.dunkel, 0x7a5a46][i], 8);
+    kerze(r, -br / 2 + 0.3, 0.95, 0.05, 0.14);
+  };
+  const inselLandhaus = (r) => {
+    kasten(r, 0, 0.45, 0, 2.2, 0.9, 0.95, schrankHolz); kasten(r, 0, 0.93, 0, 2.35, 0.06, 1.1, steinPlatte);
+    for (const sz of [-1, 1]) for (let i = 0; i < 3; i++) deko(r, -0.72 + i * 0.72, 0.45, sz * 0.48, 0.62, 0.7, 0.012, 0x6e5a4a);
+    for (const ox of [-0.6, 0, 0.6]) { zyl(r, ox, 0.68, 0.85, 0.18, 0.18, 0.06, 0x6e5a4a, 12); for (const a of [0, 1.6, 3.2, 4.7]) zyl(r, ox + Math.cos(a) * 0.12, 0.33, 0.85 + Math.sin(a) * 0.12, 0.018, 0.018, 0.66, C.schwarz, 4); }
+    zyl(r, 0.6, 1.06, 0, 0.2, 0.16, 0.2, 0xc8b08a, 12); for (let i = 0; i < 3; i++) kugelW(r, 0.55 + i * 0.06, 1.18, 0.02, 0.06, [0xd99a5a, 0xb8574e, 0xd99a5a][i]);   // Korb mit Obst
+    deko(r, -0.5, 0.98, 0.1, 0.5, 0.03, 0.3, 0xa8865e); kerze(r, -0.1, 0.96, -0.2, 0.12);
   };
   const kuehlschrank = (r) => { deko(r, 0, 1.0, 0, 0.75, 2.0, 0.7, C.creme); deko(r, 0, 1.3, 0.36, 0.72, 0.02, 0.02, C.hellgrau); for (const y of [0.9, 1.6]) deko(r, 0.3, y, 0.37, 0.03, 0.35, 0.03, C.dunkel); bild(r, -0.1, 1.55, 0.37, 0.18, 0.14, 'foto'); };
   const insel = (r, farbe = C.braun) => { deko(r, 0, 0.45, 0, 2.0, 0.9, 0.9, farbe); deko(r, 0, 0.93, 0, 2.1, 0.06, 1.0, 0xe6e0d6); for (const ox of [-0.6, 0, 0.6]) { zyl(r, ox, 0.35, 0.75, 0.18, 0.18, 0.05, C.dunkel, 12); zyl(r, ox, 0.18, 0.75, 0.025, 0.025, 0.35, C.dunkel, 6); } zyl(r, 0.2, 1.0, 0, 0.18, 0.12, 0.1, C.creme, 14); for (let i = 0; i < 4; i++) kugelW(r, 0.12 + (i % 2) * 0.14, 1.06, -0.05 + Math.floor(i / 2) * 0.1, 0.05, 0xd8a860); baeumchen(r, -0.6, 0.96, 0, 0.45); };
@@ -6478,14 +6538,19 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     kasten(g, 0, H - 0.05, 0, b - 2 * D, 0.1, t - 2 * D, deckenMat);
     // Wand anmalen: unten dunkler, oben hell, dazwischen eine Leiste; Löcher für Türen
     // achse 'x': Wand bei z = w, geht von a0 bis a1 in x; achse 'z': Wand bei x = w; seite = +1/-1 (zur Raumseite)
-    const anstrich = (achse, w, a0, a1, y0, y1, farbe, seiteR, loecher = []) => {
-      const unten = dunkler(farbe, 0.8), grenze = y0 + 1.25, d = w + seiteR * 0.03;
+    const anstrich = (achse, w, a0, a1, y0, y1, farbe, seiteR, loecher = [], paneel = false) => {
+      const unten = dunkler(farbe, paneel ? 0.97 : 0.8), grenze = y0 + 1.25, d = w + seiteR * 0.03;
       const rechteck = (p0, p1, ylo, yhi) => {
         if (p1 - p0 < 0.02 || yhi - ylo < 0.02) return;
         const teilR = (q0, q1, f) => { if (q1 - q0 < 0.01) return; const m = (p0 + p1) / 2, l = p1 - p0, ym = (q0 + q1) / 2, hh = q1 - q0; if (achse === 'x') deko(g, m, ym, d, l, hh, 0.02, f); else deko(g, d, ym, m, 0.02, hh, l, f); };
         teilR(ylo, Math.min(yhi, grenze), unten); teilR(Math.max(ylo, grenze), yhi, farbe);
         if (ylo < grenze && yhi > grenze) { const m = (p0 + p1) / 2, l = p1 - p0; if (achse === 'x') deko(g, m, grenze, d + seiteR * 0.02, l, 0.08, 0.04, C.creme); else deko(g, d + seiteR * 0.02, grenze, m, 0.04, 0.08, l, C.creme); }
         const m = (p0 + p1) / 2, l = p1 - p0; if (ylo <= y0 + 0.01) { if (achse === 'x') deko(g, m, y0 + 0.08, d + seiteR * 0.02, l, 0.16, 0.04, C.creme); else deko(g, d + seiteR * 0.02, y0 + 0.08, m, 0.04, 0.16, l, C.creme); }
+        if (paneel && ylo <= y0 + 0.01 && yhi >= grenze && l > 0.6) {   // Wandpaneele: Rahmen unten an der Wand
+          const n = Math.max(1, Math.round(l / 1.1)), rf = dunkler(farbe, 0.9), ya = y0 + 0.32, yb = grenze - 0.15, dd = d + seiteR * 0.02;
+          const leiste = (pm, ym, lb, lh) => achse === 'x' ? deko(g, pm, ym, dd, lb, lh, 0.03, rf) : deko(g, dd, ym, pm, 0.03, lh, lb, rf);
+          for (let j = 0; j < n; j++) { const pc = p0 + (j + 0.5) * l / n, pw = l / n - 0.3; leiste(pc, ya, pw, 0.045); leiste(pc, yb, pw, 0.045); leiste(pc - pw / 2, (ya + yb) / 2, 0.045, yb - ya); leiste(pc + pw / 2, (ya + yb) / 2, 0.045, yb - ya); }
+        }
       };
       let cur = a0;
       for (const [c, lw, lh] of [...loecher].sort((p, q) => p[0] - q[0])) { rechteck(cur, c - lw / 2, y0, y1); rechteck(c - lw / 2, c + lw / 2, y0 + lh, y1); cur = c + lw / 2; }
@@ -6521,7 +6586,8 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
         if (achse === 'x') deko(g, c, y0 + 3.04, w, 1.78, 0.1, dick + 0.06, C.creme); else deko(g, w, y0 + 3.04, c, dick + 0.06, 0.1, 1.78, C.creme);
         const blatt = new THREE.Group(); if (achse === 'x') blatt.position.set(c - 0.78, y0, w + 0.1); else blatt.position.set(w + 0.1, y0, c - 0.78); blatt.rotation.y = achse === 'x' ? -1.4 : 0.15; g.add(blatt);
         deko(blatt, achse === 'x' ? 0.78 : 0, 1.45, achse === 'x' ? 0 : 0.78, achse === 'x' ? 1.56 : 0.06, 2.9, achse === 'x' ? 0.06 : 1.56, C.creme);
-        kugelW(blatt, achse === 'x' ? 1.4 : 0.06, 1.3, achse === 'x' ? 0.06 : 1.4, 0.04, C.dunkel);
+        kugelW(blatt, achse === 'x' ? 1.4 : 0.06, 1.3, achse === 'x' ? 0.06 : 1.4, 0.04, C.schwarz);
+        for (let rr = 0; rr < 4; rr++) for (let cc = 0; cc < 2; cc++) { const py = 0.75 + rr * 0.6, pp = 0.42 + cc * 0.72; const gl = new THREE.Mesh(boxGeo, glasMat); if (achse === 'x') { gl.scale.set(0.6, 0.5, 0.08); gl.position.set(pp, py, 0); } else { gl.scale.set(0.08, 0.5, 0.6); gl.position.set(0, py, pp); } blatt.add(gl); }   // Glasfelder
       }
       voll(cur, a1, y0, y1);
       const loch = tueren.map((c) => [c, 1.6, 3.0]);
@@ -6534,25 +6600,28 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     const SN = 18, SR = (E - F) / SN, ST = 0.44, SB = 1.5, sx0 = iL + SB / 2, sz0 = iV + 1.1, sEnde = sz0 + SN * ST;
     for (let i = 0; i < SN; i++) {   // Treppe 1: Erdgeschoss -> 1. Stock (linke Wand, nach hinten hoch)
       const oben = F + (i + 1) * SR, lz = sz0 + (i + 0.5) * ST;
-      kasten(g, sx0, oben - 0.06, lz, SB, 0.12, ST, M(C.braun)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, SB, oben - 0.12 - F, ST - 0.02, M(C.creme));
-      deko(g, sx0, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x8c7a68);   // Treppenläufer
+      kasten(g, sx0, oben - 0.06, lz, SB, 0.12, ST, M(0x3b2c22)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, SB, oben - 0.12 - F, ST - 0.02, M(C.creme));
+      deko(g, sx0, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x9a958e);   // grauer Treppenläufer
       fest(sx0, oben, lz, SB, ST, oben - F);
       if (i >= 4) fest(sx0 + SB / 2 + 0.03, oben + 1.1, lz, 0.1, ST, oben + 1.1 - F);   // unsichtbares Geländer: man fällt nicht seitlich runter und stößt nicht an die Decke
     }
     const s2x = sx0 + SB + 0.1, SR2 = (E2 - E) / SN;
     for (let i = 0; i < SN; i++) {   // Treppe 2: 1. Stock -> 2. Stock (daneben, nach vorne hoch)
       const oben = E + (i + 1) * SR2, lz = sEnde - (i + 0.5) * ST;
-      kasten(g, s2x, oben - 0.06, lz, SB, 0.12, ST, M(C.braun)); kasten(g, s2x, (oben - 0.12 + E) / 2, lz, SB, oben - 0.12 - E, ST - 0.02, M(C.creme));
-      deko(g, s2x, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x8c7a68);
+      kasten(g, s2x, oben - 0.06, lz, SB, 0.12, ST, M(0x3b2c22)); kasten(g, s2x, (oben - 0.12 + E) / 2, lz, SB, oben - 0.12 - E, ST - 0.02, M(C.creme));
+      deko(g, s2x, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x9a958e);
       fest(s2x, oben, lz, SB, ST, oben - E);
       if (i >= 4) for (const sx of [-1, 1]) fest(s2x + sx * (SB / 2 + 0.03), oben + 1.1, lz, 0.1, ST, sx < 0 ? 1.1 + 0.5 : oben + 1.1 - E);   // unsichtbares Geländer
     }
     // Geländer mit Girlanden an beiden Treppen
     const handlauf = (a, e) => { const m = a.clone().lerp(e, 0.5), l = a.distanceTo(e); const hl = new THREE.Mesh(boxGeo, M(C.dunkel)); hl.scale.set(0.08, 0.08, l); hl.position.copy(m); hl.lookAt(e); g.add(hl);
       const pk = kette(a, e, l / 20, 0.2), lp = []; pk.forEach((p, i) => { kugelW(g, p.x + 0.04, p.y - 0.05, p.z, 0.08, [C.creme, C.beige, C.braun][i % 3]); if (i % 2) lp.push(V(p.x + 0.05, p.y, p.z)); }); weisseLichter(g, lp, 0.6); };
-    for (let i = 0; i <= SN; i += 3) deko(g, sx0 + SB / 2 - 0.05, F + i * SR + 0.5, sz0 + i * ST, 0.07, 1.0, 0.07, C.creme);
+    for (let i = 0; i < SN; i++) deko(g, sx0 + SB / 2 - 0.05, F + (i + 1) * SR + 0.5, sz0 + (i + 0.5) * ST, 0.045, 1.0, 0.045, C.schwarz);   // schwarze Geländerstäbe
+    const pfosten = (px, py, pz) => { deko(g, px, py + 0.65, pz, 0.2, 1.3, 0.2, C.creme); deko(g, px, py + 1.33, pz, 0.28, 0.08, 0.28, C.creme); deko(g, px, py + 0.12, pz, 0.26, 0.24, 0.26, C.creme); };   // weißer Treppenpfosten
+    pfosten(sx0 + SB / 2 - 0.05, F + SR, sz0 + 0.22);
     handlauf(V(sx0 + SB / 2 - 0.05, F + 1.0, sz0), V(sx0 + SB / 2 - 0.05, E + 1.0, sEnde));
-    for (let i = 0; i <= SN; i += 3) for (const sx of [-1, 1]) deko(g, s2x + sx * (SB / 2 - 0.05), E + i * SR2 + 0.5, sEnde - i * ST, 0.07, 1.0, 0.07, C.creme);
+    for (let i = 0; i < SN; i++) for (const sx of [-1, 1]) deko(g, s2x + sx * (SB / 2 - 0.05), E + (i + 1) * SR2 + 0.5, sEnde - (i + 0.5) * ST, 0.045, 1.0, 0.045, C.schwarz);
+    for (const sx of [-1, 1]) pfosten(s2x + sx * (SB / 2 - 0.05), E + SR2, sEnde - 0.22);
     handlauf(V(s2x + SB / 2 - 0.05, E + 1.0, sEnde), V(s2x + SB / 2 - 0.05, E2 + 1.0, sz0)); handlauf(V(s2x - SB / 2 + 0.05, E + 1.0, sEnde), V(s2x - SB / 2 + 0.05, E2 + 1.0, sz0));
     // Decke/Boden 1. Stock (Loch über Treppe 1)
     const decke = (lx, lz, db, dt, y) => { kasten(g, lx, y - 0.125, lz, db, 0.25, dt, deckenMat); kasten(g, lx, y + 0.005, lz, db, 0.01, dt, bodenMat); fest(lx, y, lz, db, dt, 0.25); };
@@ -6567,7 +6636,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     decke((l2L + l2R) / 2, (iV + sz0) / 2, l2R - l2L, sz0 - iV, E2);
     decke((l2L + l2R) / 2, (sEnde + iH) / 2, l2R - l2L, iH - sEnde, E2);
     // Geländer oben um die Treppenlöcher
-    const gelaender = (gx, y, za, ze) => { deko(g, gx, y + 0.95, (za + ze) / 2, 0.08, 0.08, ze - za, C.dunkel); for (let lz = za; lz <= ze; lz += 0.6) deko(g, gx, y + 0.48, lz, 0.06, 0.95, 0.06, C.creme); festI(gx, y + 1.0, (za + ze) / 2, 0.12, ze - za, 1.0); girlande(g, V(gx + 0.04, y + 0.95, za), V(gx + 0.04, y + 0.95, ze), 0.3, 16); };
+    const gelaender = (gx, y, za, ze) => { deko(g, gx, y + 0.95, (za + ze) / 2, 0.08, 0.08, ze - za, C.dunkel); for (let lz = za; lz <= ze; lz += 0.3) deko(g, gx, y + 0.48, lz, 0.045, 0.95, 0.045, C.schwarz); festI(gx, y + 1.0, (za + ze) / 2, 0.12, ze - za, 1.0); girlande(g, V(gx + 0.04, y + 0.95, za), V(gx + 0.04, y + 0.95, ze), 0.3, 16); };
     gelaender(l2L + 0.02, E2, sz0 + 0.3, sEnde); gelaender(l2R - 0.02, E2, sz0, sEnde);
     // Bilder an der Treppenwand
     ['foto', 'berge', 'reh', 'stern', 'foto', 'berge'].forEach((art, i) => bild(g, iL + 0.06, F + 1.8 + i * 0.6, sz0 + 0.7 + i * 1.25, 0.6, 0.45, art, Math.PI / 2));
@@ -6578,12 +6647,12 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       for (const sx of [-1, 1]) { innenFenster('x', iV, sx * 4.6, fy, 1.8, fh, 1, vorhang); innenFenster('x', iH, sx * 4.2, fy, 1.6, fh, -1, vorhang); for (const fz of [-3.2, 3.2]) if (!(sx < 0 && y0 < E2 - 1)) innenFenster('z', sx * iR, fz, fy, 1.6, fh, -sx, vorhang); }
     };
     // Erdgeschoss: vorne + links eine Farbe, rechts (Wohnzimmer) eine andere, hinten Küche mit Kacheln
-    const wEG1 = wf(), wEG2 = wf(), wKueche = wf();
-    anstrich('x', iV, iL, iR, F, E - 0.25, wEG1, 1, [[0, TB + 0.2, TH]]);
-    anstrich('z', iL, iV, iH, F, E - 0.25, wEG1, 1);
-    anstrich('z', iR, iV, iH, F, E - 0.25, wEG2, -1);
+    const wEG1 = 0xf0ebe3, wEG2 = 0xeee8de, wKueche = 0xf3f0ea;   // hell, wie auf der Vorlage
+    anstrich('x', iV, iL, iR, F, E - 0.25, wEG1, 1, [[0, TB + 0.2, TH]], true);
+    anstrich('z', iL, iV, iH, F, E - 0.25, wEG1, 1, [], true);
+    anstrich('z', iR, iV, iH, F, E - 0.25, wEG2, -1, [], true);
     anstrich('x', iH, iL, iR, F, E - 0.25, wKueche, -1);
-    { const kach = new THREE.Mesh(boxGeo, kachelMat); kach.scale.set(7.0, 0.8, 0.02); kach.position.set(4.2, F + 1.75, iH - 0.05); g.add(kach); }
+    { const kach = new THREE.Mesh(boxGeo, metroMat); kach.scale.set(7.0, 2.4, 0.02); kach.position.set(4.2, F + 2.7, iH - 0.05); g.add(kach); }   // weiße Metro-Fliesen
     fensterReihe(F, F + 2.0, 1.7);
     // 1. Stock: Flur + Zimmer
     const XW = -3.0, ZW = 1.5, XB = 2.8;   // Zimmerwände: Flur | Kinderzimmer vorne, Schlafzimmer + Bad hinten
@@ -6609,11 +6678,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     fensterReihe(O3, E2 + 2.0, 1.6);
 
     // ===== Teppiche überall =====
-    raumTeppich(-6.3, 1.38, iV + 0.1, 0.18, F, tf(), tf());                         // Eingang / Leseecke
-    raumTeppich(1.4, iR - 0.1, iV + 0.1, 0.18, F, tf(), tf());                       // Wohnzimmer
-    raumTeppich(0.8, iR - 0.1, 0.2, 2.88, F, tf(), tf());
-    raumTeppich(-6.3, 0.78, 0.2, iH - 0.1, F, tf(), tf());                           // Esszimmer
-    { const k = new THREE.Mesh(boxGeo, schachMat); k.scale.set(iR - 0.9, 0.012, iH - 2.9); k.position.set((0.8 + iR) / 2, F + 0.03, (2.9 + iH) / 2); g.add(k); }   // Küche: Fliesen
+    { const k = new THREE.Mesh(boxGeo, holzHellMat); k.scale.set(iR - 0.9, 0.012, iH - 2.9); k.position.set((0.8 + iR) / 2, F + 0.02, (2.9 + iH) / 2); g.add(k); }   // Küche: heller Dielenboden
     { const fl = tf(), fr = tf(); raumTeppich(s2x + 0.62, XW - 0.12, iV + 0.1, sEnde, O, fl, fr); raumTeppich(iL + 0.1, XW - 0.12, sEnde + 0.02, iH - 0.1, O, fl, fr); }   // Flur
     raumTeppich(XW + 0.12, iR - 0.1, iV + 0.1, ZW - 0.12, O, tf(), tf());              // Kinderzimmer
     raumTeppich(XW + 0.12, XB - 0.12, ZW + 0.12, iH - 0.1, O, tf(), tf());             // Schlafzimmer
@@ -6625,10 +6690,41 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     // runde und kleine Teppiche obendrauf
     const rundTeppich = (rx, y, rz2, r2, f, f2) => { zyl(g, rx, y + 0.035, rz2, r2, r2, 0.02, f, 32).castShadow = false; zyl(g, rx, y + 0.045, rz2, r2 * 0.75, r2 * 0.75, 0.01, f2, 32).castShadow = false; for (let i = 0; i < 24; i++) { const w = i / 24 * Math.PI * 2; deko(g, rx + Math.cos(w) * (r2 + 0.05), y + 0.03, rz2 + Math.sin(w) * (r2 + 0.05), 0.05, 0.01, 0.12, f).rotation.y = -w; } };
 
+    // Kronleuchter: 0 = schwarzer Kerzenleuchter mit Gitter, 1 = schwarzer "Sputnik" mit runden Lampen
+    const kronleuchter = (x, z, yD, art = 0, rr = 0.85) => {
+      zyl(g, x, yD - 0.3, z, 0.015, 0.015, 0.6, C.schwarz, 4); const y = yD - 0.75;
+      const arm = (w, l, yy, neig = 0) => { const a = new THREE.Mesh(boxGeo, M(C.schwarz)); a.scale.set(l, 0.03, 0.03); a.position.set(x + Math.cos(w) * l / 2, yy + Math.sin(neig) * l / 2, z + Math.sin(w) * l / 2); a.rotation.set(0, -w, neig); g.add(a); };
+      if (art === 0) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.025, 6, 28), M(C.schwarz)); ring.rotation.x = Math.PI / 2; ring.position.set(x, y, z); g.add(ring);
+        const kaefig = new THREE.Mesh(new THREE.OctahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: 0x232427, wireframe: true })); kaefig.scale.y = 1.2; kaefig.position.set(x, y - 0.25, z); g.add(kaefig);
+        kugelW(g, x, y - 0.25, z, 0.08, 0xf6ead2).material = lampenMat;
+        for (let i = 0; i < 8; i++) { const w = i * Math.PI / 4, cx = x + Math.cos(w) * rr, cz = z + Math.sin(w) * rr; arm(w, rr, y + 0.15, -0.2);
+          zyl(g, cx, y + 0.04, cz, 0.06, 0.04, 0.06, C.schwarz, 8); zyl(g, cx, y + 0.19, cz, 0.03, 0.03, 0.24, C.creme, 8); const fl = new THREE.Mesh(kugelGeoW, lampenMat); fl.scale.set(0.03, 0.05, 0.03); fl.position.set(cx, y + 0.35, cz); g.add(fl); }
+      } else {
+        kugelW(g, x, y, z, 0.1, C.schwarz);
+        for (let i = 0; i < 12; i++) { const w = i * 2.4, n = ((i * 7) % 5 - 2) * 0.35, l = 0.6; arm(w, l, y, n); const fl = new THREE.Mesh(kugelGeoW, lampenMat); fl.scale.setScalar(0.09); fl.position.set(x + Math.cos(w) * Math.cos(n) * l, y + Math.sin(n) * l, z + Math.sin(w) * Math.cos(n) * l); g.add(fl); }
+      }
+    };
+    // dunkle Holzbalken an der Decke unten, helle Holzdecke über der Küche
+    for (const bz of [-4.6, -2.0, 0.6, 3.2, 5.8]) kasten(g, (lochR + iR) / 2 + 0.05, E - 0.42, bz, iR - lochR - 0.1, 0.32, 0.3, M(0x4a3a2e));
+    kasten(g, (0.8 + iR) / 2, E - 0.265, (2.9 + iH) / 2, iR - 0.8, 0.02, iH - 2.9, deckeHolzMat);
+    kronleuchter(0, iV + 2.6, E - 0.25, 0, 0.75);   // im Eingang
+
     // ===================== ERDGESCHOSS =====================
     // Eingang: Garderobe, Standspiegel, Pflanze, Läufer
     garderobe(teil(g, -2.5, F, iV + 0.05));
-    stehSpiegel(teil(g, -5.9, F, iV + 0.6, 0.5));
+    // Rundbogenfenster über der Haustür (von innen)
+    { const bogen = new THREE.Mesh(new THREE.CircleGeometry(0.95, 20, 0, Math.PI), fensterMat); bogen.position.set(0, F + TH + 0.15, iV + 0.07); g.add(bogen);
+      const rahmen = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.06, 6, 20, Math.PI), M(C.creme)); rahmen.position.set(0, F + TH + 0.15, iV + 0.09); g.add(rahmen);
+      deko(g, 0, F + TH + 0.15, iV + 0.09, 2.05, 0.08, 0.05, C.creme); for (const a of [0.6, 1.57, 2.55]) { const st = deko(g, Math.cos(a) * 0.47, F + TH + 0.15 + Math.sin(a) * 0.47, iV + 0.09, 0.04, 0.95, 0.03, C.creme); st.rotation.z = a - Math.PI / 2; } }
+    // runder Holztisch mit großer Pflanze und zwei gepolsterten Hockern
+    { const r = teil(g, -4.3, F, -4.5, 0, 1.3);
+      zyl(r, 0, 0.78, 0, 0.62, 0.62, 0.05, 0x4a3326, 24); zyl(r, 0, 0.4, 0, 0.09, 0.13, 0.75, 0x4a3326, 10); zyl(r, 0, 0.04, 0, 0.34, 0.4, 0.08, 0x4a3326, 16);
+      zyl(r, 0, 0.93, 0, 0.2, 0.14, 0.26, C.schwarz, 12);
+      for (let i = 0; i < 11; i++) { const w = i * 2.4, b2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 5), M(i % 3 ? 0x8a9a78 : 0xc9c2a8)); b2.position.set(Math.cos(w) * 0.12, 1.32, Math.sin(w) * 0.12); b2.rotation.set(Math.sin(w) * 0.6, 0, -Math.cos(w) * 0.6); r.add(b2); }
+      kugelW(r, 0, 1.15, 0, 0.2, 0x7d8a6e);
+      for (const sx of [-1, 1]) { deko(r, sx * 0.36, 0.33, 0.85, 0.55, 0.26, 0.42, 0xb8ad9e); deko(r, sx * 0.36, 0.47, 0.85, 0.53, 0.04, 0.4, 0xc9c0b2); for (const lx of [-0.22, 0.22]) for (const lz of [-0.16, 0.16]) deko(r, sx * 0.36 + lx, 0.1, 0.85 + lz, 0.04, 0.2, 0.04, C.dunkel); }
+      fest(-4.3, F + 1.05, -4.5, 1.6, 1.6, 1.05); fest(-4.3, F + 0.62, -4.5 + 0.85 * 1.3, 1.6, 0.6, 0.62); }
     pflanze(g, -4.6, F, iV + 0.5, 2.4);
     teppichEckig(g, 0, F + 0.01, iV + 1.6, 1.6, 2.4, tf(), C.creme);
     // Leseecke: großes Regal an der Treppe, zwei Sessel, Stehlampe, Körbe
@@ -6639,17 +6735,24 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     rundTeppich(-3.8, F, -0.6, 1.6, tf(), tf());
     // Wohnzimmer: Kamin an der rechten Wand, Sofa, Sessel, Couchtisch, Baum, Regale
     const kz = 0.0;
-    kasten(g, iR - 0.5, F + 1.4, kz, 1.0, 2.8, 2.8, ziegelMat);
-    deko(g, iR - 1.01, F + 0.7, kz, 0.04, 1.2, 1.4, 0x2e2622);
-    kasten(g, iR - 0.6, F + 2.88, kz, 1.25, 0.16, 3.3, M(C.beige));
+    // Backstein-Kamin bis zur Decke: unten breit, Holzbalken als Sims, darüber schräg und schmaler Schornstein mit Bild
+    const kD = 1.1;
+    kasten(g, iR - kD / 2, F + 1.1, kz, kD, 2.2, 3.2, ziegelMat);
+    deko(g, iR - kD - 0.01, F + 0.72, kz, 0.04, 1.3, 1.7, 0x2e2622);
+    { const bo = new THREE.Mesh(new THREE.CircleGeometry(0.85, 14, 0, Math.PI), M(0x2e2622)); bo.rotation.y = -Math.PI / 2; bo.scale.y = 0.35; bo.position.set(iR - kD - 0.012, F + 1.37, kz); g.add(bo); }
+    deko(g, iR - kD - 0.15, F + 0.06, kz, 0.3, 0.12, 2.2, C.hellgrau);   // Steinplatte vor dem Feuer
+    kasten(g, iR - 0.8, F + 2.22, kz, 1.6, 0.16, 3.6, M(0x6b4a32));   // Holzbalken
+    { const hg = new THREE.Group(); hg.position.set(iR, F + 2.75, kz); hg.scale.set(kD / 1.6, 1, 1); g.add(hg); const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.85 * Math.SQRT2, 1.6 * Math.SQRT2, 0.9, 4), ziegelMat); hm.rotation.y = Math.PI / 4; hg.add(hm); }
+    kasten(g, iR - 0.3, (F + 3.2 + E - 0.25) / 2, kz, 0.6, E - 0.25 - F - 3.2, 1.7, ziegelMat);
+    bild(g, iR - 0.62, F + 3.68, kz, 0.9, 0.72, wahl(['berge', 'reh']), -Math.PI / 2);
+    // Brennholz neben dem Kamin
+    for (let i = 0; i < 9; i++) { const l = zyl(g, iR - 0.55, F + 0.14 + Math.floor(i / 3) * 0.24 - (i >= 6 ? 0 : 0), kz + 2.25 + (i % 3) * 0.25 - (i >= 6 ? -0.12 : 0), 0.12, 0.12, 0.8, i % 2 ? 0x8a6446 : 0x6b4a32, 8); l.rotation.z = Math.PI / 2; }
     for (let i = 0; i < 3; i++) { const l = zyl(g, iR - 0.7, F + 0.2, kz - 0.3 + i * 0.3, 0.08, 0.08, 0.8, C.dunkel, 8); l.rotation.x = Math.PI / 2; l.rotation.y = 0.3 * (i - 1); }
     const flamme = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 8), feuerMat); flamme.position.set(iR - 0.7, F + 0.6, kz); flamme.userData.eigen = true; g.add(flamme); W_FEUER.push(flamme);
     const flamme2 = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 8), feuerMat); flamme2.position.set(iR - 0.65, F + 0.5, kz + 0.25); flamme2.userData.eigen = true; g.add(flamme2); W_FEUER.push(flamme2);
-    [C.braun, C.beige, C.creme, C.dunkel, C.hellgrau].forEach((f, i) => { const sz = kz - 1.2 + i * 0.6; deko(g, iR - 1.25, F + 2.45, sz, 0.08, 0.5, 0.28, f); deko(g, iR - 1.25, F + 2.25, sz + 0.1, 0.08, 0.18, 0.42, f); deko(g, iR - 1.25, F + 2.72, sz, 0.1, 0.12, 0.34, f === C.creme ? C.beige : C.creme); });
-    girlande(g, V(iR - 1.25, F + 2.98, kz - 1.6), V(iR - 1.25, F + 2.98, kz + 1.6), 0.25, 16);
-    kerzenGruppe(teil(g, iR - 0.6, F + 2.96, kz - 1.3, 0, 1)); kerzenGruppe(teil(g, iR - 0.6, F + 2.96, kz + 1.2, 0, 1));
-    holzHirsch(teil(g, iR - 0.6, F + 2.96, kz, -Math.PI / 2, 0.45));
-    bild(g, iR - 0.05, F + 3.7, kz, 1.4, 0.9, 'berge', -Math.PI / 2);
+    [C.braun, C.beige, C.creme, C.dunkel, C.hellgrau].forEach((f, i) => { const sz = kz - 1.2 + i * 0.6; deko(g, iR - 1.65, F + 1.75, sz, 0.08, 0.5, 0.28, f); deko(g, iR - 1.65, F + 1.55, sz + 0.1, 0.08, 0.18, 0.42, f); deko(g, iR - 1.65, F + 2.02, sz, 0.1, 0.12, 0.34, f === C.creme ? C.beige : C.creme); });
+    girlande(g, V(iR - 1.65, F + 2.3, kz - 1.75), V(iR - 1.65, F + 2.3, kz + 1.75), 0.25, 18);
+    kerzenGruppe(teil(g, iR - 1.35, F + 2.3, kz - 1.4, 0, 1)); kerzenGruppe(teil(g, iR - 1.35, F + 2.3, kz + 1.35, 0, 1));
     const sofaF = sf(), kissen = [wahl(STOFF), C.creme, wahl(STOFF)];
     if (rz() < 0.5) ecksofa(teil(g, 2.6, F, kz - 1.3, Math.PI / 2), sofaF, kissen);
     else { sofa(teil(g, 2.4, F, kz, Math.PI / 2), 2.8, sofaF, kissen); sessel(teil(g, 4.4, F, kz - 2.2), 0, 0, 0, 0.2, wahl(STOFF)); }
@@ -6674,22 +6777,24 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       for (let i = 0; i < 5; i++) kerze(r, -0.5 + i * 0.25, 0.8, 0, 0.12 + (i % 3) * 0.06, 0.035);
       girlande(r, V(-0.8, 0.83, -0.08), V(0.8, 0.83, -0.08), 0.0, 10);
       for (const ox of [-0.6, 0.6]) for (const oz of [-0.35, 0.35]) { zyl(r, ox, 0.81, oz, 0.15, 0.15, 0.02, C.creme, 14); zyl(r, ox + 0.05, 0.86, oz - 0.05, 0.035, 0.03, 0.09, C.beige, 8); }
-      for (const ox of [-0.5, 0, 0.5]) { zyl(g, ex + ox * K, E - 0.9, ez, 0.01, 0.01, 1.6, C.dunkel, 4); zyl(g, ex + ox * K, F + 2.6, ez, 0.14, 0.22, 0.24, lampenMat, 10); } }
+      kronleuchter(ex, ez, E - 0.25, 0, 0.8); teppichEckig(g, ex, F + 0.01, ez, 5.0, 3.6, tf(), C.creme); }
     kommode(teil(g, iL + 0.4, F, 4.6, Math.PI / 2), 0, 0, 0, 1.6, 0, wahl([C.creme, C.braun]));
     bild(g, iL + 0.06, F + 2.8, 4.6, 1.0, 0.7, wahl(['berge', 'reh', 'stern']), Math.PI / 2);
     pflanze(g, -0.4, F, iH - 0.5, 2.2);
     // Küche hinten rechts
-    kueche(teil(g, 3.7, F, iH - 0.35, Math.PI), 4.4, wahl([C.hellgrau, C.creme, 0x9aa38a, C.dunkelgrau, 0xb59a7e]));
+    landhausKueche(teil(g, 3.7, F, iH - 0.35, Math.PI), 4.4);
     kuehlschrank(teil(g, iR - 0.6, F, iH - 0.6, Math.PI));
-    insel(teil(g, 4.0, F, 3.9), wahl([C.braun, C.dunkel, C.creme]));
-    for (const ox of [-0.8, 0.8]) { zyl(g, 4.0 + ox, E - 0.9, 3.9, 0.01, 0.01, 1.6, C.dunkel, 4); zyl(g, 4.0 + ox, F + 2.8, 3.9, 0.18, 0.28, 0.3, lampenMat, 10); }
+    inselLandhaus(teil(g, 4.0, F, 3.9));
+    for (const ox of [-1.0, 1.0]) {   // Glas-Laternen an Ketten über der Insel
+      zyl(g, 4.0 + ox, E - 0.8, 3.9, 0.012, 0.012, 1.1, C.schwarz, 4); zyl(g, 4.0 + ox, F + 2.82, 3.9, 0.2, 0.2, 0.42, glasMat, 12);
+      zyl(g, 4.0 + ox, F + 3.06, 3.9, 0.08, 0.22, 0.08, C.schwarz, 12); zyl(g, 4.0 + ox, F + 2.6, 3.9, 0.21, 0.21, 0.03, C.schwarz, 12); kugelW(g, 4.0 + ox, F + 2.82, 3.9, 0.07, 0xf6ead2).material = lampenMat; }
     // Lichterketten oben rundherum
     girlande(g, V(iL + 0.1, E - 0.5, iH - 0.1), V(iR - 0.1, E - 0.5, iH - 0.1), 0.25, 50);
     girlande(g, V(iR - 0.1, E - 0.5, iV + 0.1), V(iR - 0.1, E - 0.5, iH - 0.1), 0.25, 46);
     girlande(g, V(iL + 0.1, E - 0.5, iV + 0.1), V(iR - 0.1, E - 0.5, iV + 0.1), 0.3, 50);
     for (const sx of [-1, 1]) { schwibbogen(g, sx * 4.6, F + 1.12, iV + 0.18, 0); haengeSterne(g, sx * 4.6, F + 3.6, iV + 0.25); }
     pflanze(g, iL + 0.6, F, iV + 0.5, 1.6); baeumchen(g, -0.4, F, 1.8, 1.6);
-    for (const [lx, lz] of [[-3.8, -0.6], [4.5, kz]]) { zyl(g, lx, E - 0.6, lz, 0.02, 0.02, 0.6, C.dunkel, 6); zyl(g, lx, E - 1.0, lz, 0.25, 0.45, 0.4, lampenMat); }
+    kronleuchter(-3.8, -0.6, E - 0.25, 1); kronleuchter(4.3, kz, E - 0.25, 0, 0.9);
 
     // ===================== 1. STOCK =====================
     // Flur: Konsole, Hirsch, Pflanzen, Läufer
