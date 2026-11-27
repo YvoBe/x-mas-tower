@@ -2315,7 +2315,7 @@ let busOrt = null;
 function busHalt(welt) {   // wo in jeder Welt die Haltestelle ist
   if (welt === 'winter') return { x: 11, z: -2 * ABSTAND - 20 - 3.2 };
   if (welt === 'aesthetic') return { x: BUS_AE.tuer.x, z: BUS_AE.tuer.z };
-  if (welt === 'wonderland') return { x: WONDER.x + 88, z: WONDER.z + 8.6 };
+  if (welt === 'wonderland') return { x: WONDER.x + 60, z: WONDER.z + 8.6 };
   return null;
 }
 function busPruefen(pos) {
@@ -2342,7 +2342,7 @@ function busFahren() {
     weltWechseln(ziel);
     // An der Haltestelle aussteigen
     if (ziel === 'aesthetic') spieler.pos.set(BUS_AE.tuer.x + 1.5, 0, BUS_AE.tuer.z + 3.0);
-    else if (ziel === 'wonderland') spieler.pos.set(WONDER.x + 88, 0, WONDER.z + 6.0);
+    else if (ziel === 'wonderland') spieler.pos.set(WONDER.x + 60, 0, WONDER.z + 6.0);
     else spieler.pos.set(9, 0, -2 * ABSTAND - 20 + 0.5);
     spieler.checkpoint.copy(spieler.pos); spieler.vel.set(0, 0, 0); spieler.blick = 0; kam.yaw = Math.PI;
     tuermeNachladen(spieler.pos);
@@ -5945,6 +5945,7 @@ const W_HAEUSER = [];    // die Wohnhäuser (Nummer, Tür, Schild, ...)
 const W_AKTIONEN = [];   // Stellen, an denen ein Knopf erscheint (Sachen mitnehmen, Tür auf/zu)
 const W_START = new THREE.Vector3(WONDER.x, 0, WONDER.z - 3);
 const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
+let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
 {
   const W = WONDER, rnd = zufall(4711);
   const C = {   // Farben der Stadt
@@ -6112,7 +6113,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     const boden = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), M(0xf3f5f8, { roughness: 1 }));
     boden.rotation.x = -Math.PI / 2; boden.position.set(W.x, 0, W.z); boden.receiveShadow = true; wonder.add(boden);
     klotz(statisch, wonder, W.x, 0, W.z, 420, 420, 0, { dicke: 1, unsichtbar: true });
-    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(310, 9), M(0xb9b8b3, { roughness: 0.95 }));
+    const strasse = new THREE.Mesh(new THREE.PlaneGeometry(310, 9), M(0x8a8884, { roughness: 0.95 }));
     strasse.rotation.x = -Math.PI / 2; strasse.position.set(W.x, 0.02, W.z); strasse.receiveShadow = true; wonder.add(strasse);
     for (let i = 0; i < 70; i++) {   // Schneereste am Straßenrand
       const f = new THREE.Mesh(new THREE.PlaneGeometry(2 + rnd() * 3, 0.8 + rnd()), M(0xf3f5f8)); f.rotation.x = -Math.PI / 2;
@@ -6121,7 +6122,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     for (const s of [-1, 1]) {   // Bürgersteig mit Ziegeln
       const b = new THREE.Mesh(new THREE.PlaneGeometry(310, 3), new THREE.MeshStandardMaterial({ map: (() => { const t = PFLASTER_TEX ? PFLASTER_TEX.clone() : ziegelTextur(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(103, 1); return t; })(), roughness: 0.95 }));   // gleiche Ziegel wie im Weihnachtsdorf
       b.rotation.x = -Math.PI / 2; b.position.set(W.x, 0.025, W.z + s * 6); wonder.add(b);
-      for (let i = -8; i <= 8; i++) if (i % 2 === 0) laterneW(wonder, W.x + i * 18 + 9, W.z + s * 7.2, 3.2);
+      for (let i = -8; i <= 8; i++) if (i % 2 === 0 && Math.abs(Math.abs(i * 18 + 9) - 150) > 5 && Math.abs(Math.abs(i * 18 + 9) - 88) > 5) laterneW(wonder, W.x + i * 18 + 9, W.z + s * 7.2, 3.2);
     }
     // Lichterketten quer über die Straße
     for (let i = -7; i <= 7; i += 2) weisseLichter(wonder, kette(V(W.x + i * 18 + 9, 3.6, W.z - 7.2), V(W.x + i * 18 + 9, 3.6, W.z + 7.2), 0.5, 0.9), 1.2);
@@ -6134,7 +6135,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     const N = 420, krone = new THREE.ConeGeometry(2.2, 6, 8); krone.translate(0, 4, 0);
     const baeume = new THREE.InstancedMesh(krone, M(0xf4f6f8, { flatShading: true }), N), m4 = new THREE.Matrix4();
     for (let i = 0; i < N; i++) {
-      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while (Math.abs(px) < 160 && Math.abs(pz) < 52);
+      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while ((Math.abs(px) < 160 && Math.abs(pz) < 62) || (Math.abs(px) < 36 && Math.abs(pz) < 92));
       const sc = 0.7 + rnd() * 0.9; m4.makeScale(sc, sc * (0.9 + rnd() * 0.4), sc).setPosition(W.x + px, 0, W.z + pz); baeume.setMatrixAt(i, m4);
     }
     baeume.castShadow = true; scene.add(baeume); WELT_TEILE.wonderland.push(baeume);
@@ -6962,7 +6963,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
   for (const [art, lx, sx] of [['cafe', 0, 1], ['baeckerei', 0, -1], ['super', 106, 1], ['buch', 101, -1], ['spielzeug', 122, -1], ['kleider', -101, 1], ['blumen', -123, 1]]) laden(art, W.x + lx, W.z + ladenZ(art, sx), sx);
   // --- Bushaltestelle (wie im Weihnachtsdorf) mit Ziegeln, und Autos + Bus auf der Straße ---
   {
-    const hx = W.x + 88, hz = W.z + 8.6, halt = new THREE.Group(), rahmen = 0x8fa3ba;
+    const hx = W.x + 60, hz = W.z + 8.6, halt = new THREE.Group(), rahmen = 0x8fa3ba;
     for (const sx of [-1.8, 1.8]) for (const sz of [-0.7, 0.7]) deko(halt, sx, 1.3, sz, 0.12, 2.6, 0.12, rahmen);
     const glas = new THREE.MeshStandardMaterial({ color: 0xdfeefa, transparent: true, opacity: 0.4, roughness: 0.1, depthWrite: false });
     const rw = new THREE.Mesh(boxGeo, glas); rw.scale.set(3.6, 2.0, 0.05); rw.position.set(0, 1.4, 0.7); rw.userData.eigen = true; halt.add(rw);
@@ -6978,20 +6979,394 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     klotz(statisch, wonder, hx, 2.6, hz + 0.7, 3.6, 0.2, 0, { dicke: 2.6, unsichtbar: true });
     if (PFLASTER_TEX) { const t = PFLASTER_TEX.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1);
       const pf = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3 })); pf.rotation.x = -Math.PI / 2; pf.position.set(hx, 0.035, hz - 1.2); pf.receiveShadow = true; pf.userData.eigen = true; wonder.add(pf); }
-    // Autos und ein Bus: oben (z > 0) fährt nach +x (an der Haltestelle vorbei), unten nach -x
-    if (FAHRZEUG_BAU) {
-      const { auto, bus, AUTO_FARBEN } = FAHRZEUG_BAU;
-      const neuW = (g, spur, richtung, tempo, x, istBus = false) => { g.rotation.y = richtung > 0 ? 0 : Math.PI; g.position.set(W.x + x, 0, W.z + spur); g.traverse((o) => { o.userData.eigen = true; }); scene.add(g); WELT_TEILE.wonderland.push(g); W_FAHRZEUGE.push({ g, richtung, tempo, jetzt: tempo, istBus, warte: 0, gehalten: false }); };
-      neuW(auto(AUTO_FARBEN[4]), 2.2, 1, 8, -90); neuW(auto(AUTO_FARBEN[1]), -2.2, -1, 7.5, 30);
-      neuW(auto(AUTO_FARBEN[2]), -2.2, -1, 9, 130); neuW(auto(AUTO_FARBEN[0]), 2.2, 1, 8.5, 40);
-      neuW(bus(), 2.2, 1, 7, -40, true);
-    }
   }
-  // Kleiner Platz mit Weihnachtsbaum (weiße Lichter) am Ende der Straße
-  tanne(wonder, W.x - 146, W.z, 1.6, false, true);
-  { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x - 146 + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
-  klotz(statisch, wonder, W.x - 146, 4, W.z, 1.2, 1.2, 0, { dicke: 4, unsichtbar: true });
-  tanneW(wonder, W.x + 146, W.z - 3, 1.6); tanneW(wonder, W.x + 146, W.z + 3, 1.4);
+  // =====================================================================
+  //  STADTPLAN: mehrere Straßen, Gassen, Kreuzungen mit Ampeln und Zebrastreifen,
+  //  eine Kirche, ein Park, Bäume und Büsche, und Autos mit Leuten drin (jedes Auto anders)
+  // =====================================================================
+  {
+    const strMat = M(0x8a8884, { roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const weissMat = M(0xf4f4f2, { roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    const flaeche = (mat, cx, cz, b, t, y = 0.03) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(b, t), mat); m.rotation.x = -Math.PI / 2; m.position.set(W.x + cx, y, W.z + cz); m.receiveShadow = true; wonder.add(m); return m; };
+    const ziegelMats = new Map();
+    const ziegelBoden = (cx, cz, b, t) => {   // Gehweg mit den gleichen Ziegeln wie im Weihnachtsdorf
+      const key = Math.round(b) + 'x' + Math.round(t);
+      if (!ziegelMats.has(key)) { const tx = PFLASTER_TEX ? PFLASTER_TEX.clone() : ziegelTextur(); tx.needsUpdate = true; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(Math.max(1, b / 3), Math.max(1, t / 3));
+        ziegelMats.set(key, new THREE.MeshStandardMaterial({ map: tx, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); }
+      return flaeche(ziegelMats.get(key), cx, cz, b, t, 0.028);
+    };
+    const fest = (x, z, b, t, h) => klotz(statisch, wonder, W.x + x, h, W.z + z, b, t, 0, { dicke: h, unsichtbar: true });
+
+    // --- Straßen: hinten zwei lange Straßen, dazu Querstraßen bei x = ±88 und ±150 ---
+    for (const s of [-1, 1]) {
+      flaeche(strMat, 0, s * 48, 307, 7);                                    // hintere Straße
+      // Gehwege an der hinteren Straße (innen und außen), mit Lücken für die Querstraßen
+      for (const [a, b2] of [[-146.5, -92.5], [-83.5, 83.5], [92.5, 146.5]]) ziegelBoden((a + b2) / 2, s * 43.5, b2 - a, 2);
+      ziegelBoden(0, s * 52.5, 293, 2);
+    }
+    for (const qx of [-150, -88, 88, 150]) {
+      const breit = Math.abs(qx) === 150 ? 7 : 6;
+      flaeche(strMat, qx, 0, breit, 103);
+      for (const sz of [-1, 1]) for (const sx of [-1, 1]) {   // Gehwege an den Querstraßen
+        if (Math.abs(qx) === 150 && sx === Math.sign(qx)) continue;   // außen nur Schnee
+        ziegelBoden(qx + sx * (breit / 2 + 0.75), sz * 25, 1.5, 35);
+      }
+    }
+    // Weiße Mittellinien (gestrichelt) auf den neuen Straßen
+    for (const s of [-1, 1]) for (let x = -140; x <= 140; x += 6) if (Math.abs(Math.abs(x) - 88) > 6) flaeche(weissMat, x, s * 48, 2.4, 0.14, 0.04);
+    for (const qx of [-150, -88, 88, 150]) for (let z = -40; z <= 40; z += 6) if (Math.abs(z) > 10) flaeche(weissMat, qx, z, 0.14, 2.4, 0.04);
+    for (let x = -144; x <= 144; x += 6) if (Math.abs(Math.abs(x) - 88) > 8 && Math.abs(x) < 142) flaeche(weissMat, x, 0, 2.4, 0.14, 0.04);   // Hauptstraße
+
+    // --- Gassen: schmale Ziegelwege zwischen den Läden und Häusern, mit Laternen und Girlanden ---
+    for (const gx of [-10.5, 10.5]) for (const sz of [-1, 1]) {
+      ziegelBoden(gx, sz * 25, 3, 35);
+      for (let k = 0; k < 4; k++) {
+        const z = sz * (11 + k * 9);
+        laterneW(wonder, W.x + gx + (k % 2 ? 1.3 : -1.3), W.z + z, 2.6);
+        if (k % 2 === 0) girlande(wonder, V(W.x + gx - 1.5, 3.0, W.z + z + sz * 4), V(W.x + gx + 1.5, 3.0, W.z + z + sz * 4), 0.4, 10);
+      }
+    }
+
+    // --- Zebrastreifen, Haltelinien und Ampeln an den Kreuzungen mit der Hauptstraße ---
+    const lampe = (farbe) => { const m = new THREE.MeshBasicMaterial({ color: 0x2a2a2a }); m.userData.farbe = farbe; return m; };   // leuchtet ohne Licht (echte Ampelfarbe)
+    const AMP = {
+      X: { rot: lampe(0xd9483c), gelb: lampe(0xeab03a), gruen: lampe(0x4cb866) },
+      Z: { rot: lampe(0xd9483c), gelb: lampe(0xeab03a), gruen: lampe(0x4cb866) },
+      fX: { rot: lampe(0xd9483c), gruen: lampe(0x4cb866) },   // Fußgänger, die über die Querstraße gehen
+      fZ: { rot: lampe(0xd9483c), gruen: lampe(0x4cb866) },   // Fußgänger, die über die Hauptstraße gehen
+    };
+    const lampenKugel = new THREE.SphereGeometry(0.13, 10, 8);
+    const ampelKopf = (g, x, y, z, nachX, mats) => {   // Kasten mit drei Lichtern, auf beiden Seiten
+      const k = new THREE.Mesh(boxGeo, M(C.schwarz)); k.scale.set(nachX ? 0.28 : 0.4, 1.0, nachX ? 0.4 : 0.28); k.position.set(x, y, z); g.add(k);
+      [mats.rot, mats.gelb, mats.gruen].forEach((mat, i) => { for (const s of [-1, 1]) { const l = new THREE.Mesh(lampenKugel, mat); l.position.set(x + (nachX ? s * 0.14 : 0), y + 0.3 - i * 0.3, z + (nachX ? 0 : s * 0.14)); l.scale.set(nachX ? 0.7 : 1, 1, nachX ? 1 : 0.7); g.add(l); } });
+    };
+    const fussKopf = (g, x, y, z, nachX, mats) => {
+      const k = new THREE.Mesh(boxGeo, M(C.schwarz)); k.scale.set(nachX ? 0.24 : 0.34, 0.66, nachX ? 0.34 : 0.24); k.position.set(x, y, z); g.add(k);
+      [mats.rot, mats.gruen].forEach((mat, i) => { for (const s of [-1, 1]) { const l = new THREE.Mesh(boxGeo, mat); l.scale.set(nachX ? 0.04 : 0.24, 0.24, nachX ? 0.24 : 0.04); l.position.set(x + (nachX ? s * 0.13 : 0), y + 0.15 - i * 0.3, z + (nachX ? 0 : s * 0.13)); g.add(l); } });
+    };
+    const KREUZUNGEN = [-150, -88, 88, 150];
+    for (const cx of KREUZUNGEN) {
+      const halb = Math.abs(cx) === 150 ? 3.5 : 3, aussen = Math.sign(cx);
+      // Zebrastreifen über die Hauptstraße (links und rechts von der Kreuzung)
+      for (const sx of [-1, 1]) {
+        if (Math.abs(cx) === 150 && sx === aussen) continue;
+        const zx = cx + sx * (halb + 2.0);
+        for (let i = 0; i < 9; i++) flaeche(weissMat, zx, -4 + i * 1.0, 3.0, 0.5, 0.045);
+        flaeche(weissMat, cx + sx * (halb + 4.2), sx * -2.2, 0.3, 4.2, 0.045);   // Haltelinie
+      }
+      // Zebrastreifen über die Querstraße (vorne und hinten)
+      for (const sz of [-1, 1]) {
+        for (let i = 0; i < Math.round(halb * 2) - 1; i++) flaeche(weissMat, cx - halb + 0.75 + i * 1.0, sz * 6, 0.5, 3.0, 0.045);
+        flaeche(weissMat, cx + sz * (halb / 2), sz * 8.2, halb, 0.3, 0.045);   // Haltelinie
+      }
+      // Ampeln an den vier Ecken
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const ax = W.x + cx + sx * (halb + 0.6), az = W.z + sz * 5.0;
+        zyl(wonder, ax, 1.7, az, 0.07, 0.08, 3.4, C.dunkelgrau, 8);
+        ampelKopf(wonder, ax, 3.0, az, true, AMP.X);
+        ampelKopf(wonder, ax, 3.0, az + sz * 0.45, false, AMP.Z);
+        fussKopf(wonder, ax, 2.05, az, true, AMP.fX);
+        fussKopf(wonder, ax + sx * 0.0, 2.05, az + sz * 0.45, false, AMP.fZ);
+        deko(wonder, ax, 1.1, az, 0.16, 0.22, 0.16, 0xe3d9c6);   // Drückknopf
+        klotz(statisch, wonder, ax, 3.4, az, 0.25, 0.25, 0, { dicke: 3.4, unsichtbar: true });
+      }
+    }
+    // Ampelphasen: Hauptstraße grün, gelb, alle rot, Querstraße grün, gelb, alle rot (zusammen 30 s)
+    const AMPEL = { zeit: 0, frei: { X: true, Z: false } };
+    const setze = (mat, an) => { mat.color.setHex(an ? mat.userData.farbe : 0x2a2a2a); };
+    const ampelUpdate = (dt) => {
+      AMPEL.zeit = (AMPEL.zeit + dt) % 30; const t = AMPEL.zeit;
+      const xg = t < 13, xy = t >= 13 && t < 15, zg = t >= 16 && t < 27, zy = t >= 27 && t < 29;
+      setze(AMP.X.gruen, xg); setze(AMP.X.gelb, xy); setze(AMP.X.rot, !xg && !xy);
+      setze(AMP.Z.gruen, zg); setze(AMP.Z.gelb, zy); setze(AMP.Z.rot, !zg && !zy);
+      const fz = t >= 16 && t < 26, fx = t >= 1 && t < 12;   // Fußgänger dürfen gehen, wenn die Autos rot haben
+      setze(AMP.fZ.gruen, fz); setze(AMP.fZ.rot, !fz); setze(AMP.fX.gruen, fx); setze(AMP.fX.rot, !fx);
+      AMPEL.frei.X = xg; AMPEL.frei.Z = zg;
+    };
+    ampelUpdate(0);
+
+    // --- Büsche (alle zusammen als zwei Teile, schnell fürs Handy) ---
+    const BUESCHE = [];
+    for (const hx of [-72, -48, -24, 24, 48, 72]) for (const sz of [-1, 1]) for (const o of [-7, -5.6, -4.2, 4.2, 5.6, 7]) if (!(sz > 0 && Math.abs(hx + o - 60) < 6)) BUESCHE.push([hx + o, sz * 10.4, 0.75 + ((hx + o * 3) & 3) * 0.08]);
+    for (const sz of [-1, 1]) for (let x = -140; x <= 130; x += 7) { if (Math.abs(Math.abs(x) - 88) < 6 || Math.abs(Math.abs(x) - 10.5) < 3) continue; BUESCHE.push([x + 2.5, sz * 41.2, 0.8]); }
+
+    // --- Bäume an der hinteren Straße (außen) ---
+    for (const sz of [-1, 1]) for (let x = -140; x <= 140; x += 14) {
+      if (sz < 0 && Math.abs(x) < 20) continue;   // Platz für die Kirche
+      if (sz > 0 && Math.abs(x) < 34) continue;   // Platz für den Park
+      tanneW(wonder, W.x + x, W.z + sz * 57, 1.0 + ((x / 14) & 1) * 0.25); fest(x, sz * 57, 1, 1, 3);
+    }
+
+    // --- Kirche (hinten an der Straße, Turm mit Uhr und Spitze, warme Fenster) ---
+    {
+      const KZ = -70, kg = new THREE.Group(); kg.position.set(W.x, 0, W.z + KZ); wonder.add(kg);
+      const stein = M(0xd6cfc3, { roughness: 0.95 }), steinDunkel = M(0xb9b1a4, { roughness: 0.95 });
+      kasten(kg, 0, 4.5, 0, 12, 9, 22, stein); kasten(kg, 0, 0.45, 0, 12.3, 0.9, 22.3, ziegelMat);   // Kirchenschiff mit Ziegelsockel
+      dach(kg, 12, 22, 9, 5, C.dunkelgrau, 0.6);
+      kasten(kg, 0, 9, 13, 5.4, 18, 5, stein); kasten(kg, 0, 0.45, 13, 5.7, 0.9, 5.3, ziegelMat);   // Turm vorne
+      for (const y of [6, 12, 18]) kasten(kg, 0, y, 13, 5.7, 0.3, 5.3, steinDunkel);   // Gesimse
+      const spitze = new THREE.Mesh(new THREE.ConeGeometry(3.9, 10, 4), M(C.dunkelgrau)); spitze.rotation.y = Math.PI / 4; spitze.position.set(0, 23.1, 13); spitze.castShadow = true; kg.add(spitze);
+      const sSchnee = new THREE.Mesh(new THREE.ConeGeometry(2.2, 4, 4), M(0xfbfcff)); sSchnee.rotation.y = Math.PI / 4; sSchnee.position.set(0, 26.3, 13); kg.add(sSchnee);
+      deko(kg, 0, 29.0, 13, 0.14, 1.6, 0.14, C.beige); deko(kg, 0, 29.3, 13, 0.9, 0.14, 0.14, C.beige);   // Kreuz oben
+      // Uhr vorne am Turm
+      const uhr = new THREE.Mesh(new THREE.CircleGeometry(1.1, 24), M(C.creme)); uhr.position.set(0, 14.6, 15.52); kg.add(uhr);
+      const rand = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.08, 6, 24), M(C.schwarz)); rand.position.set(0, 14.6, 15.53); kg.add(rand);
+      deko(kg, 0, 14.95, 15.56, 0.08, 0.7, 0.03, C.schwarz); deko(kg, 0.25, 14.6, 15.56, 0.5, 0.08, 0.03, C.schwarz);
+      for (let i = 0; i < 12; i++) { const w = i * Math.PI / 6; deko(kg, Math.cos(w) * 0.9, 14.6 + Math.sin(w) * 0.9, 15.55, 0.08, 0.08, 0.02, C.dunkel); }
+      // Schallöffnungen oben im Turm (alle vier Seiten)
+      for (const [ox, oz, qx] of [[0, 15.51, false], [0, 10.49, false], [2.71, 13, true], [-2.71, 13, true]]) for (const k of [-0.7, 0.7]) deko(kg, ox + (qx ? 0 : k), 16.6, oz + (qx ? k : 0), qx ? 0.05 : 0.8, 2.0, qx ? 0.8 : 0.05, C.dunkel);
+      // hohe Fenster mit Bogen an den Seiten des Schiffs (warmes Licht)
+      const bogenGeo = new THREE.CircleGeometry(0.65, 12, 0, Math.PI);
+      for (const sx of [-1, 1]) for (const z of [-8, -3.5, 1, 5.5]) {
+        const f = new THREE.Mesh(boxGeo, fensterMat); f.scale.set(0.06, 3.2, 1.3); f.position.set(sx * 6.02, 4.6, z); kg.add(f);
+        const b = new THREE.Mesh(bogenGeo, fensterMat); b.position.set(sx * 6.03, 6.2, z); b.rotation.y = sx * Math.PI / 2; kg.add(b);
+        deko(kg, sx * 6.08, 4.6, z, 0.05, 3.2, 0.06, C.dunkel); deko(kg, sx * 6.08, 4.6, z, 0.05, 0.06, 1.3, C.dunkel);
+        deko(kg, sx * 6.15, 2.92, z, 0.3, 0.12, 1.6, 0xfbfcff);   // Schnee auf der Fensterbank
+      }
+      // Rundfenster über der Tür und oben im Giebel hinten
+      const rund = new THREE.Mesh(new THREE.CircleGeometry(0.9, 20), fensterMat); rund.position.set(0, 8.2, 15.52); kg.add(rund);
+      const rundH = new THREE.Mesh(new THREE.CircleGeometry(1.2, 20), fensterMat); rundH.position.set(0, 10.5, -11.02); rundH.rotation.y = Math.PI; kg.add(rundH);
+      // große Holztür mit Bogen, Kranz und Girlanden
+      deko(kg, 0, 2.25, 15.55, 2.6, 3.0, 0.1, C.dunkel); deko(kg, 0, 2.25, 15.62, 0.06, 3.0, 0.05, C.schoko);
+      const tb = new THREE.Mesh(new THREE.CircleGeometry(1.3, 14, 0, Math.PI), M(C.dunkel)); tb.position.set(0, 3.75, 15.56); kg.add(tb);
+      kranz(kg, 0, 3.2, 15.7, 0.45);
+      girlande(kg, V(-1.6, 5.2, 15.7), V(1.6, 5.2, 15.7), 0.5, 14);
+      for (const sx of [-1, 1]) girlande(kg, V(sx * 1.6, 5.2, 15.7), V(sx * 1.6, 1.0, 15.7), 0, 10);
+      for (let i = 0; i < 3; i++) { const h = 0.25 * (3 - i); kasten(kg, 0, h / 2, 15.75 + i * 0.5, 4.2, h, 0.5, M(C.hellgrau)); deko(kg, 0, h + 0.02, 15.75 + i * 0.5, 4.2, 0.04, 0.5, 0xfbfcff); fest(0, KZ + 15.75 + i * 0.5, 4.2, 0.5, h); }   // Stufen
+      // Laternen, Tannen mit Lichtern, Büsche
+      for (const sx of [-1, 1]) {
+        laterneW(wonder, W.x + sx * 3.4, W.z + KZ + 16.2, 3.0);
+        tanne(wonder, W.x + sx * 9.5, W.z + KZ + 15, 1.0, false, true);
+        const p = []; for (let i = 0; i < 70; i++) { const w = i * 0.75, hh = i / 70; p.push(V(W.x + sx * 9.5 + Math.cos(w) * (2.2 - hh * 2.0), 1.0 + hh * 5.2, W.z + KZ + 15 + Math.sin(w) * (2.2 - hh * 2.0))); } weisseLichter(wonder, p, 1.0);
+        fest(sx * 9.5, KZ + 15, 1.2, 1.2, 4);
+        BUESCHE.push([sx * 8.0, KZ + 11.5, 0.9], [sx * 8.0, KZ + 8.5, 0.85], [sx * 8.0, KZ + 5.5, 0.9]);
+      }
+      fest(0, KZ, 12.3, 22.3, 12); fest(0, KZ + 13, 5.7, 5.3, 20);
+    }
+
+    // --- Park gegenüber der Kirche: Wege, Weihnachtsbaum, Bänke, Teich, Schneemann, Bäume und Büsche ---
+    {
+      const PZ = 70;
+      ziegelBoden(0, PZ - 2, 3, 30); ziegelBoden(0, PZ, 50, 3);
+      const rundweg = new THREE.Mesh(new THREE.RingGeometry(5.2, 7.2, 32), ziegelMats.values().next().value); rundweg.rotation.x = -Math.PI / 2; rundweg.position.set(W.x, 0.029, W.z + PZ); wonder.add(rundweg);
+      tanne(wonder, W.x, W.z + PZ, 1.6, false, true);
+      { const p = []; for (let i = 0; i < 120; i++) { const w = i * 0.7, hh = i / 120; p.push(V(W.x + Math.cos(w) * (3.4 - hh * 3.0), 1.5 + hh * 8.5, W.z + PZ + Math.sin(w) * (3.4 - hh * 3.0))); } weisseLichter(wonder, p, 1.2); }
+      holzStern(wonder, W.x, 11.6, W.z + PZ, 0.5, C.creme);
+      fest(0, PZ, 1.4, 1.4, 5);
+      const bank = (x, z, dreh) => { const r = new THREE.Group(); r.position.set(W.x + x, 0, W.z + z); r.rotation.y = dreh; wonder.add(r);
+        deko(r, 0, 0.48, 0, 1.9, 0.08, 0.5, C.braun); deko(r, 0, 0.82, -0.22, 1.9, 0.4, 0.06, C.braun); deko(r, 0, 0.55, 0.02, 1.8, 0.04, 0.46, 0xfbfcff);
+        for (const sx of [-0.8, 0.8]) deko(r, sx, 0.24, 0, 0.08, 0.48, 0.45, C.schwarz);
+        fest(x, z, dreh % Math.PI ? 0.6 : 2.0, dreh % Math.PI ? 2.0 : 0.6, 0.55); };
+      bank(-4, PZ - 8.2, 0); bank(4, PZ - 8.2, 0); bank(-4, PZ + 8.2, Math.PI); bank(4, PZ + 8.2, Math.PI);
+      bank(-8.6, PZ + 3.5, Math.PI / 2); bank(8.6, PZ - 3.5, -Math.PI / 2);
+      for (const [x, z] of [[-6, PZ - 6], [6, PZ - 6], [-6, PZ + 6], [6, PZ + 6]]) laterneW(wonder, W.x + x, W.z + z, 3.0);
+      // zugefrorener Teich
+      const teich = new THREE.Mesh(new THREE.CircleGeometry(4.5, 28), M(0xc9d9ea, { roughness: 0.15, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -2 })); teich.rotation.x = -Math.PI / 2; teich.scale.set(1.5, 1, 1); teich.position.set(W.x + 16, 0.03, W.z + PZ + 7); wonder.add(teich);
+      for (let i = 0; i < 18; i++) { const w = i * Math.PI / 9; kugelW(wonder, W.x + 16 + Math.cos(w) * 6.9, 0.15, W.z + PZ + 7 + Math.sin(w) * 4.6, 0.35 + (i % 3) * 0.08, i % 2 ? C.hellgrau : C.grau); }
+      // Schneemann
+      { const sx = -15, sz = PZ + 4; kugelW(wonder, W.x + sx, 0.75, W.z + sz, 0.85, 0xfbfcff); kugelW(wonder, W.x + sx, 1.85, W.z + sz, 0.62, 0xfbfcff); kugelW(wonder, W.x + sx, 2.75, W.z + sz, 0.42, 0xfbfcff);
+        const nase = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.35, 8), M(0xd99a5a)); nase.rotation.x = Math.PI / 2; nase.position.set(W.x + sx, 2.75, W.z + sz - 0.55); wonder.add(nase);
+        zyl(wonder, W.x + sx, 3.25, W.z + sz, 0.28, 0.28, 0.4, C.schwarz, 12); zyl(wonder, W.x + sx, 3.06, W.z + sz, 0.42, 0.42, 0.04, C.schwarz, 12);
+        for (const ex of [-0.13, 0.13]) kugelW(wonder, W.x + sx + ex, 2.88, W.z + sz - 0.38, 0.05, C.schwarz);
+        const schal = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.1, 6, 16), M(C.salbei)); schal.rotation.x = Math.PI / 2; schal.position.set(W.x + sx, 2.4, W.z + sz); wonder.add(schal);
+        fest(sx, sz, 1.6, 1.6, 2.5); }
+      // Bäume und Büsche rund um den Park
+      for (const [x, z, s] of [[-24, PZ - 9, 1.2], [-20, PZ + 10, 1.0], [-27, PZ + 2, 1.3], [24, PZ - 9, 1.1], [26, PZ + 12, 1.3], [-10, PZ + 13, 1.0], [10, PZ + 14, 1.2], [-17, PZ - 10, 0.9], [14, PZ - 11, 1.0]]) { tanneW(wonder, W.x + x, W.z + z, s); fest(x, z, 1, 1, 3); }
+      for (let k = 0; k < 4; k++) for (const dw of [-0.18, 0.18]) { const w = Math.PI / 4 + k * Math.PI / 2 + dw; BUESCHE.push([Math.cos(w) * 11.5, PZ + Math.sin(w) * 11.5, 0.8]); }
+      for (const x of [-22, -18, 18, 22]) BUESCHE.push([x, PZ - 12.5, 0.9]);
+    }
+
+    // Büsche bauen: ein grüner Teil und Schneehauben darauf
+    {
+      const n = BUESCHE.length, m4 = new THREE.Matrix4();
+      const busch = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), M(C.tanne, { flatShading: true }), n);
+      const haube = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), M(0xf6f8fa), n);
+      BUESCHE.forEach(([x, z, s], i) => {
+        m4.makeScale(s * 1.1, s * 0.85, s).setPosition(W.x + x, s * 0.6, W.z + z); busch.setMatrixAt(i, m4);
+        m4.makeScale(s * 0.95, s * 0.5, s * 0.85).setPosition(W.x + x, s * 0.9, W.z + z); haube.setMatrixAt(i, m4);
+        fest(x, z, s * 1.6, s * 1.6, s * 1.2);
+      });
+      busch.castShadow = true; wonder.add(busch); wonder.add(haube);
+    }
+
+    // --- Autos: jedes hat eine andere Form, und es sitzen Leute drin ---
+    const glasAuto = new THREE.MeshStandardMaterial({ color: 0xd3dee8, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.32, depthWrite: false });
+    const lichtV = M(0xfff6dc, { emissive: 0xfff0c8, emissiveIntensity: 0.8 }), lichtH = M(0xe8b8c0, { emissive: 0xd98a96, emissiveIntensity: 0.6 });
+    const radGeoA = new THREE.CylinderGeometry(1, 1, 0.3, 14); radGeoA.rotateX(Math.PI / 2);
+    const rad = (g, x, z, r = 0.38) => { const m = new THREE.Mesh(radGeoA, M(0x2f333b)); m.scale.set(r, r, 1); m.position.set(x, r, z); g.add(m); const n = new THREE.Mesh(radGeoA, M(C.hellgrau)); n.scale.set(r * 0.45, r * 0.45, 1.05); n.position.set(x, r, z); g.add(n); };
+    const raederA = (g, xs, B, r) => { for (const x of xs) for (const s of [-1, 1]) rad(g, x, s * (B / 2 - 0.05), r); };
+    const lichter = (g, L, y, B, rund = false) => {
+      for (const s of [-1, 1]) {
+        if (rund) { const l = new THREE.Mesh(kugelGeoW, lichtV); l.scale.setScalar(0.16); l.position.set(L / 2, y, s * (B / 2 - 0.35)); g.add(l); }
+        else { const l = new THREE.Mesh(boxGeo, lichtV); l.scale.set(0.06, 0.16, 0.38); l.position.set(L / 2 + 0.01, y, s * (B / 2 - 0.35)); g.add(l); }
+        const h = new THREE.Mesh(boxGeo, lichtH); h.scale.set(0.06, 0.16, 0.3); h.position.set(-L / 2 - 0.01, y, s * (B / 2 - 0.3)); g.add(h);
+      }
+    };
+    // Kabine aus Glas mit Säulen und Dach (damit man die Leute drinnen sieht)
+    const kabine = (g, cx, L, B, y0, h, farbe, schnee = true) => {
+      deko(g, cx, y0 + h, 0, L, 0.08, B, farbe);
+      if (schnee) deko(g, cx, y0 + h + 0.08, 0, L - 0.15, 0.09, B - 0.15, 0xfbfcff);
+      for (const px of [cx - L / 2 + 0.06, cx + L / 2 - 0.06]) for (const s of [-1, 1]) deko(g, px, y0 + h / 2, s * (B / 2 - 0.05), 0.1, h, 0.1, farbe);
+      for (const s of [-1, 1]) { const f = new THREE.Mesh(boxGeo, glasAuto); f.scale.set(L - 0.12, h - 0.04, 0.03); f.position.set(cx, y0 + h / 2, s * (B / 2 - 0.04)); g.add(f);
+        const q = new THREE.Mesh(boxGeo, glasAuto); q.scale.set(0.03, h - 0.04, B - 0.12); q.position.set(cx + s * (L / 2 - 0.04), y0 + h / 2, 0); g.add(q); }
+      deko(g, cx, y0 + 0.02, 0, L, 0.05, B, dunkler(farbe, 0.85));   // Fensterkante
+    };
+    const LEUTE_AUTO = [
+      { haut: 0xf1c9a5, haare: 0x5b3a24, jacke: 0x1f2a4a, muetze: 0xd9cbb5 }, { haut: 0xc68b5e, haare: 0x2b1d14, jacke: 0x8a6446 },
+      { haut: 0xf6d7bd, haare: 0xc48a4a, jacke: 0xa9c4dc, muetze: 0xf5f3ee }, { haut: 0x9a6440, haare: 0x2b1d14, jacke: 0xd9cbb5 },
+      { haut: 0xf1c9a5, haare: 0xe6c27a, jacke: 0x7d8a6e }, { haut: 0x6b4329, haare: 0x2b1d14, jacke: 0xf0d9de, muetze: 0x8a6446 },
+      { haut: 0xf6d7bd, haare: 0x8e8f8c, jacke: 0x45474a, muetze: 0x1f2a4a }, { haut: 0xe8c3a0, haare: 0x4a3326, jacke: 0xb8574e },
+    ];
+    let leuteNr = 0;
+    const mensch = (g, x, y, z, lenkrad = false, klein = 1) => {   // y = Sitzhöhe
+      const L = LEUTE_AUTO[leuteNr++ % LEUTE_AUTO.length], k = klein;
+      deko(g, x - 0.28 * k, y + 0.4 * k, z, 0.14, 0.8 * k, 0.5 * k, C.dunkelgrau);   // Sitzlehne
+      deko(g, x, y + 0.28 * k, z, 0.3 * k, 0.56 * k, 0.42 * k, L.jacke);              // Oberkörper
+      kugelW(g, x - 0.04 * k, y + 0.78 * k, z, 0.18 * k, L.haare);                     // Haare (hinten)
+      kugelW(g, x + 0.02 * k, y + 0.75 * k, z, 0.165 * k, L.haut);                     // Gesicht
+      for (const s of [-1, 1]) kugelW(g, x + 0.17 * k, y + 0.78 * k, z + s * 0.06 * k, 0.022, C.schwarz);   // Augen
+      if (L.muetze) { zyl(g, x - 0.02 * k, y + 0.9 * k, z, 0.11 * k, 0.17 * k, 0.15 * k, L.muetze, 10); kugelW(g, x - 0.02 * k, y + 1.0 * k, z, 0.06 * k, L.muetze); }
+      if (lenkrad) {
+        for (const s of [-1, 1]) deko(g, x + 0.25, y + 0.38, z + s * 0.16, 0.42, 0.09, 0.09, L.jacke);   // Arme nach vorne
+        const r = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 6, 14), M(C.schwarz)); r.rotation.y = Math.PI / 2; r.rotation.z = 0.35; r.position.set(x + 0.48, y + 0.45, z); g.add(r);
+      }
+    };
+    const AUTO_FARBEN_S = [0x8fa3ba, 0xd9cbb5, 0x5b3a24, 0x7d8a6e, 0x45474a, 0xf3ead8, 0x1f2a4a, 0xa86a6a, 0xc9d9ea, 0xb8c4a0];
+    function stadtAuto(art, farbe) {
+      const g = new THREE.Group();
+      let L = 4.4, B = 1.9;
+      if (art === 'limo') {   // normale Limousine
+        deko(g, 0, 0.72, 0, L, 0.72, B, farbe); kabine(g, -0.3, 2.3, B - 0.1, 1.08, 0.7, farbe);
+        mensch(g, 0.2, 0.62, -0.42, true); if (leuteNr % 2) mensch(g, 0.2, 0.62, 0.42); raederA(g, [-1.4, 1.4], B, 0.38); lichter(g, L, 0.85, B);
+      } else if (art === 'klein') {   // kleines rundliches Stadtauto
+        L = 3.3; B = 1.75; deko(g, 0, 0.7, 0, L, 0.7, B, farbe); kabine(g, -0.1, 2.1, B - 0.08, 1.05, 0.82, farbe);
+        for (const sx of [-1, 1]) { const k = new THREE.Mesh(kugelGeoW, M(farbe)); k.scale.set(0.5, 0.36, B / 2 - 0.02); k.position.set(sx * (L / 2 - 0.25), 0.72, 0); g.add(k); }
+        mensch(g, 0.25, 0.6, -0.4, true); raederA(g, [-1.05, 1.05], B, 0.34); lichter(g, L + 0.3, 0.82, B, true);
+      } else if (art === 'kombi') {   // Kombi mit Dachbox und Skiern
+        L = 4.8; deko(g, 0, 0.72, 0, L, 0.72, B, farbe); kabine(g, -0.55, 3.3, B - 0.1, 1.08, 0.72, farbe, false);
+        deko(g, -0.6, 1.98, 0, 1.9, 0.38, 0.95, C.dunkelgrau); deko(g, -0.6, 2.2, 0, 1.8, 0.07, 0.9, 0xfbfcff);   // Dachbox mit Schnee
+        for (const s of [-1, 1]) deko(g, -0.55, 1.84, s * 0.8, 3.0, 0.05, 0.06, C.hellgrau);   // Dachreling
+        mensch(g, 0.35, 0.62, -0.42, true); mensch(g, 0.35, 0.62, 0.42); mensch(g, -0.95, 0.62, -0.35, false, 0.8); mensch(g, -0.95, 0.62, 0.35, false, 0.8);
+        raederA(g, [-1.5, 1.5], B, 0.38); lichter(g, L, 0.85, B);
+      } else if (art === 'gelaende') {   // großer Geländewagen mit Tannenbaum auf dem Dach
+        L = 4.6; B = 2.0; deko(g, 0, 0.95, 0, L, 0.9, B, farbe); kabine(g, -0.35, 2.9, B - 0.1, 1.4, 0.8, farbe, false);
+        deko(g, -0.35, 2.32, 0, 2.6, 0.06, 1.6, C.schwarz);   // Dachträger
+        const baum = new THREE.Mesh(new THREE.ConeGeometry(0.42, 2.4, 8), M(C.tanne)); baum.rotation.z = Math.PI / 2; baum.position.set(-0.35, 2.62, 0); g.add(baum);
+        deko(g, -0.35, 2.62, 0, 0.1, 0.12, 0.9, C.braun);   // Band
+        zyl(g, -L / 2 - 0.15, 1.15, 0, 0.42, 0.42, 0.25, 0x2f333b, 14).rotation.z = Math.PI / 2;   // Reserverad hinten
+        mensch(g, 0.25, 0.95, -0.45, true); mensch(g, -0.9, 0.95, 0.4, false, 0.75);
+        raederA(g, [-1.5, 1.5], B, 0.46); lichter(g, L, 1.1, B);
+      } else if (art === 'transporter') {   // Lieferwagen der Bäckerei
+        L = 5.2; B = 2.0; deko(g, 0, 0.7, 0, L, 0.6, B, farbe);
+        deko(g, -0.75, 1.75, 0, 3.6, 1.5, B, farbe);   // Laderaum (zu)
+        kabine(g, 1.6, 1.9, B - 0.1, 1.0, 0.95, farbe);
+        deko(g, -0.75, 2.56, 0, 3.5, 0.1, B - 0.1, 0xfbfcff);
+        for (const s of [-1, 1]) { const sch = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.7), schild('Bäckerei', 512, 140, '#f6f1e7', '#5b3a24')); sch.position.set(-0.75, 1.8, s * (B / 2 + 0.01)); if (s < 0) sch.rotation.y = Math.PI; g.add(sch); }
+        mensch(g, 1.75, 0.62, -0.42, true); raederA(g, [-1.7, 1.6], B, 0.4); lichter(g, L, 0.85, B);
+      } else if (art === 'pickup') {   // Pickup mit Geschenken und einem Baum hinten drauf
+        L = 5.0; B = 1.95; deko(g, 0, 0.78, 0, L, 0.62, B, farbe); kabine(g, 0.65, 1.9, B - 0.1, 1.09, 0.75, farbe);
+        for (const s of [-1, 1]) deko(g, -1.45, 1.3, s * (B / 2 - 0.05), 2.1, 0.45, 0.08, farbe); deko(g, -2.47, 1.3, 0, 0.08, 0.45, B, farbe);
+        const baum = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.0, 8), M(C.tanne)); baum.rotation.z = Math.PI / 2; baum.position.set(-1.3, 1.45, 0.25); g.add(baum);
+        for (const [gx, gz, gf] of [[-2.0, -0.5, C.beige], [-1.5, -0.55, C.braun], [-0.85, -0.45, C.creme]]) { deko(g, gx, 1.27, gz, 0.4, 0.38, 0.4, gf); deko(g, gx, 1.27, gz, 0.42, 0.4, 0.06, C.dunkel); }
+        mensch(g, 0.95, 0.68, -0.42, true); mensch(g, 0.95, 0.68, 0.42);
+        raederA(g, [-1.6, 1.5], B, 0.42); lichter(g, L, 0.92, B);
+      } else if (art === 'kaefer') {   // rundes altes Auto mit Glaskuppel
+        L = 3.9; B = 1.75;
+        const k = new THREE.Mesh(kugelGeoW, M(farbe)); k.scale.set(L / 2, 0.5, B / 2); k.position.set(0, 0.75, 0); g.add(k);
+        const kup = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), glasAuto); kup.scale.set(1.15, 0.85, 0.82); kup.position.set(-0.15, 0.95, 0); g.add(kup);
+        const dachK = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 6, 0, Math.PI * 2, 0, Math.PI / 4), M(farbe)); dachK.scale.set(1.05, 0.85, 0.75); dachK.position.set(-0.15, 0.97, 0); g.add(dachK);
+        const sch = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 4, 0, Math.PI * 2, 0, Math.PI / 6), M(0xfbfcff)); sch.scale.set(0.8, 0.88, 0.55); sch.position.set(-0.15, 0.98, 0); g.add(sch);
+        mensch(g, 0.05, 0.55, -0.36, true, 0.95); mensch(g, 0.05, 0.55, 0.36, false, 0.95);
+        raederA(g, [-1.2, 1.2], B, 0.36); lichter(g, L - 0.2, 0.9, B, true);
+      } else {   // Oldtimer: lange Motorhaube, Trittbretter, runde Lampen
+        L = 4.6; B = 1.8;
+        deko(g, 0.9, 0.95, 0, 2.2, 0.55, 1.2, farbe); deko(g, -0.9, 0.85, 0, 2.6, 0.75, B - 0.2, farbe);
+        kabine(g, -0.9, 1.8, B - 0.25, 1.22, 0.78, C.schwarz);
+        for (const s of [-1, 1]) { deko(g, 0, 0.42, s * (B / 2 - 0.05), 3.4, 0.06, 0.32, C.schwarz); for (const x of [-1.4, 1.4]) { const f = new THREE.Mesh(kugelGeoW, M(C.schwarz)); f.scale.set(0.55, 0.32, 0.22); f.position.set(x, 0.72, s * (B / 2 - 0.08)); g.add(f); } }
+        deko(g, L / 2 - 0.25, 0.95, 0, 0.08, 0.5, 0.8, C.hellgrau);   // Kühlergrill
+        mensch(g, -0.5, 0.75, -0.35, true, 0.95); raederA(g, [-1.4, 1.4], B, 0.42); lichter(g, L - 0.1, 1.15, B, true);
+      }
+      zusammenkleben(g);   // fürs Handy: wenige Teile pro Auto
+      g.traverse((o) => { o.userData.eigen = true; });
+      g.userData.laenge = L;
+      return g;
+    }
+
+    // --- Fahrwege: Rundstrecken über die Straßen (rechts fahren) ---
+    const strecke = (knoten) => {
+      const n = knoten.length, off = (a, b) => (a[1] === 0 && b[1] === 0 ? 2.2 : 1.7);
+      const dirs = knoten.map((a, i) => { const b = knoten[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l, off(a, b)]; });
+      const pts = knoten.map((a, i) => { const din = dirs[(i - 1 + n) % n], dout = dirs[i]; return [a[0] - din[1] * din[2] - dout[1] * dout[2], a[1] + din[0] * din[2] + dout[0] * dout[2]]; });
+      const len = [], cum = [0]; for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; len.push(Math.hypot(b[0] - a[0], b[1] - a[1])); cum.push(cum[i] + len[i]); }
+      const ampeln = [];
+      for (let i = 0; i < n; i++) for (const cx of KREUZUNGEN) {
+        const p = pts[i], d = dirs[i], t = (cx - p[0]) * d[0] + (0 - p[1]) * d[1], quer = Math.abs((cx - p[0]) * d[1] - (0 - p[1]) * d[0]);
+        if (quer < 3 && t > 0.5 && t <= len[i] + 3) { const achse = Math.abs(d[0]) > 0.5 ? 'X' : 'Z'; ampeln.push({ s: cum[i] + t, achse, halt: cum[i] + t - (achse === 'X' ? (Math.abs(cx) === 150 ? 3.5 : 3) + 4.6 : 8.6) }); }
+      }
+      return { pts, dirs, len, cum, L: cum[n], ampeln };
+    };
+    const R = 3.5;   // Kurvenradius
+    const wo = (st, s) => {   // Position und Richtung an der Stelle s (Kurven weich)
+      s = ((s % st.L) + st.L) % st.L; const n = st.pts.length;
+      let i = 0; while (i < n - 1 && s >= st.cum[i + 1]) i++;
+      const u = s - st.cum[i], d = st.dirs[i], p = st.pts[i];
+      let ecke = -1, t = 0;
+      if (u > st.len[i] - R) { ecke = (i + 1) % n; t = (u - (st.len[i] - R)) / (2 * R); }
+      else if (u < R) { ecke = i; t = 0.5 + u / (2 * R); }
+      if (ecke < 0) return [p[0] + d[0] * u, p[1] + d[1] * u, d[0], d[1]];
+      const c = st.pts[ecke], di = st.dirs[(ecke - 1 + n) % n], dout = st.dirs[ecke];
+      const ax = c[0] - di[0] * R, az = c[1] - di[1] * R, bx = c[0] + dout[0] * R, bz = c[1] + dout[1] * R, m = 1 - t;
+      const x = m * m * ax + 2 * m * t * c[0] + t * t * bx, z = m * m * az + 2 * m * t * c[1] + t * t * bz;
+      const tx = 2 * m * (c[0] - ax) + 2 * t * (bx - c[0]), tz = 2 * m * (c[1] - az) + 2 * t * (bz - c[1]), tl = Math.hypot(tx, tz) || 1;
+      return [x, z, tx / tl, tz / tl];
+    };
+    const STRECKEN = {
+      nordRund: strecke([[-150, 0], [150, 0], [150, 48], [-150, 48]]),
+      suedRund: strecke([[150, 0], [-150, 0], [-150, -48], [150, -48]]),
+      nordKlein: strecke([[-88, 0], [88, 0], [88, 48], [-88, 48]]),
+      suedKlein: strecke([[88, 0], [-88, 0], [-88, -48], [88, -48]]),
+      gross: strecke([[-150, 48], [150, 48], [150, -48], [-150, -48]]),
+      grossZurueck: strecke([[-150, -48], [150, -48], [150, 48], [-150, 48]]),
+      nordZurueck: strecke([[-150, 48], [150, 48], [150, 0], [-150, 0]]),
+    };
+    const busStrecke = STRECKEN.nordRund;
+    const busHaltS = (() => { const p = busStrecke.pts[0]; return busStrecke.cum[0] + (56.4 - p[0]); })();
+    const neuF = (g, st, s, tempo, istBus = false) => {
+      scene.add(g); WELT_TEILE.wonderland.push(g);
+      const f = { g, st, s, tempo, jetzt: tempo, istBus, warte: 0, gehalten: false, laenge: istBus ? 10 : g.userData.laenge, fx: 1, fz: 0 };
+      W_FAHRZEUGE.push(f); setzeF(f); return f;
+    };
+    const setzeF = (f) => { const [x, z, dx, dz] = wo(f.st, f.s); f.g.position.set(W.x + x, 0, W.z + z); f.g.rotation.y = Math.atan2(-dz, dx); f.fx = dx; f.fz = dz; };
+    const ARTEN = ['limo', 'klein', 'kombi', 'gelaende', 'transporter', 'pickup', 'kaefer', 'oldtimer', 'limo', 'klein'];
+    const PLAN = [['nordRund', 40], ['nordRund', 330], ['suedRund', 20], ['suedRund', 300], ['nordKlein', 60], ['suedKlein', 150], ['gross', 120], ['grossZurueck', 420], ['nordZurueck', 230], ['suedRund', 520]];
+    PLAN.forEach(([name, s], i) => neuF(stadtAuto(ARTEN[i], AUTO_FARBEN_S[i % AUTO_FARBEN_S.length]), STRECKEN[name], s, 7 + (i % 3) * 0.8));
+    if (FAHRZEUG_BAU) { const b = FAHRZEUG_BAU.bus(); b.traverse((o) => { o.userData.eigen = true; }); neuF(b, busStrecke, 200, 7, true); }
+
+    stadtVerkehrUpdate = (dt, pos) => {
+      ampelUpdate(dt);
+      for (const f of W_FAHRZEUGE) {
+        if (f.warte > 0) { f.warte -= dt; continue; }
+        let ziel = f.tempo;
+        const s = ((f.s % f.st.L) + f.st.L) % f.st.L, vorne = s + f.laenge / 2;
+        // Ampel: bei Rot (und Gelb) vor der Haltelinie stehen bleiben
+        for (const a of f.st.ampeln) { if (AMPEL.frei[a.achse]) continue; let d = a.halt - vorne; if (d < -f.st.L / 2) d += f.st.L; if (d > -0.5 && d < 16) ziel = Math.min(ziel, d < 0.3 ? 0 : f.tempo * d / 16); }
+        // Bus hält an der Haltestelle
+        if (f.istBus) { let d = busHaltS - s; if (d < -f.st.L / 2) d += f.st.L; if (!f.gehalten && d < 14 && d > -1) { ziel = Math.min(ziel, Math.max(0.8, f.tempo * d / 14)); if (d <= 0.1) { f.warte = 9; f.gehalten = true; f.jetzt = 0; continue; } } if (d > 40) f.gehalten = false; }
+        // nicht in Leute oder andere Autos fahren
+        const px = pos.x - f.g.position.x, pz = pos.z - f.g.position.z, vor = px * f.fx + pz * f.fz, seit = Math.abs(px * f.fz - pz * f.fx);
+        if (vor > 0 && vor < f.laenge / 2 + 5 && seit < 1.9 && pos.y < 3) ziel = 0;
+        for (const a of W_FAHRZEUGE) {
+          if (a === f) continue;
+          const ax = a.g.position.x - f.g.position.x, az = a.g.position.z - f.g.position.z, v = ax * f.fx + az * f.fz, q = Math.abs(ax * f.fz - az * f.fx);
+          const platz = (f.laenge + a.laenge) / 2 + 2.5;
+          if (v > 0 && q < 1.8 && v < platz + 6) ziel = Math.min(ziel, v < platz ? 0 : a.jetzt * 0.9);
+        }
+        f.jetzt += (ziel - f.jetzt) * Math.min(1, dt * 2.5);
+        f.s = (f.s + f.jetzt * dt) % f.st.L;
+        setzeF(f);
+      }
+    };
+  }
 }
 // --- Verkäuferinnen in den Läden ---
 {
@@ -7096,18 +7471,7 @@ document.getElementById('hausHin').addEventListener('click', zuMeinemHaus);
 document.getElementById('hausZu').addEventListener('click', () => { hausPanel.hidden = true; });
 let aktionJetzt = null;
 function wonderUpdate(dt, pos, imWonder) {
-  if (imWonder) for (const f of W_FAHRZEUGE) {   // Autos und Bus in der Winterstadt
-    const x = f.g.position.x - WONDER.x;
-    if (f.warte > 0) { f.warte -= dt; continue; }
-    let ziel = f.tempo;
-    if (f.istBus && !f.gehalten) { const rest = (88 - 3.6) - x; if (rest < 14 && rest > -1) ziel = Math.max(0.8, f.tempo * rest / 14); if (rest <= 0.1 && rest > -1) { f.warte = 9; f.gehalten = true; f.jetzt = 0; continue; } }
-    const vor = (pos.x - f.g.position.x) * f.richtung, laenge = f.istBus ? 5.5 : 2.6;
-    if (Math.abs(pos.z - f.g.position.z) < 2.2 && vor > 0 && vor < laenge + 6 && pos.y < 3) ziel = 0;   // nicht in Leute fahren
-    for (const a of W_FAHRZEUGE) if (a !== f && a.g.position.z === f.g.position.z) { const d = (a.g.position.x - f.g.position.x) * f.richtung; if (d > 0 && d < (f.istBus || a.istBus ? 10 : 7.5)) ziel = Math.min(ziel, a.jetzt * 0.8); }
-    f.jetzt += (ziel - f.jetzt) * Math.min(1, dt * 2.5);
-    f.g.position.x += f.richtung * f.jetzt * dt;
-    if ((f.g.position.x - WONDER.x) * f.richtung > 150) { f.g.position.x = WONDER.x - f.richtung * 150; f.gehalten = false; f.warte = f.istBus ? 6 + Math.random() * 6 : Math.random() * 5; }
-  }
+  if (imWonder && stadtVerkehrUpdate) stadtVerkehrUpdate(dt, pos);   // Autos, Bus und Ampeln in der Winterstadt
   hausKnopf.hidden = !imWonder;
   if (!imWonder) { if (!hausPanel.hidden) hausPanel.hidden = true; if (aktionJetzt) { aktionJetzt = null; aktionKnopf.hidden = true; } return; }
   for (const h of W_HAEUSER) {   // Türen weich auf- und zugehen lassen
