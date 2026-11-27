@@ -608,7 +608,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', beinForm: 'eckig', hoseMuster: 'uni', handForm: 'lego', kette: 'ohne', groesse: 'mittel' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'schichten', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'weste', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs', 'teddy'], hoseMuster: ['uni', 'karo'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze', 'karomuetze', 'rueschenband', 'haarreifschwarz'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'schichten', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade', 'puppe'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'weste', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs', 'teddy'], hoseMuster: ['uni', 'karo'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze', 'karomuetze', 'rueschenband', 'haarreifschwarz'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3056,6 +3056,7 @@ function rundKlotz(w, h, d, r) {
 // Jungen (Skizze): gerader Oberkörper ohne Taille, breite, fast waagerechte Schultern
 // Oben etwas breiter, dann schmal zur Taille, unten hört der Körper schmal auf: die dickeren Beine stehen ein bisschen raus
 const RUMPF_JUNGE = [[-0.46, 0.262], [-0.3, 0.256], [-0.12, 0.262], [0.05, 0.298], [0.17, 0.322], [0.25, 0.316], [0.285, 0.27], [0.305, 0.19], [0.315, 0.1]];
+const RUMPF_PUPPE = [[-0.46, 0.275], [-0.38, 0.262], [-0.24, 0.19], [-0.12, 0.158], [0.02, 0.205], [0.14, 0.245], [0.22, 0.236], [0.275, 0.18], [0.31, 0.098]];   // schmale Taille, breite Hüfte (Wunsch-Bild)
 const RUMPF_MAEDCHEN = [[-0.46, 0.232], [-0.32, 0.215], [-0.14, 0.198], [0.04, 0.236], [0.15, 0.258], [0.22, 0.248], [0.275, 0.185], [0.31, 0.098]];
 const RUMPF_GERADE = [[-0.46, 0.275], [0.2, 0.28], [0.26, 0.27], [0.29, 0.225], [0.31, 0.16], [0.315, 0.1]];   // Jungs: dicker gerader Körper
 let rumpfProfil = RUMPF_JUNGE;
@@ -4403,7 +4404,8 @@ function baueFigur(look, ziel = scene) {
   const teil = (geo, farbe, extra) => { const m = new THREE.Mesh(geo, mat(farbe, extra)); m.castShadow = true; return m; };
   const figur = new THREE.Group();
   const junge = look.figurTyp === 'junge';
-  rumpfProfil = look.koerperForm === 'gerade' ? RUMPF_GERADE : junge ? RUMPF_JUNGE : RUMPF_MAEDCHEN;
+  const puppe = look.koerperForm === 'puppe';
+  rumpfProfil = puppe ? RUMPF_PUPPE : look.koerperForm === 'gerade' ? RUMPF_GERADE : junge ? RUMPF_JUNGE : RUMPF_MAEDCHEN;
 
   const jeansKurz = look.hoseTyp === 'jeansshorts';   // kurze Jeans: wie die kurze Hose, aber mit Jeansstoff und Fransen
   const hoseTyp = jeansKurz ? 'kurz' : (look.hoseTyp || 'jeans');
@@ -4435,7 +4437,7 @@ function baueFigur(look, ziel = scene) {
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
     gelenk.rotation.z = seite * 0.075; gelenk.scale.x = 1; knie.rotation.z = -seite * 0.04;   // Beine leicht nach außen: oben zusammen, unten deutlich getrennt
-    gelenk.position.x = seite * (hoseTyp === 'rock' ? 0.125 : junge ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
+    gelenk.position.x = seite * (hoseTyp === 'rock' ? (puppe ? 0.14 : 0.125) : junge ? 0.165 : puppe ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
       const seiteM = mat('#ffffff', { map: klotzTextur(look, jeansKurz ? 'jeansshorts' : hoseTyp, beinHaut, false) });
@@ -4470,7 +4472,7 @@ function baueFigur(look, ziel = scene) {
     };
     const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(hoseTyp === 'rock' ? 0.25 : 0.29, OBEN, hoseTyp === 'rock' ? 0.25 : 0.33,   // Oberschenkel etwas dicker
+    const ober = block(hoseTyp === 'rock' ? 0.25 : puppe ? 0.3 : 0.29, OBEN, hoseTyp === 'rock' ? 0.25 : 0.33,   // Oberschenkel etwas dicker
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
@@ -4485,17 +4487,18 @@ function baueFigur(look, ziel = scene) {
     ober.rotation.x = -KNICK;                         // Oberschenkel etwas nach vorne
     gelenk.add(ober);
     knie.position.set(0, -OBEN * Math.cos(KNICK), OBEN * Math.sin(KNICK));
-    const unter = block(0.25, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
+    const uB = puppe && hoseTyp !== 'rock' && hoseTyp !== 'kurz' && hoseTyp !== 'jeansshorts' ? 0.33 : 0.25;   // Puppen-Körper: weite Hosenbeine, unten breiter
+    const unter = block(uB, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     unter.geometry.translate(0, -UNTEN / 2, 0);
     { // Übergang am Knie: oben so dick wie der Oberschenkel, nach unten ganz leicht dünner
-      const p = unter.geometry.attributes.position, ow = ober.geometry.parameters.width / 0.25, od = ober.geometry.parameters.depth / 0.285;
+      const p = unter.geometry.attributes.position, ow = ober.geometry.parameters.width / uB, od = ober.geometry.parameters.depth / 0.285;
       for (let k = 0; k < p.count; k++) { const t = 1 + p.getY(k) / UNTEN; p.setX(k, p.getX(k) * (1 + (ow - 1) * t)); p.setZ(k, p.getZ(k) * (1 + (od - 1) * t)); }
       unter.geometry.computeVertexNormals(); rundNormalen(unter.geometry); }
     unter.rotation.x = KNICK;                         // Unterschenkel wieder zurück: das Knie zeigt leicht nach vorne
     // Schuh: ein bisschen größer als das Bein, so sitzt er über Strümpfen und Hose (Bild wie unten am Bein)
     const schuhV = 1 - schuhAnfang(look.schuhTyp || 'turnschuh');   // so viel vom Bild ist Schuh
     const schuhH = UNTEN * schuhV / (1 - teilung) + 0.004;
-    const schuhKlotz = block(0.27, schuhH, 0.315, 0, schuhV, look.schuhe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
+    const schuhKlotz = block(Math.max(0.27, uB + 0.01), schuhH, 0.315, 0, schuhV, look.schuhe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     schuhKlotz.position.set(0, -UNTEN + schuhH / 2, 0.008);
     unter.add(schuhKlotz);
     knie.add(unter);
@@ -4727,6 +4730,7 @@ function baueFigur(look, ziel = scene) {
     }
     gelenk.add(hand);
     formAnwenden(gelenk, look.armForm, hand);
+    if (puppe) { gelenk.scale.x *= 0.8; gelenk.scale.z *= 0.8; }   // Puppen-Körper: schmale Arme
     // Ellbogen: der Unterarm kann nach vorne abknicken. Die Hand hängt am Ellbogen,
     // der Ärmel wird rund um den Ellbogen weich gebogen.
     const yE = -0.3, ellbogen = new THREE.Group();
@@ -8014,7 +8018,7 @@ const AUSWAHL = [
   { titel: 'Kopf', key: 'kopfart', worte: [['normal', 'Normal'], ['unsichtbar', 'Unsichtbar']] },
   { titel: 'Ohren', key: 'ohren', worte: [['normal', 'Normal'], ['spitz', 'Elfenohren']] },
   { titel: 'Größe', key: 'groesse', worte: [['klein', 'Klein'], ['mittel', 'Mittel'], ['gross', 'Groß']] },
-  { titel: 'Körper', key: 'koerperForm', worte: [['normal', 'Normal'], ['eckig', 'Eckig'], ['gerade', 'Gerade und breit']] },
+  { titel: 'Körper', key: 'koerperForm', worte: [['normal', 'Normal'], ['eckig', 'Eckig'], ['gerade', 'Gerade und breit'], ['puppe', 'Schmale Taille, weite Beine']] },
   { titel: 'Beine', key: 'beinForm', worte: [['eckig', 'Eckig'], ['rund', 'Rund']] },
   { titel: 'Arme', key: 'armForm', worte: [['normal', 'Normal'], ['rund', 'Rund und dick'], ['eckig', 'Eckig'], ['dick', 'Dick und eckig']] },
   { titel: 'Hände', key: 'handForm', worte: [['lego', 'Lego-Hände'], ['normal', 'Mit Fingern']] },
