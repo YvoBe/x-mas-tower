@@ -4260,7 +4260,7 @@ function baueFigur(look, ziel = scene) {
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
     gelenk.rotation.z = 0; gelenk.scale.x = 1; knie.rotation.z = 0;
-    gelenk.position.x = seite * (hoseTyp === 'rock' ? 0.135 : junge ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
+    gelenk.position.x = seite * (hoseTyp === 'rock' ? 0.125 : junge ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
       const seiteM = mat('#ffffff', { map: klotzTextur(look, jeansKurz ? 'jeansshorts' : hoseTyp, beinHaut, false) });
@@ -4287,8 +4287,8 @@ function baueFigur(look, ziel = scene) {
       for (let k = 0; k < p.count; k++) {
         const x = p.getX(k), y = p.getY(k), t = Math.max(0, 1 + y / (OBEN * 0.75));   // 1 oben, 0 ab dem unteren Viertel
         if (x * seite < 0) p.setX(k, x - seite * (luecke + 0.002) * t);      // innen: oben bis zur Mitte, die Beine sind oben zusammen, unten getrennt
-        else if (y > -0.01) p.setX(k, x * 0.9);                              // außen oben etwas schmaler
-        if (y > -0.01) p.setZ(k, p.getZ(k) * 0.85);
+        else p.setX(k, x * (1 - (hoseTyp === 'rock' ? 0.3 : 0.1) * Math.max(0, 1 + y / (OBEN * 0.6))));   // außen oben schmaler (beim Rock noch mehr, damit nichts durch den Rock schaut)
+        p.setZ(k, p.getZ(k) * (1 - (hoseTyp === 'rock' ? 0.25 : 0.15) * Math.max(0, 1 + y / (OBEN * 0.6))));
       }
       ober.geometry.computeVertexNormals(); }
     ober.rotation.x = -KNICK;                         // Oberschenkel etwas nach vorne
