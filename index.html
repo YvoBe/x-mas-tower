@@ -603,9 +603,9 @@ const AUSSEHEN = {
 };
 
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
-const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', handForm: 'lego', kette: 'ohne' };
+const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', handForm: 'lego', kette: 'ohne', groesse: 'mittel' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -4826,6 +4826,7 @@ function baueFigur(look, ziel = scene) {
     figur.add(ring, ende, fransen);
   }
 
+  figur.scale.setScalar({ klein: 0.86, gross: 1.12 }[look.groesse] || 1);   // Größe der Figur (Klein, Mittel, Groß)
   ziel.add(figur);
   return { figur, beinL, beinR, armL, armR, knieL, knieR, rock: hoseTyp === 'rock' };   // rock: Beine schwingen weniger, damit sie unter dem Rock bleiben
 }
@@ -7193,6 +7194,7 @@ const AUSWAHL = [
   { titel: 'Figur', key: 'figurTyp', worte: [['maedchen', 'Mädchen'], ['junge', 'Junge']] },
   { titel: 'Kopf', key: 'kopfart', worte: [['normal', 'Normal'], ['unsichtbar', 'Unsichtbar']] },
   { titel: 'Ohren', key: 'ohren', worte: [['normal', 'Normal'], ['spitz', 'Elfenohren']] },
+  { titel: 'Größe', key: 'groesse', worte: [['klein', 'Klein'], ['mittel', 'Mittel'], ['gross', 'Groß']] },
   { titel: 'Körper', key: 'koerperForm', worte: [['normal', 'Normal'], ['eckig', 'Eckig'], ['gerade', 'Gerade und breit']] },
   { titel: 'Arme', key: 'armForm', worte: [['normal', 'Normal'], ['rund', 'Rund und dick'], ['eckig', 'Eckig'], ['dick', 'Dick und eckig']] },
   { titel: 'Hände', key: 'handForm', worte: [['lego', 'Lego-Hände'], ['normal', 'Mit Fingern']] },
@@ -7253,7 +7255,7 @@ const ICONS = {
   schloss: ICON('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'),
 };
 const BEREICHE = [
-  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'koerperForm', 'armForm', 'handForm', 'kopfart', 'ohren', 'haut'] },
+  { id: 'figur', name: 'Figur', symbol: '🧍', keys: ['vorlage', 'figurTyp', 'groesse', 'koerperForm', 'armForm', 'handForm', 'kopfart', 'ohren', 'haut'] },
   { id: 'makeup', name: 'Make-up', symbol: '💄', keys: ['augen', 'augenfarbe', 'brauen', 'blush', 'sommersprossen', 'mund', 'lippen', 'lipliner'] },
   { id: 'haare', name: 'Haare', symbol: '💇', keys: ['frisur', 'haare'] },
   { id: 'kleidung', name: 'Kleidung', symbol: '👕', keys: null },   // alles andere
