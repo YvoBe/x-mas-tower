@@ -4259,7 +4259,7 @@ function baueFigur(look, ziel = scene) {
     gelenk.add(knie);
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
-    gelenk.rotation.z = 0; gelenk.scale.x = 1; knie.rotation.z = 0;
+    gelenk.rotation.z = seite * 0.075; gelenk.scale.x = 1; knie.rotation.z = -seite * 0.04;   // Beine leicht nach außen: oben zusammen, unten deutlich getrennt
     gelenk.position.x = seite * (hoseTyp === 'rock' ? 0.125 : junge ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
