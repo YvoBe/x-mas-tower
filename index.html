@@ -3442,7 +3442,7 @@ const HAAR_STUECKE = {
   bob:        { name: 'Bob mit Pony', thF: 0.4, thS: 0.5, thB: 0.6, lang: 0.2, seiteLang: 0.24, dicke: 0.035, flare: 0.04, pony: true, rillen: 0.004, volumen: 0.005, einrollen: 0.03 },
   zoepfe:     { name: 'Zwei Zöpfe mit Locken', thF: 0.3, thS: 0.7, thB: 0.88, lang: 0, seiteLang: 0, dicke: 0.03, scheitel: 0, rillen: 0.004, zoepfe: true, lose: 10 },
   pferd:      { name: 'Pferdeschwanz', thF: 0.3, thS: 0.7, thB: 0.88, lang: 0, seiteLang: 0, dicke: 0.03, rillen: 0.004, pferd: true, lose: 8 },
-  hochsteck:  { name: 'Hochsteckfrisur mit Löckchen', thF: 0.3, thS: 0.7, thB: 0.88, lang: 0, seiteLang: 0, dicke: 0.03, scheitel: 0.45, rillen: 0.004, hochsteck: true, lose: 6 },
+  hochsteck:  { name: 'Hochsteckfrisur mit Löckchen', thF: 0.3, thS: 0.5, thB: 0.62, lang: 0.6, seiteLang: 0.46, dicke: 0.035, flare: 0.05, welle: 0.012, scheitel: 0.45, rillen: 0.004, volumen: 0.006, hochsteck: true, lose: 4 },   // oben hochgesteckt, unten fallen die Haare offen
   flechtzoepfe: { name: 'Zwei Flechtzöpfe nach vorne', thF: 0.3, thS: 0.7, thB: 0.88, lang: 0, seiteLang: 0, dicke: 0.03, scheitel: 0, rillen: 0.004, flecht: true, lose: 4, ponyStraehnen: 12 },
   grosslocken: { name: 'Große Locken zur Seite', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.5, seiteLang: 0.42, dicke: 0.05, flare: 0.07, locken: 0.012, lockenGross: true, scheitel: 0.45, volumen: 0.012, seitWelle: 1.25, dickeLocken: 26, lose: 3 },
   dutt:       { name: 'Dutt', thF: 0.3, thS: 0.7, thB: 0.88, lang: 0, seiteLang: 0, dicke: 0.03, scheitel: 0, rillen: 0.004, dutt: true, lose: 9 },
@@ -3699,7 +3699,7 @@ function haarStueck(o, seed = 1) {
       teile.push(haarSchlauch(pkt, (t) => 0.014 * (1 - 0.4 * t), 24, 6));
     }
     seitenWelle(1);
-    for (const [u, lg] of [[-1.05, 0.3], [1.0, 0.26], [2.6, 0.22], [-2.7, 0.24]]) {   // lose Lockensträhnen
+    for (const [u, lg] of (o.lang ? [[-1.05, 0.3], [1.0, 0.26]] : [[-1.05, 0.3], [1.0, 0.26], [2.6, 0.22], [-2.7, 0.24]])) {   // bei offenen Haaren hinten keine   // lose Lockensträhnen
       const start = kopfPunkt(u, 0.46, -0.004);
       const pkt = spirale(lg, 0.018, 3.2, z() * 6).map((p) => p.add(start));
       teile.push(haarSchlauch(pkt, (t) => 0.011 * (1 - 0.6 * t), 60, 6));
