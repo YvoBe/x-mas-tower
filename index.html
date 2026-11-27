@@ -7551,8 +7551,10 @@ requestAnimationFrame(() => startAusrichten());
 
 let editorFigur = null;
 function editorFigurNeu() {
+  const alt = editorFigur ? editorFigur.figur.rotation.y : editor.dreh;   // Figur bleibt so stehen, wie sie gerade ist
   if (editorFigur) editorScene.remove(editorFigur.figur);
   editorFigur = baueFigur(AUSSEHEN, editorScene);
+  editorFigur.figur.rotation.y = alt;
 }
 
 // Auswahl-Spalte rechts
