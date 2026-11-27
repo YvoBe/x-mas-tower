@@ -608,7 +608,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', beinForm: 'eckig', hoseMuster: 'uni', handForm: 'lego', kette: 'ohne', groesse: 'mittel' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'schichten', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade', 'puppe'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'weste', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs', 'teddy'], hoseMuster: ['uni', 'karo'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze', 'karomuetze', 'rueschenband', 'haarreifschwarz'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'schichten', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade', 'puppe'], armForm: ['normal', 'rund', 'eckig', 'dick'], beinForm: ['eckig', 'rund'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'weste', 'minikleid', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs', 'teddy'], hoseMuster: ['uni', 'karo'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze', 'karomuetze', 'rueschenband', 'haarreifschwarz'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -4278,6 +4278,31 @@ function westeTextur(look) {   // Weste: ganz in der Oberteil-Farbe, vorne ein V
   }
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4; KLEID_TEX[key] = t; return t;
 }
+function kleidTextur(look) {   // Minikleid: Herz-Ausschnitt vorne, dünne Träger, feine Falten nach unten, kleine Schleife
+  const key = ['kleid', look.pulli, look.haut].join('|');
+  if (KLEID_TEX[key]) return KLEID_TEX[key];
+  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const zeile = (y) => (1 - rumpfV(-0.44, 0.3, y)) * H;
+  stoffGrund(g, W, H, look.haut, 5);
+  const oben = (u) => { const d = Math.min(u, 1 - u); return zeile(0.12) + (d < 0.06 ? Math.sin(d / 0.06 * Math.PI) * -18 + 14 : 0); };   // Herz-Ausschnitt vorne
+  g.fillStyle = look.pulli; g.beginPath(); g.moveTo(0, H);
+  for (let x = 0; x <= W; x += 4) g.lineTo(x, oben(x / W));
+  g.lineTo(W, H); g.closePath(); g.fill();
+  g.save(); g.clip();
+  for (let x = 0; x < W; x += 18) {                // feine Falten
+    const f = g.createLinearGradient(x, 0, x + 18, 0);
+    f.addColorStop(0, 'rgba(0,0,0,0.10)'); f.addColorStop(0.5, 'rgba(255,255,255,0.10)'); f.addColorStop(1, 'rgba(0,0,0,0.02)');
+    g.fillStyle = f; g.fillRect(x, 0, 18, H);
+  }
+  g.fillStyle = 'rgba(0,0,0,0.08)'; g.fillRect(0, zeile(0.05), W, 3);   // Naht unter der Brust
+  g.restore();
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 2; g.beginPath();
+  for (let x = 0; x <= W; x += 4) (x ? g.lineTo(x, oben(x / W)) : g.moveTo(x, oben(0))); g.stroke();
+  for (const u of [0.07, 0.93, 0.43, 0.57]) { g.fillStyle = look.pulli; g.fillRect(u * W - 5, 0, 10, zeile(0.12) + 4); }   // dünne Träger
+  for (const x0 of [0, W]) { g.fillStyle = dunkler(look.pulli, 0.85); g.beginPath(); g.arc(x0, zeile(0.06), 8, 0, 7); g.fill(); }   // kleine Schleife vorne
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; KLEID_TEX[key] = t; return t;
+}
 let KARO_TEX = null;
 function karoTextur() {   // Karo-Muster nur in Hellbeige, Hellbraun und etwas dunklerem Braun
   if (KARO_TEX) return KARO_TEX;
@@ -4420,7 +4445,8 @@ function baueFigur(look, ziel = scene) {
   const bananenShirt = look.oberteilTyp === 'bananenshirt';   // T-Shirt mit Bananen-Bild
   const spitzenTop = look.oberteilTyp === 'spitzentop';   // Top mit Spitze vorne (aufgemalt)
   const weste = look.oberteilTyp === 'weste';   // ärmellose Weste über einer weißen Bluse mit Kragen (aufgemalt)
-  const oberteilTyp = spitzenTop || weste ? 'top' : ringelShirt || bananenShirt ? 'tshirt' : weihnachtsPulli || pyjama || strickPulli ? 'pulli' : kapuzenJacke ? 'jacke' : (look.oberteilTyp || 'pulli');
+  const miniKleid = look.oberteilTyp === 'minikleid';   // weißes Minikleid mit Falten (oben aufgemalt, unten der echte Rock)
+  const oberteilTyp = spitzenTop || weste || miniKleid ? 'top' : ringelShirt || bananenShirt ? 'tshirt' : weihnachtsPulli || pyjama || strickPulli ? 'pulli' : kapuzenJacke ? 'jacke' : (look.oberteilTyp || 'pulli');
 
   // Beine mit Knie: Oberschenkel hängt an der Hüfte, Unterschenkel am Knie
   const beinHaut = (hoseTyp === 'rock' || hoseTyp === 'kurz') && look.struempfe === 'lang' ? '#d9cbb5' : look.haut, strumpfM = beinHaut === look.haut ? {} : { map: stoff('rippe', 10, 4) };
@@ -4574,7 +4600,7 @@ function baueFigur(look, ziel = scene) {
     const pulli = teil(strickPulli ? faltenRein(rumpf(yVon, yBis, 0.022), 0.022, -0.44, -0.1) : faltenRein(rumpf(yVon, yBis, 0.01), 0.012, -0.44, -0.05), '#ffffff', { map: mitRaendern(muster, [[0, vVon(-0.37), randFarbe], [vVon(0.265), 1, randFarbe]], pyjama ? '#ffffff' : null) });
     koerper.add(pulli);
   } else if (oberteilTyp === 'top') {    // Top mit Trägern, Schultern frei
-    const top = teil(rumpf(-0.44, 0.3, 0.004), '#ffffff', { map: weste ? westeTextur(look) : topGanzTextur(look, spitzenTop) });   // Top, Saum und Träger sind EIN Bild
+    const top = teil(rumpf(-0.44, 0.3, 0.004), '#ffffff', { map: weste ? westeTextur(look) : miniKleid ? kleidTextur(look) : topGanzTextur(look, spitzenTop) });   // Top, Saum und Träger sind EIN Bild
     koerper.add(top);
     for (const seite of []) {
       // Runder Träger: ein Schlauch, der vorne hochgeht, über die Schulter läuft und hinten wieder runter
@@ -4934,11 +4960,11 @@ function baueFigur(look, ziel = scene) {
     const pkt = [];
     for (let k = 0; k <= 24; k++) {
       const a = -Math.PI / 2 + Math.PI * k / 24, rand = Math.abs(Math.sin(a));
-      const r = 0.296 - 0.03 * Math.pow(rand, 3);
+      const r = (kopfSchmuck === 'haarreifschwarz' ? 0.286 : 0.296) - 0.03 * Math.pow(rand, 3);   // der schmale schwarze liegt direkt auf den Haaren
       pkt.push(new THREE.Vector3(Math.sin(a) * r, Math.cos(a) * r * 1.08 - 0.02 * rand, 0.02 * (1 - rand)));
     }
     const rues = kopfSchmuck === 'rueschenband';   // weißes Haarband mit Rüschen
-    const reif = teil(haarSchlauch(pkt, (t) => { const m = Math.sin(Math.PI * t); return rues ? 0.008 + 0.012 * Math.pow(m, 0.6) : 0.008 + 0.026 * Math.pow(m, 0.8); }, 60, 14), rues ? '#f2efe9' : kopfSchmuck === 'haarreifschwarz' ? '#1d1d1f' : '#6e2a35', { map: stoff('weich', 8, 1), roughness: 0.55 });
+    const reif = teil(haarSchlauch(pkt, (t) => { const m = Math.sin(Math.PI * t); return rues ? 0.008 + 0.012 * Math.pow(m, 0.6) : kopfSchmuck === 'haarreifschwarz' ? 0.009 + 0.007 * m : 0.008 + 0.026 * Math.pow(m, 0.8); }, 60, 14), rues ? '#f2efe9' : kopfSchmuck === 'haarreifschwarz' ? '#1d1d1f' : '#6e2a35', { map: stoff('weich', 8, 1), roughness: 0.55 });
     reif.rotation.x = 0.12;
     if (rues) for (let k = 2; k <= 22; k++) {          // Rüschen: kleine gewellte Stoff-Bögen auf dem Band
       const a = pkt[k], n = a.clone().normalize();
@@ -8009,7 +8035,7 @@ const VORLAGEN = {
   softgirl: { figurTyp: 'maedchen', frisur: 'grosslocken', pony: false, haare: '#c8a27a', haut: '#e8c4a0', oberteilTyp: 'pulli', pulli: '#9a9a9e', streifen: '#9a9a9e', buendchen: '#8a8a8e', hoseTyp: 'kurz', hoseMuster: 'uni', hose: '#8a8a8e', umschlag: '#7a7a7e', sternAn: false, struempfe: 'lang', schuhTyp: 'ballerina', schuhe: '#5b3a24', kopf: 'rueschenband', kette: 'perlen', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
   zopfrot: { figurTyp: 'maedchen', frisur: 'flechtzoepfe', pony: false, haare: '#4a3326', haut: '#e8c4a0', oberteilTyp: 'top', pulli: '#6e2a35', streifen: '#f2efe9', hoseTyp: 'jeansshorts', hoseMuster: 'uni', hose: '#4f6482', umschlag: '#3e5070', sternAn: false, struempfe: 'kurz', schuhTyp: 'turnschuh', schuhe: '#f5f3ee', kopf: 'haarreif', kette: 'gold', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
   blondschwarz: { figurTyp: 'maedchen', frisur: 'langlocken', pony: false, haare: '#d9bf9c', haut: '#e8c4a0', oberteilTyp: 'weste', pulli: '#1d1d1f', streifen: '#f5f3ee', hoseTyp: 'rock', hoseMuster: 'uni', hose: '#1d1d1f', sternAn: false, struempfe: 'kurz', schuhTyp: 'ballerina', schuhe: '#1d1d1f', kopf: 'ohne', kette: 'gold', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
-  blondweiss: { figurTyp: 'maedchen', frisur: 'wellen', pony: false, haare: '#cdb08a', haut: '#e8c4a0', oberteilTyp: 'spitzentop', pulli: '#f2efe9', streifen: '#f2efe9', hoseTyp: 'jogging', hoseMuster: 'uni', hose: '#b89a7c', umschlag: '#b89a7c', sternAn: false, schuhTyp: 'ballerina', schuhe: '#b89a7c', kopf: 'haarreifschwarz', kette: 'ohne', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
+  blondweiss: { figurTyp: 'maedchen', frisur: 'wellen', pony: false, haare: '#cdb08a', haut: '#e8c4a0', oberteilTyp: 'minikleid', pulli: '#f2efe9', streifen: '#f2efe9', hoseTyp: 'rock', hoseMuster: 'uni', hose: '#f2efe9', umschlag: '#f2efe9', sternAn: false, schuhTyp: 'ballerina', schuhe: '#b89a7c', kopf: 'haarreifschwarz', kette: 'ohne', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
   ohnekopf: { figurTyp: 'maedchen', frisur: 'glatt', haare: '#5b3a24', haut: '#e0ac85', oberteilTyp: 'pulli', pulli: '#4a3326', streifen: '#b08a64', buendchen: '#d9cbb5', hoseTyp: 'jeans', hose: '#1f2a4a', umschlag: '#2e3d68', sternAn: false, schuhe: '#d9cbb5', augen: 'rund', mund: 'laecheln', ohren: 'normal', kopfart: 'unsichtbar' },
 };
 const AUSWAHL = [
@@ -8033,7 +8059,7 @@ const AUSWAHL = [
   { titel: 'Lip Liner', key: 'lipliner', nur: ['mund', 'laecheln'], worte: [['ohne', 'Ohne'], ['#8e3c4a', 'Dunkel-Rosa'], ['#6b3a2e', 'Braun'], ['#5a2630', 'Beere']] },
   { titel: 'Frisur', key: 'frisur', worte: Object.entries(HAAR_STUECKE).map(([k, f]) => [k, f.name]) },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
-  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['spitzentop', 'Top mit Spitze'], ['weste', 'Weste mit Bluse'], ['tshirt', 'T-Shirt'], ['ringelshirt', 'Gestreiftes T-Shirt'], ['bananenshirt', 'Bananen-T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['strickpulli', 'Dicker Strickpulli'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
+  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['spitzentop', 'Top mit Spitze'], ['weste', 'Weste mit Bluse'], ['minikleid', 'Minikleid (oben, dazu Rock wählen)'], ['tshirt', 'T-Shirt'], ['ringelshirt', 'Gestreiftes T-Shirt'], ['bananenshirt', 'Bananen-T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['strickpulli', 'Dicker Strickpulli'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#d6d4cf', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd', '#6e2a35'] },
   { titel: 'Streifen und Muster', key: 'streifen', nur: ['oberteilTyp', 'strickpulli'], farben: ['#4a3326', '#8a5a33', '#b08a64', '#1f2a4a', '#3b5b8c', '#7a8450'] },
   { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'ringelshirt'], farben: ['#d6d4cf', '#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#dcb8bd', '#6e2a35'] },
