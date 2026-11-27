@@ -605,7 +605,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', handForm: 'lego', kette: 'ohne', groesse: 'mittel' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], groesse: ['klein', 'mittel', 'gross'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'mandel', 'sanft', 'katze', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'glanz', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3144,13 +3144,14 @@ function gesichtTextur(look, mass) {
     }
   });
   // Augen
-  const schoen = augen === 'schoen';   // große schöne Augen mit Lidschatten, Lidstrich und vielen Wimpern
+  const katze = augen === 'katze';   // Katzenaugen: dichte schwarze Wimpern, Lidstrich mit Schwung, warmer Lidschatten
+  const schoen = augen === 'schoen' || katze;   // große schöne Augen mit Lidschatten, Lidstrich und vielen Wimpern
   // Kleinere, offene Augen: klein (rund), mandel (schmal), sanft (klein mit zarten Wimpern), punkt (ganz einfach)
   const KLEIN = { klein: 0.7, mandel: 0.9, sanft: 0.72, punkt: 0.6 }[augen] || 1;
-  const rx = schoen ? 0.052 : 0.046, ry = (schoen ? 0.035 : 0.03) * (augen === 'mandel' ? 0.78 : 1);
+  const rx = schoen ? 0.052 : 0.046, ry = (schoen ? 0.035 : 0.03) * (augen === 'mandel' ? 0.78 : katze ? 0.8 : 1);
   for (const s of [-1, 1]) bei(s * 0.085, 0.015, () => {
     g.rotate(s * -0.06);              // außen etwas höher
-    if (schoen) g.scale(0.78, 0.78);   // schöne Augen nicht so groß (Wunsch)
+    if (schoen) g.scale(katze ? 0.84 : 0.78, katze ? 0.84 : 0.78);   // schöne Augen nicht so groß (Wunsch)
     if (KLEIN !== 1) g.scale(KLEIN, KLEIN);
     if (augen === 'punkt') {          // ganz einfache Augen: dunkles Oval mit Glanzpunkt
       g.fillStyle = '#1d1612'; g.beginPath(); g.ellipse(0, 0, 0.026, 0.034, 0, 0, Math.PI * 2); g.fill();
@@ -3170,7 +3171,7 @@ function gesichtTextur(look, mass) {
     const form = () => { g.beginPath(); g.moveTo(-rx, 0); g.bezierCurveTo(-rx * 0.6, -ry * 1.35, rx * 0.6, -ry * 1.35, rx, 0); g.bezierCurveTo(rx * 0.6, ry * 1.05, -rx * 0.6, ry * 1.05, -rx, 0); g.closePath(); };
     if (schoen) {                     // zarter Lidschatten über dem Auge
       const ls = g.createRadialGradient(0, -ry * 0.9, 0.004, 0, -ry * 0.9, rx * 1.3);
-      ls.addColorStop(0, 'rgba(176,120,110,0.45)'); ls.addColorStop(1, 'rgba(176,120,110,0)');
+      ls.addColorStop(0, katze ? 'rgba(150,95,75,0.5)' : 'rgba(176,120,110,0.45)'); ls.addColorStop(1, 'rgba(176,120,110,0)');
       g.fillStyle = ls; g.beginPath(); g.ellipse(0, -ry * 0.9, rx * 1.3, ry * 1.4, 0, 0, Math.PI * 2); g.fill();
     }
     form(); g.fillStyle = '#fbf7f2'; g.fill();
@@ -3187,8 +3188,9 @@ function gesichtTextur(look, mass) {
     g.restore();
     // Wimpernkranz oben, feine Linie unten, Lidfalte
     g.beginPath(); g.moveTo(-rx * 1.04, 0.002); g.bezierCurveTo(-rx * 0.6, -ry * 1.4, rx * 0.6, -ry * 1.4, rx * 1.06, -0.002);
-    linie('#1d1612', schoen ? 0.011 : junge ? 0.006 : 0.008);
-    if (schoen) { g.beginPath(); g.moveTo(s * rx * 0.85, -ry * 0.35); g.quadraticCurveTo(s * rx * 1.15, -ry * 0.55, s * rx * 1.35, -ry * 1.0); linie('#1d1612', 0.006); }   // Lidstrich mit kleinem Schwung
+    linie('#1d1612', katze ? 0.014 : schoen ? 0.011 : junge ? 0.006 : 0.008);
+    if (katze) { g.beginPath(); g.moveTo(s * rx * 0.7, -ry * 0.75); g.quadraticCurveTo(s * rx * 1.2, -ry * 0.55, s * rx * 1.55, -ry * 1.3); g.lineTo(s * rx * 1.02, 0.0); g.closePath(); g.fillStyle = '#1d1612'; g.fill(); }   // Lidstrich: spitzer Schwung nach außen oben
+    else if (schoen) { g.beginPath(); g.moveTo(s * rx * 0.85, -ry * 0.35); g.quadraticCurveTo(s * rx * 1.15, -ry * 0.55, s * rx * 1.35, -ry * 1.0); linie('#1d1612', 0.006); }   // Lidstrich mit kleinem Schwung
     g.beginPath(); g.moveTo(-rx * 0.8, ry * 0.45); g.bezierCurveTo(-rx * 0.4, ry * 0.85, rx * 0.4, ry * 0.85, rx * 0.85, ry * 0.4);
     linie('rgba(150,100,85,0.6)', 0.003);
     g.beginPath(); g.moveTo(-rx * 0.85, -ry * 0.9); g.bezierCurveTo(-rx * 0.4, -ry * 1.75, rx * 0.4, -ry * 1.75, rx * 0.95, -ry * 0.85);
@@ -3196,16 +3198,16 @@ function gesichtTextur(look, mass) {
     // Wimpern wie auf der Zeichnung: von der Mitte bis außen immer länger, nach oben-außen geschwungen,
     // dazu ein paar kleine Wimpern unten am äußeren Augenwinkel (bei "Wimpern" mehr und länger, beim Jungen keine)
     const viele = augen === 'wimpern' || schoen || augen === 'sanft';
-    const zahl = schoen ? 10 : augen === 'sanft' ? 5 : viele ? 7 : junge ? 0 : 4;
+    const zahl = katze ? 16 : schoen ? 10 : augen === 'sanft' ? 5 : viele ? 7 : junge ? 0 : 4;
     for (let k = 0; k < zahl; k++) {
       const t = (viele ? 0.05 : 0.35) + (viele ? 0.95 : 0.65) * k / Math.max(1, zahl - 1);   // 0 = Mitte, 1 = außen
       const x = s * rx * t, y = -ry * 1.05 * Math.sqrt(Math.max(0, 1 - t * t)) * (1 - 0.15 * t) - 0.001;
-      const lg = (schoen ? 0.03 : viele ? 0.024 : 0.016) * (0.6 + t * 0.6);
+      const lg = (katze ? 0.027 : schoen ? 0.03 : viele ? 0.024 : 0.016) * (0.6 + t * 0.6);
       const w = (0.15 + t * 1.05);                                   // Winkel: innen nach oben, außen zur Seite (Fächer)
       const ex = x + s * Math.sin(w) * lg, ey = y - Math.cos(w) * lg;
       g.beginPath(); g.moveTo(x, y);
       g.quadraticCurveTo(x + s * Math.sin(w * 0.6) * lg * 0.6, y - Math.cos(w * 0.6) * lg * 0.6, ex, ey);
-      linie('#1d1612', viele ? 0.004 : 0.0035);
+      linie('#1d1612', katze ? 0.005 : viele ? 0.004 : 0.0035);
     }
     const unten = schoen ? 3 : 0;   // nur bei den schönen Augen ein paar untere Wimpern
     for (let k = 0; k < unten; k++) {
@@ -3230,8 +3232,9 @@ function gesichtTextur(look, mass) {
     for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.0085, 0.009, 0.0045, 0.0028, s * 0.3, 0, Math.PI * 2); g.fill(); }
   });
   // Mund
-  const lippe = look.lippen || (junge ? '#c98078' : '#d0697a');   // Lippenfarbe (im Make-up wählbar)
-  const unterLippe = look.lippen ? new THREE.Color(look.lippen).lerp(new THREE.Color('#ffffff'), 0.12).getStyle() : (junge ? '#d08a82' : '#de7d8c');
+  const glanz = mundArt === 'glanz';   // volle Nude-Lippen mit Glanz
+  const lippe = look.lippen || (glanz ? '#b47a70' : junge ? '#c98078' : '#d0697a');   // Lippenfarbe (im Make-up wählbar)
+  const unterLippe = look.lippen ? new THREE.Color(look.lippen).lerp(new THREE.Color('#ffffff'), 0.12).getStyle() : glanz ? '#c08a80' : (junge ? '#d08a82' : '#de7d8c');
   const liner = look.lipliner && look.lipliner !== 'ohne' ? look.lipliner : null;   // Lip Liner: dunklerer Rand um die Lippen
   bei(0, -0.105, () => {
     g.scale(1.15, 1.15);
@@ -3245,7 +3248,8 @@ function gesichtTextur(look, mass) {
     } else if (mundArt === 'linie') {
       // Nur eine gebogene Linie (lächelnd)
       g.beginPath(); g.moveTo(-0.045, -0.008); g.quadraticCurveTo(0, 0.026, 0.045, -0.008); linie('#5a2630', 0.0045);
-    } else if (mundArt === 'laecheln') {
+    } else if (mundArt === 'laecheln' || glanz) {
+      if (glanz) g.scale(1.08, 1.25);   // voller
       // Volle Lippen wie auf der Zeichnung: Oberlippe mit deutlichem Amorbogen, runde Unterlippe
       g.beginPath();                                  // Oberlippe
       g.moveTo(-0.048, -0.001); g.bezierCurveTo(-0.035, -0.012, -0.018, -0.02, -0.008, -0.017); g.quadraticCurveTo(0, -0.011, 0.008, -0.017);
@@ -3258,8 +3262,9 @@ function gesichtTextur(look, mass) {
         g.beginPath(); g.moveTo(-0.048, -0.001); g.bezierCurveTo(-0.035, -0.012, -0.018, -0.02, -0.008, -0.017); g.quadraticCurveTo(0, -0.011, 0.008, -0.017);
         g.bezierCurveTo(0.018, -0.02, 0.035, -0.012, 0.048, -0.001); g.bezierCurveTo(0.034, 0.031, -0.034, 0.031, -0.048, -0.001); linie(liner, 0.0032);
       }
-      g.beginPath(); g.moveTo(-0.05, -0.003); g.quadraticCurveTo(-0.02, 0.006, 0, 0.003); g.quadraticCurveTo(0.02, 0.006, 0.05, -0.003); linie('#8e3c4a', 0.0035);   // Mundlinie, leicht gewellt
+      g.beginPath(); g.moveTo(-0.05, -0.003); g.quadraticCurveTo(-0.02, 0.006, 0, 0.003); g.quadraticCurveTo(0.02, 0.006, 0.05, -0.003); linie(glanz ? 'rgba(110,60,55,0.75)' : '#8e3c4a', 0.0035);   // Mundlinie, leicht gewellt
       g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(0.006, 0.015, 0.012, 0.004, 0, 0, Math.PI * 2); g.fill();
+      if (glanz) { g.fillStyle = 'rgba(255,245,240,0.22)'; g.beginPath(); g.ellipse(-0.004, 0.012, 0.012, 0.0035, -0.1, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(0.012, -0.01, 0.007, 0.0025, 0.2, 0, Math.PI * 2); g.fill(); }   // Glanz
     } else if (mundArt === 'grinsen') {
       const grinsForm = () => { g.beginPath(); g.moveTo(-0.055, -0.01); g.quadraticCurveTo(0, -0.002, 0.055, -0.01); g.quadraticCurveTo(0.04, 0.045, 0, 0.045); g.quadraticCurveTo(-0.04, 0.045, -0.055, -0.01); };
       grinsForm(); g.fillStyle = '#6e1f30'; g.fill();
@@ -7576,12 +7581,12 @@ const AUSWAHL = [
   { titel: 'Arme', key: 'armForm', worte: [['normal', 'Normal'], ['rund', 'Rund und dick'], ['eckig', 'Eckig'], ['dick', 'Dick und eckig']] },
   { titel: 'Hände', key: 'handForm', worte: [['lego', 'Lego-Hände'], ['normal', 'Mit Fingern']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
-  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['mandel', 'Mandelform'], ['sanft', 'Klein mit Wimpern'], ['zu', 'Fröhlich zu']] },
+  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['mandel', 'Mandelform'], ['sanft', 'Klein mit Wimpern'], ['katze', 'Katzenaugen'], ['zu', 'Fröhlich zu']] },
   { titel: 'Blush', key: 'blush', worte: [['ohne', 'Ohne'], ['zart', 'Zart'], ['stark', 'Kräftig']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
   { titel: 'Augenbrauen', key: 'brauen', worte: [['bogen', 'Geschwungen'], ['gerade', 'Gerade'], ['hoch', 'Hoher Bogen'], ['buschig', 'Buschig'], ['fein', 'Fein']] },
   { titel: 'Sommersprossen', key: 'sommersprossen', worte: [[false, 'Nein'], [true, 'Ja']] },
-  { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['linie', 'Strich-Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
+  { titel: 'Mund', key: 'mund', worte: [['laecheln', 'Lächeln'], ['glanz', 'Glanzlippen'], ['linie', 'Strich-Lächeln'], ['grinsen', 'Grinsen'], ['staunen', 'Staunen'], ['frech', 'Frech']] },
   { titel: 'Lippenfarbe', key: 'lippen', nur: ['mund', 'laecheln'], farben: ['#d0697a', '#c98078', '#dcb8bd', '#b5546a', '#a8505a', '#c48a7a', '#9a5a4a'] },
   { titel: 'Lip Liner', key: 'lipliner', nur: ['mund', 'laecheln'], worte: [['ohne', 'Ohne'], ['#8e3c4a', 'Dunkel-Rosa'], ['#6b3a2e', 'Braun'], ['#5a2630', 'Beere']] },
   { titel: 'Frisur', key: 'frisur', worte: Object.entries(HAAR_STUECKE).map(([k, f]) => [k, f.name]) },
