@@ -5001,11 +5001,12 @@ function baueFigur(look, ziel = scene) {
     const pkt = [];
     for (let k = 0; k <= 24; k++) {
       const a = -Math.PI / 2 + Math.PI * k / 24, rand = Math.abs(Math.sin(a));
-      const r = (kopfSchmuck === 'haarreifschwarz' ? 0.286 : 0.296) - 0.03 * Math.pow(rand, 3);   // der schmale schwarze liegt direkt auf den Haaren
-      pkt.push(new THREE.Vector3(Math.sin(a) * r, Math.cos(a) * r * 1.08 - 0.02 * rand, 0.02 * (1 - rand)));
+      const sw = kopfSchmuck === 'haarreifschwarz';   // der schwarze: runder Bogen, liegt überall gut sichtbar auf den Haaren
+      const r = sw ? 0.302 - 0.012 * Math.pow(rand, 2) : 0.296 - 0.03 * Math.pow(rand, 3);
+      pkt.push(new THREE.Vector3(Math.sin(a) * r, Math.cos(a) * r * (sw ? 1.0 : 1.08) - (sw ? 0.03 : 0.02) * rand, 0.02 * (1 - rand)));
     }
     const rues = kopfSchmuck === 'rueschenband';   // weißes Haarband mit Rüschen
-    const reif = teil(haarSchlauch(pkt, (t) => { const m = Math.sin(Math.PI * t); return rues ? 0.008 + 0.012 * Math.pow(m, 0.6) : kopfSchmuck === 'haarreifschwarz' ? 0.009 + 0.007 * m : 0.008 + 0.026 * Math.pow(m, 0.8); }, 60, 14), rues ? '#f2efe9' : kopfSchmuck === 'haarreifschwarz' ? '#1d1d1f' : '#6e2a35', { map: stoff('weich', 8, 1), roughness: 0.55 });
+    const reif = teil(haarSchlauch(pkt, (t) => { const m = Math.sin(Math.PI * t); return rues ? 0.008 + 0.012 * Math.pow(m, 0.6) : kopfSchmuck === 'haarreifschwarz' ? 0.016 + 0.002 * m : 0.008 + 0.026 * Math.pow(m, 0.8); }, 60, 14), rues ? '#f2efe9' : kopfSchmuck === 'haarreifschwarz' ? '#1d1d1f' : '#6e2a35', { map: stoff('weich', 8, 1), roughness: 0.55 });
     reif.rotation.x = 0.12;
     if (rues) for (let k = 2; k <= 22; k++) {          // Rüschen: kleine gewellte Stoff-Bögen auf dem Band
       const a = pkt[k], n = a.clone().normalize();
