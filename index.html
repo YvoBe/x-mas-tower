@@ -4215,7 +4215,7 @@ function baueFigur(look, ziel = scene) {
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
     gelenk.rotation.z = 0; gelenk.scale.x = 1; knie.rotation.z = 0;
-    gelenk.position.x = seite * (junge ? 0.145 : 0.13);
+    gelenk.position.x = seite * (junge ? 0.165 : 0.155);   // zwei getrennte Beine mit kleiner Lücke dazwischen
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
       const seiteM = mat('#ffffff', { map: klotzTextur(look, jeansKurz ? 'jeansshorts' : hoseTyp, beinHaut, false) });
@@ -4234,7 +4234,7 @@ function baueFigur(look, ziel = scene) {
     };
     const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(hoseTyp === 'rock' ? 0.27 : 0.31, OBEN, hoseTyp === 'rock' ? 0.27 : 0.33,   // Oberschenkel etwas dicker
+    const ober = block(hoseTyp === 'rock' ? 0.27 : 0.29, OBEN, hoseTyp === 'rock' ? 0.27 : 0.33,   // Oberschenkel etwas dicker
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
@@ -4243,13 +4243,13 @@ function baueFigur(look, ziel = scene) {
     ober.rotation.x = -KNICK;                         // Oberschenkel etwas nach vorne
     gelenk.add(ober);
     knie.position.set(0, -OBEN * Math.cos(KNICK), OBEN * Math.sin(KNICK));
-    const unter = block(0.265, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
+    const unter = block(0.25, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     unter.geometry.translate(0, -UNTEN / 2, 0);
     unter.rotation.x = KNICK;                         // Unterschenkel wieder zurück: das Knie zeigt leicht nach vorne
     // Schuh: ein bisschen größer als das Bein, so sitzt er über Strümpfen und Hose (Bild wie unten am Bein)
     const schuhV = 1 - schuhAnfang(look.schuhTyp || 'turnschuh');   // so viel vom Bild ist Schuh
     const schuhH = UNTEN * schuhV / (1 - teilung) + 0.004;
-    const schuhKlotz = block(0.29, schuhH, 0.315, 0, schuhV, look.schuhe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
+    const schuhKlotz = block(0.27, schuhH, 0.315, 0, schuhV, look.schuhe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     schuhKlotz.position.set(0, -UNTEN + schuhH / 2, 0.008);
     unter.add(schuhKlotz);
     knie.add(unter);
