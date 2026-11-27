@@ -214,6 +214,8 @@
   /* Mitspielen */
   #codeKnopf { pointer-events: auto; border: 3px solid var(--rosa); cursor: pointer; font-family: var(--font); color: var(--ink); }
   #codeKnopf .code { letter-spacing: 0.12em; }
+  #musikKnopf { pointer-events: auto; cursor: pointer; font-family: var(--font); color: var(--ink); border: 3px solid transparent; }
+  #musikKnopf[aria-pressed="false"] { opacity: 0.6; }
   [hidden] { display: none !important; }
   #codePanel { pointer-events: auto; width: min(280px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
   #codePanel .titel { font-size: 17px; font-weight: 800; }
@@ -529,6 +531,7 @@
     </div>
     <div class="tag zahl" id="tuerchen">🎁 0/24</div>
     <div class="tag zahl" id="height">Draußen</div>
+    <button type="button" class="tag zahl" id="musikKnopf" aria-pressed="true">🎵 Musik an</button>
   </div>
 </div>
 <div id="leiste" hidden role="toolbar" aria-label="Deine Sachen"></div>
@@ -1066,6 +1069,76 @@ function pokalTon() {
     o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.55);
   });
 }
+// ---------- Leise Weihnachtsmusik (selbst ausgedacht, klingt wie eine Spieluhr) ----------
+let musikAn = true;
+try { musikAn = localStorage.getItem('wonder-musik') !== 'aus'; } catch (e) {}
+let musikGain = null, musikUhr = null;
+// Töne als MIDI-Nummer (60 = C) und Länge in Schlägen, im 3/4-Takt
+const MELODIE = [
+  [76, 1], [79, 1], [76, 1], [74, 2], [72, 1], [74, 1], [76, 1], [79, 1], [81, 3],
+  [79, 1], [76, 1], [72, 1], [74, 2], [67, 1], [72, 1], [74, 1], [76, 1], [72, 3],
+  [81, 1], [79, 1], [76, 1], [77, 2], [74, 1], [79, 1], [77, 1], [74, 1], [76, 3],
+  [72, 1], [76, 1], [79, 1], [81, 2], [77, 1], [76, 1], [74, 1], [71, 1], [72, 3],
+];
+const BASS = [48, 43, 48, 41, 48, 43, 41, 48, 45, 41, 43, 48, 48, 41, 43, 48];   // ein Ton pro Takt
+const SCHLAG = 0.46;
+const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+function spieluhrTon(a, f, t, laut, dauer = 1.4) {
+  for (const [mal, l] of [[1, 1], [2, 0.25], [3.01, 0.08]]) {
+    const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = f * mal;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(laut * l, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dauer);
+    o.connect(g); g.connect(musikGain); o.start(t); o.stop(t + dauer + 0.05);
+  }
+}
+function musikRunde() {
+  const a = tonKontext;
+  if (!a || a.state !== 'running') { musikUhr = setTimeout(musikRunde, 1500); return; }
+  if (!musikGain) { musikGain = a.createGain(); musikGain.gain.value = musikAn ? 1 : 0; musikGain.connect(a.destination); }
+  let t = a.currentTime + 0.2, takt = 0, schlaege = 0;
+  const start = t;
+  for (const [m, l] of MELODIE) {
+    if (schlaege % 3 === 0) { spieluhrTon(a, hz(BASS[takt % BASS.length]), t, 0.018, 2.2); takt++; }
+    spieluhrTon(a, hz(m), t, 0.035, l > 1 ? 2.0 : 1.3);
+    t += l * SCHLAG; schlaege += l;
+  }
+  musikUhr = setTimeout(musikRunde, (t - start + 9) * 1000);   // nach jeder Runde eine kleine Pause
+}
+musikRunde();
+function musikUmschalten() {
+  musikAn = !musikAn;
+  try { localStorage.setItem('wonder-musik', musikAn ? 'an' : 'aus'); } catch (e) {}
+  if (musikGain && tonKontext) musikGain.gain.setTargetAtTime(musikAn ? 1 : 0, tonKontext.currentTime, 0.2);
+  const k = document.getElementById('musikKnopf'); k.setAttribute('aria-pressed', String(musikAn)); k.textContent = musikAn ? '🎵 Musik an' : '🎵 Musik aus';
+}
+{ const k = document.getElementById('musikKnopf'); if (k) { k.addEventListener('click', musikUmschalten); k.setAttribute('aria-pressed', String(musikAn)); k.textContent = musikAn ? '🎵 Musik an' : '🎵 Musik aus'; } }
+// ---------- Kirchenglocken: in der Winterstadt jede halbe Stunde (zur vollen Stunde so oft, wie es Uhr ist) ----------
+function glockenSchlag(a, f, t, laut) {
+  for (const [mal, l, d] of [[0.5, 0.5, 6], [1, 1, 4.5], [1.19, 0.45, 3], [1.5, 0.35, 2.5], [2, 0.3, 2], [2.74, 0.15, 1.2]]) {
+    const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = f * mal;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(laut * l, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.05);
+  }
+}
+function glockenLaeuten(schlaege) {
+  const a = tonKontext; if (!a || a.state !== 'running') return;
+  // leiser, je weiter man von der Kirche weg ist
+  const kx = WONDER.x, kz = WONDER.z - 80, d = Math.hypot(spieler.pos.x - kx, spieler.pos.z - kz);
+  const laut = 0.16 * Math.max(0.3, Math.min(1, 1 - (d - 30) / 250));
+  let t = a.currentTime + 0.1;
+  [330, 294, 262, 196].forEach((f, i) => glockenSchlag(a, f, t + i * 0.9, laut * 0.6));   // kleine Melodie vorweg
+  t += 4.6;
+  for (let i = 0; i < schlaege; i++) glockenSchlag(a, 131, t + i * 2.2, laut);
+}
+let letzteGlocke = -1;
+setInterval(() => {
+  const d = new Date(), min = d.getMinutes();
+  if (min % 30 !== 0) return;
+  const schluessel = d.getHours() * 2 + (min >= 30 ? 1 : 0);
+  if (schluessel === letzteGlocke) return;
+  letzteGlocke = schluessel;
+  if (zeigeWelt !== 'wonderland') return;
+  glockenLaeuten(min === 0 ? (d.getHours() % 12 || 12) : 1);
+}, 1000);
 // Jeder Squishy hat sein eigenes Geräusch
 function squishTon(art) {
   // Die meisten klingen wie das Toastbrot (knuspriges "knirsch"), jeder nur ein bisschen höher oder tiefer.
@@ -6050,7 +6123,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       x.fillStyle = fuge; x.fillRect(0, i * 16 + 14, 128, 2);
       x.fillStyle = 'rgba(0,0,0,0.04)'; x.fillRect(0, i * 16 + 2 + (i % 3) * 3, 128, 3);
     }
-    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); return t;
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); t.anisotropy = 4; return t;
   };
   const ziegelTextur = () => {
     const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
@@ -6225,7 +6298,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     const N = 420, krone = new THREE.ConeGeometry(2.2, 6, 8); krone.translate(0, 4, 0);
     const baeume = new THREE.InstancedMesh(krone, M(0xf4f6f8, { flatShading: true }), N), m4 = new THREE.Matrix4();
     for (let i = 0; i < N; i++) {
-      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while ((Math.abs(px) < 160 && Math.abs(pz) < 62) || (Math.abs(px) < 36 && Math.abs(pz) < 92));
+      let px, pz; do { px = (rnd() - 0.5) * 380; pz = (rnd() - 0.5) * 380; } while ((Math.abs(px) < 160 && Math.abs(pz) < 62) || (Math.abs(px) < 36 && Math.abs(pz) < 92) || (Math.abs(px) < 30 && pz < -60 && pz > -118));
       const sc = 0.7 + rnd() * 0.9; m4.makeScale(sc, sc * (0.9 + rnd() * 0.4), sc).setPosition(W.x + px, 0, W.z + pz); baeume.setMatrixAt(i, m4);
     }
     baeume.castShadow = true; scene.add(baeume); WELT_TEILE.wonderland.push(baeume);
@@ -6282,7 +6355,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
   const haengeSterne = (g, x, y, z, n = 3) => {   // hängende helle Sterne an Fäden
     for (let i = 0; i < n; i++) { const hy = y - 0.4 - (i % 2) * 0.35, hx = x + (i - (n - 1) / 2) * 0.35; zyl(g, hx, (y + hy) / 2 + 0.1, z, 0.004, 0.004, y - hy, C.dunkel, 3); holzStern(g, hx, hy - 0.12, z, 0.1, i % 2 ? C.creme : C.beige); }
   };
-  const teppichEckig = (g, x, y, z, b, t, farbe, rand) => { kasten(g, x, y + 0.02, z, b, 0.025, t, M(rand)); kasten(g, x, y + 0.03, z, b - 0.3, 0.025, t - 0.3, M(farbe)); for (let i = 0; i < Math.round(b / 0.12); i++) for (const sz of [-1, 1]) deko(g, x - b / 2 + 0.06 + i * 0.12, y + 0.015, z + sz * (t / 2 + 0.06), 0.03, 0.01, 0.12, rand); };
+  const teppichEckig = (g, x, y, z, b, t, farbe, rand) => { kasten(g, x, y + 0.03, z, b, 0.025, t, M(rand)); kasten(g, x, y + 0.05, z, b - 0.3, 0.025, t - 0.3, M(farbe)); for (let i = 0; i < Math.round(b / 0.12); i++) for (const sz of [-1, 1]) deko(g, x - b / 2 + 0.06 + i * 0.12, y + 0.015, z + sz * (t / 2 + 0.06), 0.03, 0.01, 0.12, rand); };
 
   // --- Möbel in echter Größe: gebaut in "Menschen-Größe", dann mit K vergrößert (die Figur ist 2,2 m groß) ---
   const K = 1.6;
@@ -6416,9 +6489,9 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     zyl(r, hx - 0.18, 1.04, 0.1, 0.15, 0.13, 0.18, C.dunkelgrau, 14);   // Topf
     // Dunstabzug: helles Holz-Band als Ablage, darüber schräge weiße Haube bis zur Decke
     kasten(r, hx, 1.78, -0.12, herdB + 0.5, 0.14, 0.48, schrankHolz);
-    { const hg = new THREE.Group(); hg.position.set(hx, 2.2, -0.2); hg.scale.set(1, 1, 0.6); r.add(hg); const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * Math.SQRT2, 0.62 * Math.SQRT2, 0.7, 4), M(0xefe9df)); hm.rotation.y = Math.PI / 4; hg.add(hm);
+    { const hg = new THREE.Group(); hg.position.set(hx, 2.2, 0.0); hg.scale.set(1, 1, 0.35); r.add(hg); const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * Math.SQRT2, 0.62 * Math.SQRT2, 0.7, 4), M(0xefe9df)); hm.rotation.y = Math.PI / 4; hg.add(hm);
       for (const s of [-1, 1]) { const st = new THREE.Mesh(boxGeo, schrankHolz); st.scale.set(0.07, 0.75, 0.07); st.position.set(s * 0.44, 2.2, -0.02); st.rotation.z = s * 0.4; r.add(st); } }
-    kasten(r, hx, 2.75, -0.24, 0.6, 0.4, 0.15, M(0xefe9df));
+    kasten(r, hx, 2.75, -0.12, 0.6, 0.4, 0.15, M(0xefe9df));
     pflanze(r, hx - 0.5, 1.85, -0.12, 0.4); pflanze(r, hx + 0.5, 1.85, -0.12, 0.45); korb(teil(r, hx + 0.15, 1.85, -0.1, 0, 0.35));
     girlande(r, V(hx - 0.7, 1.72, 0.13), V(hx + 0.7, 1.72, 0.13), 0.12, 12);
     // offene Holzregale links und rechts mit Gläsern, Schüsseln und Pflanzen
@@ -6647,10 +6720,10 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     // Teppich über den ganzen Raum (damit kein Boden mehr zu sehen ist) + Muster
     const raumTeppich = (x0, x1, z0, z1, y, farbe, rand) => {
       const bb = x1 - x0, tt = z1 - z0, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
-      kasten(g, mx, y + 0.012, mz, bb, 0.012, tt, M(rand)).castShadow = false;
-      kasten(g, mx, y + 0.016, mz, bb - 0.5, 0.012, tt - 0.5, M(farbe)).castShadow = false;
+      kasten(g, mx, y + 0.02, mz, bb, 0.012, tt, M(rand)).castShadow = false;   // Abstände groß genug, damit nichts flackert
+      kasten(g, mx, y + 0.035, mz, bb - 0.5, 0.012, tt - 0.5, M(farbe)).castShadow = false;
       const n = Math.max(2, Math.round(bb / 1.6));
-      for (let i = 0; i < n; i++) deko(g, x0 + 0.6 + i * (bb - 1.2) / Math.max(1, n - 1), y + 0.024, mz, 0.08, 0.004, tt - 1.0, rand);
+      for (let i = 0; i < n; i++) deko(g, x0 + 0.6 + i * (bb - 1.2) / Math.max(1, n - 1), y + 0.046, mz, 0.08, 0.004, tt - 1.0, rand);
     };
     // Zimmerwand mit Türöffnung(en), offene Tür, Rahmen
     const trennwand = (achse, w, a0, a1, y0, y1, tueren, farbeA, farbeB) => {
@@ -6675,13 +6748,13 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     const vorhang = sf();
 
     // ===== Treppen und Decken =====
-    const SN = 18, SR = (E - F) / SN, ST = 0.44, SB = 1.5, sx0 = iL + SB / 2, sz0 = iV + 1.1, sEnde = sz0 + SN * ST;
+    const SN = 18, SR = (E - F) / SN, ST = 0.44, SB = 2.0, sx0 = iL + SB / 2, sz0 = iV + 1.1, sEnde = sz0 + SN * ST;
     for (let i = 0; i < SN; i++) {   // Treppe 1: Erdgeschoss -> 1. Stock (linke Wand, nach hinten hoch)
       const oben = F + (i + 1) * SR, lz = sz0 + (i + 0.5) * ST;
       kasten(g, sx0, oben - 0.06, lz, SB, 0.12, ST, M(0x3b2c22)); kasten(g, sx0, (oben - 0.12 + F) / 2, lz, SB, oben - 0.12 - F, ST - 0.02, M(C.creme));
       deko(g, sx0, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x9a958e);   // grauer Treppenläufer
       fest(sx0, oben, lz, SB, ST, oben - F);
-      if (i >= 4) fest(sx0 + SB / 2 + 0.03, oben + 1.1, lz, 0.1, ST, oben + 1.1 - F);   // unsichtbares Geländer: man fällt nicht seitlich runter und stößt nicht an die Decke
+      if (i >= 4) fest(sx0 + SB / 2 + 0.25, oben + 1.1, lz, 0.1, ST, oben + 1.1 - F);   // unsichtbares Geländer: man fällt nicht seitlich runter und stößt nicht an die Decke
     }
     const s2x = sx0 + SB + 0.1, SR2 = (E2 - E) / SN;
     for (let i = 0; i < SN; i++) {   // Treppe 2: 1. Stock -> 2. Stock (daneben, nach vorne hoch)
@@ -6689,7 +6762,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       kasten(g, s2x, oben - 0.06, lz, SB, 0.12, ST, M(0x3b2c22)); kasten(g, s2x, (oben - 0.12 + E) / 2, lz, SB, oben - 0.12 - E, ST - 0.02, M(C.creme));
       deko(g, s2x, oben + 0.004, lz, SB - 0.4, 0.008, ST - 0.04, 0x9a958e);
       fest(s2x, oben, lz, SB, ST, oben - E);
-      if (i >= 4) for (const sx of [-1, 1]) fest(s2x + sx * (SB / 2 + 0.03), oben + 1.1, lz, 0.1, ST, sx < 0 ? 1.1 + 0.5 : oben + 1.1 - E);   // unsichtbares Geländer
+      if (i >= 4) for (const sx of [-1, 1]) fest(s2x + sx * (SB / 2 + 0.25), oben + 1.1, lz, 0.1, ST, sx < 0 ? 1.1 + 0.5 : oben + 1.1 - E);   // unsichtbares Geländer
     }
     // Geländer mit Girlanden an beiden Treppen
     const handlauf = (a, e) => { const m = a.clone().lerp(e, 0.5), l = a.distanceTo(e); const hl = new THREE.Mesh(boxGeo, M(C.dunkel)); hl.scale.set(0.08, 0.08, l); hl.position.copy(m); hl.lookAt(e); g.add(hl);
@@ -6736,7 +6809,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     { const kach = new THREE.Mesh(boxGeo, metroMat); kach.scale.set(7.0, 2.4, 0.02); kach.position.set(4.2, F + 2.7, iH - 0.05); g.add(kach); }   // weiße Metro-Fliesen
     fensterReihe(F, F + 2.0, 1.7, 0xdcd8d0);   // unten: helle Leinen-Vorhänge
     // 1. Stock: Flur + Zimmer
-    const XW = -3.0, ZW = 1.5, XB = 2.8;   // Zimmerwände: Flur | Kinderzimmer vorne, Schlafzimmer + Bad hinten
+    const XW = -2.1, ZW = 1.5, XB = 2.8;   // Zimmerwände: Flur | Kinderzimmer vorne, Schlafzimmer + Bad hinten
     const wFlur = wf(), wKind = wf(), wSchlaf = wf(), wBad = 0xe8e4dc;
     anstrich('z', iL, iV, iH, O, E2 - 0.25, 0xf3f0ea, 1, [], true); anstrich('x', iV, iL, XW - 0.1, O, E2 - 0.25, wFlur, 1);
     { const hh = E2 - 0.25 - (O + 1.3), ll = iH - iV, tp = new THREE.Mesh(boxGeo, tapeteMat('#ebe6d8', '#d3cbb4', ll / 1.1, hh / 1.1)); tp.scale.set(0.01, hh, ll); tp.position.set(iL + 0.05, O + 1.3 + hh / 2, (iV + iH) / 2); g.add(tp); }   // Tapete über der Wandverkleidung anstrich('x', iH, iL, XW - 0.1, O, E2 - 0.25, wFlur, -1);
@@ -6760,17 +6833,17 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     fensterReihe(O3, E2 + 2.0, 1.6);
 
     // ===== Teppiche überall =====
-    { const k = new THREE.Mesh(boxGeo, holzHellMat); k.scale.set(iR - 0.9, 0.012, iH - 2.9); k.position.set((0.8 + iR) / 2, F + 0.02, (2.9 + iH) / 2); g.add(k); }   // Küche: heller Dielenboden
+    { const k = new THREE.Mesh(boxGeo, holzHellMat); k.scale.set(iR - 0.9, 0.012, iH - 2.9); k.position.set((0.8 + iR) / 2, F + 0.04, (2.9 + iH) / 2); g.add(k); }   // Küche: heller Dielenboden
     { const fl = tf(), fr = tf(); raumTeppich(s2x + 0.62, XW - 0.12, iV + 0.1, sEnde, O, fl, fr); raumTeppich(iL + 0.1, XW - 0.12, sEnde + 0.02, iH - 0.1, O, fl, fr); }   // Flur
     raumTeppich(XW + 0.12, iR - 0.1, iV + 0.1, ZW - 0.12, O, tf(), tf());              // Kinderzimmer
     raumTeppich(XW + 0.12, XB - 0.12, ZW + 0.12, iH - 0.1, O, tf(), tf());             // Schlafzimmer
-    { const k = new THREE.Mesh(boxGeo, schachMat); k.scale.set(iR - XB - 0.3, 0.012, iH - ZW - 0.3); k.position.set((XB + iR) / 2, O + 0.02, (ZW + iH) / 2); g.add(k); }   // Bad: Fliesen
+    { const k = new THREE.Mesh(boxGeo, schachMat); k.scale.set(iR - XB - 0.3, 0.012, iH - ZW - 0.3); k.position.set((XB + iR) / 2, O + 0.04, (ZW + iH) / 2); g.add(k); }   // Bad: Fliesen
     raumTeppich(iL + 0.1, l2L - 0.05, iV + 0.1, iH - 0.1, O3, tf(), tf());            // Dachzimmer
     raumTeppich(l2R + 0.05, iR - 0.1, iV + 0.1, ZW - 0.12, O3, tf(), tf());
     raumTeppich(l2R + 0.05, XW - 0.12, ZW - 0.1, iH - 0.1, O3, tf(), tf());
     // Dach-Schlafzimmer: dunkler Holzboden, nur ein grauer Teppich (weiter unten)
     // runde und kleine Teppiche obendrauf
-    const rundTeppich = (rx, y, rz2, r2, f, f2) => { zyl(g, rx, y + 0.035, rz2, r2, r2, 0.02, f, 32).castShadow = false; zyl(g, rx, y + 0.045, rz2, r2 * 0.75, r2 * 0.75, 0.01, f2, 32).castShadow = false; for (let i = 0; i < 24; i++) { const w = i / 24 * Math.PI * 2; deko(g, rx + Math.cos(w) * (r2 + 0.05), y + 0.03, rz2 + Math.sin(w) * (r2 + 0.05), 0.05, 0.01, 0.12, f).rotation.y = -w; } };
+    const rundTeppich = (rx, y, rz2, r2, f, f2) => { zyl(g, rx, y + 0.06, rz2, r2, r2, 0.02, f, 32).castShadow = false; zyl(g, rx, y + 0.08, rz2, r2 * 0.75, r2 * 0.75, 0.01, f2, 32).castShadow = false; for (let i = 0; i < 24; i++) { const w = i / 24 * Math.PI * 2; deko(g, rx + Math.cos(w) * (r2 + 0.05), y + 0.03, rz2 + Math.sin(w) * (r2 + 0.05), 0.05, 0.01, 0.12, f).rotation.y = -w; } };
 
     // Kronleuchter: 0 = schwarzer Kerzenleuchter mit Gitter, 1 = schwarzer "Sputnik" mit runden Lampen
     const kronleuchter = (x, z, yD, art = 0, rr = 0.85) => {
@@ -6815,9 +6888,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     teppichEckig(g, 0, F + 0.01, iV + 1.6, 1.6, 2.4, tf(), C.creme);
     // Leseecke: großes Regal an der Treppe, zwei Sessel, Stehlampe, Körbe
     regalVoll(teil(g, lochR + 0.3, F, -0.6, Math.PI / 2), 0, 0, 0, (2.4 * K) / K, (2.4 * K) / K, 0, nr * 31 + 1, wahl([C.braun, C.creme]));
-    { const sfF = sf(); sessel(teil(g, -3.6, F, -2.0), 0, 0, 0, Math.PI * 0.8, sfF); sessel(teil(g, -3.6, F, 0.8), 0, 0, 0, Math.PI * 0.2, wahl(STOFF)); }
-    tischchen(teil(g, -4.4, F, -0.6), 0, 0, 0); lampeTisch(teil(g, -4.4, F + 0.6 * K, -0.6), 0, 0, 0);
-    stehlampe(teil(g, -2.4, F, -2.9)); korb(teil(g, -2.4, F, 0.4));
+    // (keine Sessel mehr und weniger Kram: unten soll es nicht so voll sein)
     rundTeppich(-3.8, F, -0.6, 1.6, tf(), tf());
     // Wohnzimmer: Kamin an der rechten Wand, Sofa, Sessel, Couchtisch, Baum, Regale
     const kz = 0.0;
@@ -6829,7 +6900,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     deko(g, iR - kD - 0.15, F + 0.06, kz, 0.3, 0.12, 2.2, C.hellgrau);   // Steinplatte vor dem Feuer
     kasten(g, iR - 0.8, F + 2.22, kz, 1.6, 0.16, 3.6, M(steinKamin ? 0xf3efe8 : 0x6b4a32));   // Sims: weiß beim Steinkamin, sonst Holzbalken
     if (steinKamin) { for (const sz of [-1, 1]) deko(g, iR - kD - 0.06, F + 1.1, kz + sz * 1.5, 0.14, 2.2, 0.36, 0xf3efe8); deko(g, iR - kD - 0.06, F + 2.05, kz, 0.14, 0.2, 3.3, 0xf3efe8); }   // weiße Umrandung
-    { const hg = new THREE.Group(); hg.position.set(iR, F + 2.75, kz); hg.scale.set(kD / 1.6, 1, 1); g.add(hg); const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.85 * Math.SQRT2, 1.6 * Math.SQRT2, 0.9, 4), kaminMat); hm.rotation.y = Math.PI / 4; hg.add(hm); }
+    { const hg = new THREE.Group(); hg.position.set(iR - kD / 2, F + 2.75, kz); hg.scale.set(kD / 3.2, 1, 1); g.add(hg); /* nur nach innen, ragte vorher aus der Hauswand */ const hm = new THREE.Mesh(new THREE.CylinderGeometry(0.85 * Math.SQRT2, 1.6 * Math.SQRT2, 0.9, 4), kaminMat); hm.rotation.y = Math.PI / 4; hg.add(hm); }
     kasten(g, iR - 0.3, (F + 3.2 + E - 0.25) / 2, kz, 0.6, E - 0.25 - F - 3.2, 1.7, kaminMat);
     if (steinKamin) {   // großer Kranz mit hellen Zweigen statt Bild
       const kr = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 8, 20), M(0x7d8a6e)); kr.rotation.y = Math.PI / 2; kr.position.set(iR - 0.66, F + 3.7, kz); g.add(kr);
@@ -6846,11 +6917,9 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     kerzenGruppe(teil(g, iR - 1.35, F + 2.3, kz - 1.4, 0, 1)); kerzenGruppe(teil(g, iR - 1.35, F + 2.3, kz + 1.35, 0, 1));
     const sofaF = wahl([C.creme, C.hell, 0xe6dccb, C.beige]), kissen = [C.beige, C.creme, 0xc8b8a6];   // helle, gemütliche Sofas
     if (rz() < 0.5) ecksofa(teil(g, 2.6, F, kz - 1.3, Math.PI / 2), sofaF, kissen);
-    else { sofa(teil(g, 2.4, F, kz, Math.PI / 2), 2.8, sofaF, kissen); sessel(teil(g, 4.4, F, kz - 2.2), 0, 0, 0, 0.2, wahl(STOFF)); }
-    sessel(teil(g, 4.6, F, kz + 2.0), 0, 0, 0, Math.PI - 0.3, wahl(STOFF));
+    else sofa(teil(g, 2.4, F, kz, Math.PI / 2), 2.8, sofaF, kissen);
     couchtisch(teil(g, 4.5, F, kz), rz() < 0.5, wahl([C.braun, C.dunkel, C.creme]));
     rundTeppich(4.6, F, kz, 2.0, tf(), tf());
-    tischchen(teil(g, 2.0, F, kz + 2.2), 0, 0, 0); lampeTisch(teil(g, 2.0, F + 0.6 * K, kz + 2.2), 0, 0, 0);
     stehlampe(teil(g, 2.0, F, kz - 3.6));
     // Weihnachtsbaum vorne rechts mit Lichtern und Geschenken
     const bx = iR - 1.3, bz = iV + 1.3;
@@ -6859,7 +6928,6 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     { const p = []; for (let i = 0; i < 70; i++) { const w = i * 0.9, hh = i / 70; p.push(V(bx + Math.cos(w) * (1.2 - hh * 1.0), F + 1.0 + hh * 2.8, bz + Math.sin(w) * (1.2 - hh * 1.0))); } weisseLichter(g, p, 0.6); }
     [[C.braun, 0.5, 0.5, -0.6], [C.beige, 0.42, -0.6, -0.5], [C.hellgrau, 0.35, 0.1, -0.95], [C.creme, 0.33, -0.9, 0.2], [C.dunkel, 0.45, 0.8, 0.4]].forEach(([f, gr, ox, oz]) => wGeschenk(g, bx + ox, F, bz + oz, gr, f, f === C.creme ? C.beige : C.creme));
     regalVoll(teil(g, 2.6, F, iV + 0.35, 0), 0, 0, 0, (2.0 * K * 0.85) / K, (2.4 * K) / K, 0, nr * 31 + 2, wahl([C.braun, C.creme]));
-    holzHirsch(teil(g, 0.4, F, -2.0, Math.PI / 2, 1.2));
     // Esszimmer hinten links
     { const ex = -3.0, ez = 4.5, tischF = wahl([C.braun, C.dunkel, 0xb08a64]), stuhlF = wahl([C.dunkel, C.creme, C.braun, C.schwarz]);
       const r = teil(g, ex, F, ez);
@@ -6872,7 +6940,6 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       kronleuchter(ex, ez, E - 0.25, 0, 0.8); teppichEckig(g, ex, F + 0.01, ez, 5.0, 3.6, tf(), C.creme); }
     kommode(teil(g, iL + 0.4, F, 4.6, Math.PI / 2), 0, 0, 0, 1.6, 0, wahl([C.creme, C.braun]));
     bild(g, iL + 0.06, F + 2.8, 4.6, 1.0, 0.7, wahl(['berge', 'reh', 'stern']), Math.PI / 2);
-    pflanze(g, -0.4, F, iH - 0.5, 2.2);
     // Küche hinten rechts
     landhausKueche(teil(g, 3.7, F, iH - 0.35, Math.PI), 4.4);
     kuehlschrank(teil(g, iR - 0.6, F, iH - 0.6, Math.PI));
@@ -6885,7 +6952,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
     girlande(g, V(iR - 0.1, E - 0.5, iV + 0.1), V(iR - 0.1, E - 0.5, iH - 0.1), 0.25, 46);
     girlande(g, V(iL + 0.1, E - 0.5, iV + 0.1), V(iR - 0.1, E - 0.5, iV + 0.1), 0.3, 50);
     for (const sx of [-1, 1]) { schwibbogen(g, sx * 4.6, F + 1.12, iV + 0.18, 0); haengeSterne(g, sx * 4.6, F + 3.6, iV + 0.25); }
-    pflanze(g, iL + 0.6, F, iV + 0.5, 1.6); baeumchen(g, -0.4, F, 1.8, 1.6);
+    pflanze(g, iL + 0.6, F, iV + 0.5, 1.6);
     kronleuchter(-3.8, -0.6, E - 0.25, 1); kronleuchter(4.3, kz, E - 0.25, steinKamin ? 2 : 0, 1.0);
 
     // ===================== 1. STOCK =====================
@@ -6899,7 +6966,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       // Läufer mit Muster
       teppichEckig(g, -4.0, O + 0.01, (sEnde + iH) / 2 - 0.3, 1.5, 3.6, 0xd9d0c0, 0x8c8478);
       for (let i = 0; i < 5; i++) { const m = deko(g, -4.0, O + 0.045, sEnde + 0.6 + i * 0.6, 0.35, 0.004, 0.35, i % 2 ? 0x8a6446 : 0x9aa38a); m.rotation.y = Math.PI / 4; } }
-    holzHirsch(teil(g, -4.6, O, iH - 0.6, 0, 1.3)); pflanze(g, XW - 0.5, O, iH - 0.5, 2.0); korb(teil(g, -4.6, O, sEnde + 0.6));
+    holzHirsch(teil(g, -4.6, O, iH - 0.6, 0, 1.3)); pflanze(g, XW - 0.5, O, iH - 0.5, 2.0);
     stehSpiegel(teil(g, XW - 0.4, O, -5.2, -Math.PI / 2)); pflanze(g, XW - 0.5, O, iV + 0.5, 1.8);
     girlande(g, V(iL + 0.1, E2 - 0.5, iV + 0.1), V(iL + 0.1, E2 - 0.5, iH - 0.1), 0.3, 40);
     // Kinderzimmer (vorne rechts)
@@ -6924,7 +6991,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       schrank(teil(g, XB - 0.5, O, 3.0, -Math.PI / 2), 1.8, wahl([C.creme, C.braun]));
       stehSpiegel(teil(g, XW + 0.45, O, 2.3, Math.PI / 2 + 0.4));
       kommode(teil(g, -0.4, O, ZW + 0.45, 0), 0, 0, 0, 1.4, 0, wahl([C.creme, C.braun]));
-      sessel(teil(g, -2.1, O, 6.0), 0, 0, 0, -Math.PI * 0.75, wahl(STOFF));
+
       pflanze(g, 2.2, O, 5.2, 1.8); girlande(g, V(XW + 0.2, O + 2.2, iH - 0.12), V(XB - 0.2, O + 2.2, iH - 0.12), 0.4, 30);
       bild(g, -0.1, O + 2.8, iH - 0.06, 1.2, 0.7, 'berge', Math.PI); rundTeppich(-0.1, O, 3.3, 1.3, tf(), tf()); }
     // Badezimmer (hinten rechts)
@@ -6942,7 +7009,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       regalVoll(teil(g, -2.4, O3, iV + 0.35, 0), 0, 0, 0, (2.0 * K) / K, (2.6 * K) / K, 0, nr * 31 + 7, wahl([C.braun, C.creme]));
       sofa(teil(g, 1.5, O3, -1.6, Math.PI), 2.6, wahl(STOFF), [C.creme, wahl(STOFF)]);
       couchtisch(teil(g, 1.5, O3, -3.2), true, C.braun); rundTeppich(1.5, O3, -3.0, 1.9, tf(), tf());
-      sessel(teil(g, 4.2, O3, -3.2), 0, 0, 0, -Math.PI / 2, wahl(STOFF)); stehlampe(teil(g, 4.4, O3, -1.6));
+      stehlampe(teil(g, 4.4, O3, -1.6));
       schreibtisch(teil(g, iR - 0.6, O3, -3.4, -Math.PI / 2), C.creme);
       holzHirsch(teil(g, iR - 1.0, O3, 0.4, Math.PI, 1.4));
       stehSpiegel(teil(g, -1.0, O3, 0.8, Math.PI));
@@ -6992,7 +7059,7 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       for (const sz of [-1, 1]) nachttisch(teil(g, iR - 0.4, O3 + 0.24, bz + sz * 1.6, -Math.PI / 2, 1.2));
       teppichEckig(g, xm - 0.6, O3 + 0.01, (za + ze) / 2, 5.2, 4.0, 0x99958f, 0x8a867f);
       kommode(teil(g, XW + 0.45, O3, 3.6, Math.PI / 2), 0, 0, 0, 1.4, 0, wahl([C.creme, C.braun]));   // niedrig, wegen der Dachschräge
-      sessel(teil(g, -0.8, O3, 5.5), 0, 0, 0, Math.PI * 0.8, C.creme);
+
       pflanze(g, XW + 0.6, O3, iH - 0.5, 1.8); }
 
     // Möbel sind fest: man kann nicht mehr durch sie hindurchlaufen (unsichtbarer Klotz um jedes große Möbelstück)
@@ -7386,14 +7453,15 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
 
     // --- Bäume an der hinteren Straße (außen) ---
     for (const sz of [-1, 1]) for (let x = -140; x <= 140; x += 14) {
-      if (sz < 0 && Math.abs(x) < 20) continue;   // Platz für die Kirche
+      if (sz < 0 && Math.abs(x) < 30) continue;   // Platz für die (große) Kirche
       if (sz > 0 && Math.abs(x) < 34) continue;   // Platz für den Park
       tanneW(wonder, W.x + x, W.z + sz * 57, 1.0 + ((x / 14) & 1) * 0.25); fest(x, sz * 57, 1, 1, 3);
     }
 
     // --- Kirche (hinten an der Straße, Turm mit Uhr und Spitze, warme Fenster) ---
     {
-      const KZ = -70, kg = new THREE.Group(); kg.position.set(W.x, 0, W.z + KZ); wonder.add(kg);
+      // viel größer (die Spielerin wollte eine richtig große Kirche): alles doppelt so groß
+      const SK = 2, KZ = -87, kg = new THREE.Group(); kg.position.set(W.x, 0, W.z + KZ); kg.scale.setScalar(SK); wonder.add(kg);
       const stein = M(0xd6cfc3, { roughness: 0.95 }), steinDunkel = M(0xb9b1a4, { roughness: 0.95 });
       kasten(kg, 0, 4.5, 0, 12, 9, 22, stein); kasten(kg, 0, 0.45, 0, 12.3, 0.9, 22.3, ziegelMat);   // Kirchenschiff mit Ziegelsockel
       dach(kg, 12, 22, 9, 5, C.dunkelgrau, 0.6);
@@ -7426,16 +7494,16 @@ let stadtVerkehrUpdate = null;   // Autos, Bus und Ampeln in der Winterstadt
       kranz(kg, 0, 3.2, 15.7, 0.45);
       girlande(kg, V(-1.6, 5.2, 15.7), V(1.6, 5.2, 15.7), 0.5, 14);
       for (const sx of [-1, 1]) girlande(kg, V(sx * 1.6, 5.2, 15.7), V(sx * 1.6, 1.0, 15.7), 0, 10);
-      for (let i = 0; i < 3; i++) { const h = 0.25 * (3 - i); kasten(kg, 0, h / 2, 15.75 + i * 0.5, 4.2, h, 0.5, M(C.hellgrau)); deko(kg, 0, h + 0.02, 15.75 + i * 0.5, 4.2, 0.04, 0.5, 0xfbfcff); fest(0, KZ + 15.75 + i * 0.5, 4.2, 0.5, h); }   // Stufen
+      for (let i = 0; i < 3; i++) { const h = 0.25 * (3 - i); kasten(kg, 0, h / 2, 15.75 + i * 0.5, 4.2, h, 0.5, M(C.hellgrau)); deko(kg, 0, h + 0.02, 15.75 + i * 0.5, 4.2, 0.04, 0.5, 0xfbfcff); fest(0, KZ + (15.75 + i * 0.5) * SK, 4.2 * SK, 0.5 * SK, h * SK); }   // Stufen
       // Laternen, Tannen mit Lichtern, Büsche
       for (const sx of [-1, 1]) {
-        laterneW(wonder, W.x + sx * 3.4, W.z + KZ + 16.2, 3.0);
-        tanne(wonder, W.x + sx * 9.5, W.z + KZ + 15, 1.0, false, true);
-        const p = []; for (let i = 0; i < 70; i++) { const w = i * 0.75, hh = i / 70; p.push(V(W.x + sx * 9.5 + Math.cos(w) * (2.2 - hh * 2.0), 1.0 + hh * 5.2, W.z + KZ + 15 + Math.sin(w) * (2.2 - hh * 2.0))); } weisseLichter(wonder, p, 1.0);
-        fest(sx * 9.5, KZ + 15, 1.2, 1.2, 4);
-        BUESCHE.push([sx * 8.0, KZ + 11.5, 0.9], [sx * 8.0, KZ + 8.5, 0.85], [sx * 8.0, KZ + 5.5, 0.9]);
+        laterneW(wonder, W.x + sx * 6.8, W.z + KZ + 33.6, 3.4);
+        tanne(wonder, W.x + sx * 19, W.z + KZ + 30, 1.6, false, true);
+        const p = []; for (let i = 0; i < 90; i++) { const w = i * 0.75, hh = i / 90; p.push(V(W.x + sx * 19 + Math.cos(w) * (3.5 - hh * 3.2), 1.6 + hh * 8.3, W.z + KZ + 30 + Math.sin(w) * (3.5 - hh * 3.2))); } weisseLichter(wonder, p, 1.2);
+        fest(sx * 19, KZ + 30, 1.6, 1.6, 6);
+        BUESCHE.push([sx * 15.5, KZ + 24, 1.1], [sx * 15.5, KZ + 18, 1.1], [sx * 15.5, KZ + 12, 1.1], [sx * 15.5, KZ + 6, 1.1]);
       }
-      fest(0, KZ, 12.3, 22.3, 12); fest(0, KZ + 13, 5.7, 5.3, 20);
+      fest(0, KZ, 12.3 * SK, 22.3 * SK, 12 * SK); fest(0, KZ + 13 * SK, 5.7 * SK, 5.3 * SK, 20 * SK);
     }
 
     // --- Park gegenüber der Kirche: Wege, Weihnachtsbaum, Bänke, Teich, Schneemann, Bäume und Büsche ---
