@@ -3794,7 +3794,7 @@ function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
   const strumpf = (hoseTyp === 'rock' || hoseTyp === 'kurz' || shorts) && look.struempfe === 'lang';
   g.fillStyle = strumpf ? '#d9cbb5' : haut; g.fillRect(0, 0, W, H);
   if (strumpf) { g.fillStyle = 'rgba(0,0,0,0.06)'; for (let x = 0; x < W; x += 8) g.fillRect(x, 0, 3, H); }
-  const hoseBis = shorts ? 0.15 : hoseTyp === 'kurz' ? 0.3 : hoseTyp === 'rock' ? 0 : schuhVon;
+  const hoseBis = shorts ? 0.15 : hoseTyp === 'kurz' ? 0.3 : hoseTyp === 'rock' ? 0.24 : schuhVon;
   if (hoseBis > 0) {
     g.fillStyle = look.hose; g.fillRect(0, 0, W, H * hoseBis);
     if (jeansArt) {                       // echter Jeansstoff: schräge Webung, helle Fasern, ausgewaschen in der Mitte, Nähte
@@ -3818,7 +3818,12 @@ function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
       g.restore();
     } else for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${z() < 0.5 ? '255,255,255' : '0,0,0'},0.06)`; g.fillRect(z() * W, z() * H * hoseBis, 1.5, 6); }
     const naht = jeansArt ? 'rgba(214,170,90,0.85)' : 'rgba(0,0,0,0.25)';
-    if (hinten && hoseTyp !== 'jogging') {           // Gesäßtasche hinten, aufgemalt
+    if (hoseTyp === 'rock') {                        // Faltenrock aufgemalt: Falten, dunkler Saum mit Zickzack-Kante
+      for (let x = 0; x < W; x += 32) { const f = g.createLinearGradient(x, 0, x + 32, 0); f.addColorStop(0, 'rgba(0,0,0,0.16)'); f.addColorStop(0.5, 'rgba(255,255,255,0.06)'); f.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = f; g.fillRect(x, 0, 32, H * hoseBis); }
+      g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, H * (hoseBis - 0.025), W, H * 0.025);
+      g.fillStyle = look.hose; g.beginPath(); g.moveTo(0, H * hoseBis); for (let x = 0; x <= W; x += 16) g.lineTo(x, H * (hoseBis + (x / 16 % 2 ? 0.012 : 0))); g.lineTo(W, H * hoseBis - 1); g.lineTo(0, H * hoseBis - 1); g.fill();
+    }
+    if (hinten && hoseTyp !== 'jogging' && hoseTyp !== 'rock') {           // Gesäßtasche hinten, aufgemalt
       const x0 = W * 0.2, x1 = W * 0.8, y0 = H * 0.035, y1 = H * Math.min(0.14, hoseBis - 0.02), sp = H * 0.02;
       g.fillStyle = 'rgba(0,0,0,0.1)'; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y0); g.lineTo(x1, y1 - sp); g.lineTo(W / 2, y1); g.lineTo(x0, y1 - sp); g.closePath(); g.fill();
       g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2; g.stroke();
@@ -3834,7 +3839,7 @@ function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
       g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + (seite > 0 ? 8 : -8), H * 0.05, x + (seite > 0 ? 4 : -4), H * 0.09); g.stroke();
       g.fillStyle = '#d9cbb5'; g.beginPath(); g.arc(x + (seite > 0 ? 4 : -4), H * 0.095, 5, 0, 7); g.fill();
     }
-    if (vorne && !jeansArt && hoseTyp !== 'jogging') {  // Taschenschlitz vorne bei der kurzen Hose
+    if (vorne && !jeansArt && hoseTyp !== 'jogging' && hoseTyp !== 'rock') {  // Taschenschlitz vorne bei der kurzen Hose
       const aussen = seite > 0 ? W : 0, innen = seite > 0 ? W * 0.45 : W * 0.55;
       g.strokeStyle = 'rgba(0,0,0,0.28)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(innen, 0); g.quadraticCurveTo(innen + (aussen - innen) * 0.2, H * 0.09, aussen, H * 0.1); g.stroke();
     }
@@ -3850,7 +3855,7 @@ function klotzTextur(look, hoseTyp, haut, vorne, seite = 1) {
       g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, H * (hoseBis - 0.014), W, H * 0.014);
       g.strokeStyle = 'rgba(236,230,218,0.9)'; g.lineWidth = 1.1;
       for (let i = 0; i < 220; i++) { const x = z() * W; g.beginPath(); g.moveTo(x, H * hoseBis - 3); g.lineTo(x + (z() - 0.5) * 3, H * (hoseBis + 0.006 + z() * 0.018)); g.stroke(); }
-    } else if (typ !== 'uggs' || hoseTyp === 'kurz') {
+    } else if (hoseTyp !== 'rock' && (typ !== 'uggs' || hoseTyp === 'kurz')) {
       g.fillStyle = look.umschlag; g.fillRect(0, H * (hoseBis - saum), W, H * saum);
       if (hoseTyp === 'jeans') { g.strokeStyle = 'rgba(230,215,180,0.6)'; g.setLineDash([6, 5]); g.lineWidth = 1.4; for (const y of [hoseBis - saum + 0.012, hoseBis - 0.012]) { g.beginPath(); g.moveTo(0, H * y); g.lineTo(W, H * y); g.stroke(); } g.setLineDash([]); g.fillStyle = 'rgba(0,0,0,0.2)'; g.fillRect(0, H * (hoseBis - saum), W, 3); }
       if (hoseTyp === 'jogging') { g.fillStyle = 'rgba(0,0,0,0.12)'; for (let x = 0; x < W; x += 8) g.fillRect(x, H * (hoseBis - saum), 3, H * saum); }
@@ -4059,6 +4064,38 @@ function mitRaendern(quelle, baender, grund) {
   }
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4; RAND_TEX[key] = t; return t;
 }
+function jackeGanzTextur(look) {
+  const key = ['jackeganz', look.jacke, look.buendchen, look.pulli].join('|');
+  if (KLEID_TEX[key]) return KLEID_TEX[key];
+  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  stoffGrund(g, W, H, look.pulli, 8);                                     // T-Shirt in der Mitte vorne
+  const luecke = 0.07 * W;
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(luecke - 4, 0, W - 2 * luecke + 8, H);   // Schatten der Jackenkante
+  g.drawImage(jackenTextur(look.jacke, look.buendchen).image, luecke, 0, W - 2 * luecke, H);
+  const yB = (1 - rumpfV(-0.48, 0.3, -0.41)) * H;                         // Bund unten an der Jacke
+  g.fillStyle = look.buendchen; g.fillRect(luecke, yB, W - 2 * luecke, H - yB);
+  g.fillStyle = 'rgba(0,0,0,0.13)'; for (let x = luecke; x < W - luecke; x += 7) g.fillRect(x, yB, 2.5, H - yB);
+  const yK = (1 - rumpfV(-0.48, 0.3, 0.27)) * H;                          // Shirt-Kragen
+  g.fillStyle = look.buendchen; g.fillRect(0, 0, luecke, yK); g.fillRect(W - luecke, 0, luecke, yK);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; KLEID_TEX[key] = t; return t;
+}
+// Freier Arm: Haut, beim T-Shirt mit aufgemaltem kurzem Ärmel (v: 0 = Hand, 1 = Schulter)
+function armTextur(look, aermel, ringel) {
+  const key = ['arm', look.haut, aermel, ringel, look.pulli, look.streifen].join('|');
+  if (KLEID_TEX[key]) return KLEID_TEX[key];
+  const W = 256, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = look.haut; g.fillRect(0, 0, W, H);
+  if (aermel) {
+    const zeile = (y) => (1 - (y + 0.67) / 0.75) * H, unten = zeile(-0.25);
+    stoffGrund(g, W, unten, look.pulli, 3);
+    if (ringel) { g.fillStyle = look.streifen; for (const [y0, y1] of [[-0.06, -0.1], [-0.16, -0.2]]) g.fillRect(0, zeile(y0), W, zeile(y1) - zeile(y0)); }
+    g.fillStyle = dunkler(look.pulli, 0.88); g.fillRect(0, unten - 7, W, 7);   // Saum am Ärmel
+    g.fillStyle = 'rgba(0,0,0,0.2)'; g.fillRect(0, unten - 1, W, 2);
+  }
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; KLEID_TEX[key] = t; return t;
+}
 // So verteilt rumpf() das Bild von unten (0) nach oben (1)
 const rumpfV = (yVon, yBis, y) => { const n = Math.max(2, Math.round((yBis - yVon) / 0.03)); return ((y - yVon) / (yBis - yVon) * n + 1) / (n + 2); };
 // Top mit Trägern als EIN Bild: unten der Stoff (mit Spitze/Schleife), oben Haut mit aufgemalten Trägern
@@ -4232,9 +4269,9 @@ function baueFigur(look, ziel = scene) {
       mesh.castShadow = true;
       return mesh;
     };
-    const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
+    const obenFarbe = look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(hoseTyp === 'rock' ? 0.27 : 0.29, OBEN, hoseTyp === 'rock' ? 0.27 : 0.33,   // Oberschenkel etwas dicker
+    const ober = block(0.29, OBEN, 0.33,   // Oberschenkel etwas dicker
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
@@ -4279,7 +4316,7 @@ function baueFigur(look, ziel = scene) {
   const huefte = teil(hGeo, look.hose, hoseM(10, 2));
   huefte.position.y = 0.84;
   figur.add(huefte);
-  if (hoseTyp === 'rock') {        // Faltenrock: wird nach unten weiter, ringsum Falten
+  if (false) {        // Rock ist jetzt aufgemalt (Textur auf Hüfte und Beinen)
     const hoehe = 0.27, oben = rumpfBreite(-0.44) - 0.025, unten = 0.4, falten = 18;   // kurzer Rock   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
@@ -4354,11 +4391,9 @@ function baueFigur(look, ziel = scene) {
     const shirt = teil(rumpf(-0.46, 0.3), '#ffffff', { map: mitRaendern(muster, [[0, v(-0.42), dunkler(look.pulli, 0.92)], [v(0.275), 1, look.buendchen]], ringelShirt || bananenShirt ? null : look.pulli) });   // Saum und Kragen aufgemalt
     koerper.add(shirt);
   } else {                               // T-Shirt mit offener Jacke drüber
-    const shirt = teil(rumpf(-0.44, 0.3, -0.015), look.pulli, { map: stoff('weich', 8, 8) });
-    koerper.add(shirt);
-    // Runde Jacke: hat die gleiche Form wie der Körper, nur etwas dicker, und ist vorne offen
-    const dick = 0.03, offen = 0.42;
-    const jacke = teil(rumpf(-0.5, 0.3, dick, 0.56, offen), '#ffffff', { side: THREE.DoubleSide, map: mitRaendern(jackenTextur(look.jacke, look.buendchen), [[0, rumpfV(-0.5, 0.3, -0.43), look.buendchen]]) });   // Kante, Taschen, Zipper, Bund sind aufgemalt
+    // Offene Jacke mit T-Shirt drunter: alles EIN Bild auf dem Körper (vorne in der Mitte sieht man das Shirt)
+    const dick = 0.03;
+    const jacke = teil(rumpf(-0.48, 0.3, 0.012), '#ffffff', { map: jackeGanzTextur(look) });
     koerper.add(jacke);
     if (kapuzenJacke) {
       // Echte Kapuze, nach hinten umgelegt: dicker Stoffwulst um den Nacken und ein flacher Beutel, der auf dem Rücken liegt
@@ -4398,15 +4433,17 @@ function baueFigur(look, ziel = scene) {
     // Runde Schulter = genau die obere Hälfte vom Ärmel (gleich dick, sitzt direkt auf dem Ärmel), dadurch kein extra Kreis
     const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.085 : 0.1) * ar, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), schulterFarbe, schulterMat);
     kugel.position.y = 0.02; kugel.scale.y = 0.8;     // runder Abschluss oben am Arm (der Arm geht ein Stück höher)
-    if (oberteilTyp === 'pulli' || oberteilTyp === 'tshirt') gelenk.add(kugel);
+    if (oberteilTyp === 'pulli') gelenk.add(kugel);
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
       // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
       const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), 0.02 + 0.06 * Math.cos(w)]; }), [0.085, -0.04], [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
         .map(([r, y]) => new THREE.Vector2(r * ar, y));
-      const a = teil(new THREE.LatheGeometry(profil.reverse(), 24), look.haut);   // von unten nach oben, sonst zeigt die Fläche nach innen und man sieht durch den Arm
+      const armGeo = new THREE.LatheGeometry(profil.reverse(), 24);   // von unten nach oben, sonst zeigt die Fläche nach innen und man sieht durch den Arm
+      { const p = armGeo.attributes.position, uv = armGeo.attributes.uv; for (let k = 0; k < p.count; k++) uv.setY(k, (p.getY(k) + 0.67) / 0.75); }   // Bild von unten (Hand) nach oben (Schulter)
+      const a = teil(armGeo, '#ffffff', { map: armTextur(look, oberteilTyp === 'tshirt', ringelShirt) });   // kurzer Ärmel ist aufgemalt
       a.scale.z = 1.08;
       gelenk.add(a);
-      if (oberteilTyp === 'tshirt') {   // kurzer Ärmel bis knapp über den Ellbogen
+      if (false) {   // kurzer Ärmel ist jetzt aufgemalt (armTextur)
         const aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.112 * ar, 0.3, 24, 1, false), '#ffffff', { map: ringelShirt ? ringelTextur(look.pulli, look.streifen, [[0.12, 0.26], [0.5, 0.64]], 10, 2) : null, color: ringelShirt ? '#ffffff' : look.pulli, side: THREE.DoubleSide });
         aermel.position.y = -0.1;   // geht oben bis zur runden Schulter
         gelenk.add(aermel);
@@ -4415,13 +4452,13 @@ function baueFigur(look, ziel = scene) {
       const farbe = oberteilTyp === 'jacke' ? look.jacke : look.pulli;
       let aermel;
       if (oberteilTyp === 'pulli') {   // Ärmel mit aufgemalten Streifen (Textur)
-        const v = (y) => (y + 0.55) / 0.57;
+        const v = (y) => (y + 0.64) / 0.66;
         const baender = [-0.12, -0.26, -0.4].map((y) => [v(y - 0.02), v(y + 0.02)]);
-        aermel = teil(strickPulli ? faltenRein(new THREE.CylinderGeometry(0.115 * ar, 0.118 * ar, 0.57, 24, 12), 0.05, -0.28, 0.05) : faltenRein(new THREE.CylinderGeometry(0.104 * ar, 0.11 * ar, 0.57, 24, 12), 0.035, -0.28, 0.0), '#ffffff', { map: strickPulli ? strickTextur(look.pulli, look.streifen, v(-0.2), v(-0.08), 0) : pyjama ? lebkuchenTextur(look.pulli, 2, 2) : weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
-        aermel.position.y = -0.265;
+        aermel = teil(strickPulli ? faltenRein(new THREE.CylinderGeometry(0.115 * ar, 0.118 * ar, 0.66, 24, 12), 0.05, -0.33, 0.05) : faltenRein(new THREE.CylinderGeometry(0.104 * ar, 0.112 * ar, 0.66, 24, 12), 0.035, -0.33, 0.0), '#ffffff', { map: strickPulli ? strickTextur(look.pulli, look.streifen, v(-0.2), v(-0.08), 0) : pyjama ? lebkuchenTextur(look.pulli, 2, 2) : weihnachtsPulli ? weihnachtsTextur(look.pulli, v(-0.42), v(-0.3), 0) : ringelTextur(look.pulli, look.streifen, baender, 10, 8) });
+        aermel.position.y = -0.31;   // längere Ärmel: gehen bis über das Handgelenk
       } else {
-        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.1 * ar, 0.57, 24, 12), '#ffffff', { map: mitRaendern(stoff('weich', 6, 6), [[0, 0.11, look.buendchen]], farbe) });
-        aermel.position.y = -0.265;
+        aermel = teil(new THREE.CylinderGeometry(0.1 * ar, 0.104 * ar, 0.66, 24, 12), '#ffffff', { map: mitRaendern(stoff('weich', 6, 6), [[0, 0.1, look.buendchen]], farbe) });
+        aermel.position.y = -0.31;   // längere Ärmel: gehen bis über das Handgelenk
       }
       if (oberteilTyp === 'pulli') aermel.material.map = mitRaendern(aermel.material.map, [[0, 0.11, strickPulli ? dunkler(look.pulli, 0.9) : look.buendchen]], pyjama ? '#ffffff' : null);   // Bündchen aufgemalt
       gelenk.add(aermel);
@@ -4772,7 +4809,7 @@ function baueFigur(look, ziel = scene) {
   }
 
   ziel.add(figur);
-  return { figur, beinL, beinR, armL, armR, knieL, knieR, rock: hoseTyp === 'rock' };   // rock: Beine schwingen weniger, damit sie unter dem Rock bleiben
+  return { figur, beinL, beinR, armL, armR, knieL, knieR, rock: false };   // rock: Beine schwingen weniger, damit sie unter dem Rock bleiben
 }
 // Gespeichertes Aussehen laden (falls schon im Editor geändert)
 try { Object.assign(AUSSEHEN, JSON.parse(localStorage.getItem('turmparkour-figur') || '{}')); } catch (e) {}
@@ -5814,7 +5851,7 @@ const LEUTE = [];
   const TRANK = { Punsch: 0xa86a6a, Kakao: 0x7a5236 };
   let n = 0;
   const mensch = (x, z, blick, art, extra = {}) => {
-    const f = einfacherMensch(LEUTE_LOOKS[n++ % LEUTE_LOOKS.length]);
+    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...WARM[n++ % WARM.length] });   // genauso gebaut wie die Spielfiguren
     f.figur.position.set(x, 0, z); f.figur.rotation.y = blick;
     WELT_TEILE.winter.push(f.figur);
     const l = { f, art, phase: n * 1.7, ...extra };
@@ -6931,7 +6968,7 @@ const W_FEUER = [], W_VERKAEUFER = [], W_INNEN = [], W_FAHRZEUGE = [];
     { figurTyp: 'junge', frisur: 'wuschel', haare: '#2b1d14', haut: '#c68b5e', oberteilTyp: 'pulli', pulli: '#f5f3ee', streifen: '#8a6446', hoseTyp: 'jeans', hose: '#45474a', kopf: 'weihnachtsmuetze', sternAn: false },
   ];
   for (const v of W_VERKAEUFER) {
-    const f = einfacherMensch(LEUTE_LOOKS[(v.look * 3) % LEUTE_LOOKS.length]);
+    const f = baueFigur({ ...STANDARD_AUSSEHEN, ...LOOKS[v.look % LOOKS.length] });   // genauso gebaut wie die Spielfiguren
     f.figur.position.set(v.x, 0.2, v.z); f.figur.rotation.y = v.blick;
     WELT_TEILE.wonderland.push(f.figur);
     figurZusammen(f);
