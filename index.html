@@ -4252,7 +4252,7 @@ function baueFigur(look, ziel = scene) {
     // Eckige Beine: Oberschenkel und Unterschenkel sind zwei Blöcke, am Knie leicht abgeknickt.
     // Hose, Strümpfe und Schuhe sind als Bild aufgemalt, es gibt keinen extra Fuß.
     gelenk.rotation.z = 0; gelenk.scale.x = 1; knie.rotation.z = 0;
-    gelenk.position.x = seite * (junge ? 0.165 : 0.155);   // zwei getrennte Beine mit kleiner Lücke dazwischen
+    gelenk.position.x = seite * (hoseTyp === 'rock' ? 0.135 : junge ? 0.165 : 0.155);   // unter dem Rock etwas enger, damit die Beine nicht durch den Rock schauen   // zwei getrennte Beine mit kleiner Lücke dazwischen
     const KNICK = 0.1, OBEN = 0.43, UNTEN = 0.44, teilung = OBEN / (OBEN + UNTEN);
     const beinMats = (vVon, vBis) => {   // Bild nur für den passenden Teil vom Bein (oben = Oberschenkel)
       const seiteM = mat('#ffffff', { map: klotzTextur(look, jeansKurz ? 'jeansshorts' : hoseTyp, beinHaut, false) });
@@ -4271,7 +4271,7 @@ function baueFigur(look, ziel = scene) {
     };
     const obenFarbe = hoseTyp === 'rock' ? beinHaut : look.hose;
     const unterFarbe = hoseTyp === 'jeans' || hoseTyp === 'jogging' ? look.hose : beinHaut;
-    const ober = block(hoseTyp === 'rock' ? 0.27 : 0.29, OBEN, hoseTyp === 'rock' ? 0.27 : 0.33,   // Oberschenkel etwas dicker
+    const ober = block(hoseTyp === 'rock' ? 0.25 : 0.29, OBEN, hoseTyp === 'rock' ? 0.25 : 0.33,   // Oberschenkel etwas dicker
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
@@ -4431,9 +4431,9 @@ function baueFigur(look, ziel = scene) {
     // Schulter: flach gedrückte Kugel am Arm und ein Übergang zum Körper, damit kein runder Knubbel absteht
     const schulterMat = oberteilTyp === 'pulli' ? { map: stoff('strick', 3, 3) } : oberteilTyp === 'top' ? {} : { map: stoff('weich', 3, 3) };
     // Runde Schulter = genau die obere Hälfte vom Ärmel (gleich dick, sitzt direkt auf dem Ärmel), dadurch kein extra Kreis
-    const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.085 : 0.1) * ar, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), schulterFarbe, schulterMat);
+    const kugel = teil(new THREE.SphereGeometry((oberteilTyp === 'top' ? 0.085 : strickPulli ? 0.115 : oberteilTyp === 'pulli' ? 0.104 : 0.1) * ar, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), schulterFarbe, schulterMat);   // genauso dick wie der Ärmel
     kugel.position.y = 0.02; kugel.scale.y = 0.8;     // runder Abschluss oben am Arm (der Arm geht ein Stück höher)
-    if (oberteilTyp === 'pulli') gelenk.add(kugel);
+    if (oberteilTyp === 'pulli' || oberteilTyp === 'jacke') gelenk.add(kugel);   // runde Schulter, nicht abgeschnitten
     if (oberteilTyp === 'top' || oberteilTyp === 'tshirt') {
       // Arm aus einem Stück: wird zum Handgelenk hin dünner und geht ohne Rille in die Hand über
       const profil = [...Array.from({ length: 8 }, (_, i) => { const w = Math.max(0.012, i / 7) * Math.PI / 2; return [0.085 * Math.sin(w), 0.02 + 0.06 * Math.cos(w)]; }), [0.085, -0.04], [0.085, -0.11], [0.08, -0.26], [0.072, -0.4], [0.06, -0.5], [0.053, -0.56], [0.049, -0.62], [0.046, -0.66], [0.001, -0.67]]
