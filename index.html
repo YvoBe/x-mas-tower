@@ -3461,7 +3461,7 @@ function kopfFormen(geo, mitteY = 0) {   // alle Punkte nach der Kopfform weiten
 // und je nach Frisur nach unten fällt. u = rundherum (0 = vorne), v = vom Scheitel bis zur Spitze.
 const HAAR_STUECKE = {
   glatt:      { name: 'Lang glatt', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.78, seiteLang: 0.66, dicke: 0.035, flare: 0.05, scheitel: 0, rillen: 0.005 },
-  schichten:  { name: 'Lang mit Stufen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.8, seiteLang: 0.7, dicke: 0.035, flare: 0.04, scheitel: 0, rillen: 0.006, volumen: 0.004, einrollen: 0.02, stufen: [[0.5, 0.42], [0.3, 0.24], [0.14, 0.1]] },   // Mittelscheitel, vorne gestufte Strähnen, die nach innen fallen
+  schichten:  { name: 'Lang mit Stufen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.8, seiteLang: 0.7, dicke: 0.035, flare: 0.04, scheitel: 0, rillen: 0.006, volumen: 0.004, einrollen: 0.02, stufen: [[0.5, 0.42], [0.3, 0.24]], vorneStufen: [0.42, 0.56, 0.72], lose: 0 },   // Mittelscheitel, vorne gestufte Strähnen, die nach innen fallen
   wellen:     { name: 'Lange Wellen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.72, seiteLang: 0.6, dicke: 0.04, flare: 0.07, scheitel: 0.38, welle: 0.018, rillen: 0.006, volumen: 0.006 },
   langlocken: { name: 'Lange Locken', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.68, seiteLang: 0.56, dicke: 0.05, flare: 0.09, locken: 0.022, lockenGross: true, scheitel: 0, volumen: 0.01 },
   stufen:     { name: 'Schulterlang', thF: 0.29, thS: 0.5, thB: 0.6, lang: 0.4, seiteLang: 0.32, dicke: 0.035, flare: 0.05, scheitel: 0.38, rillen: 0.007, volumen: 0.005 },
@@ -3735,6 +3735,18 @@ function haarStueck(o, seed = 1) {
     const d = new THREE.TorusGeometry(0.075, 0.05, 12, 24); d.rotateX(Math.PI / 2 - 0.4); d.translate(0, 0.28, -0.1);
     const m = new THREE.SphereGeometry(0.065, 14, 10); m.translate(0, 0.3, -0.1);
     teile.push(d, m);
+  }
+  if (o.vorneStufen) for (const s of [-1, 1]) {     // gestufte Strähnen vorne: vom Mittelscheitel zur Seite, dann über die Schultern nach vorne
+    o.vorneStufen.forEach((L, i) => {
+      const auf = (2 - i) * 0.006;                    // kürzere Stufen liegen außen drauf
+      for (let j = 0; j < 4; j++) {
+        const q = (j - 1.5) / 1.5, dz = q * 0.02, dx = s * (Math.abs(q) * 0.006 + auf);
+        const pkt = [kopfPunkt(s * (0.12 + j * 0.05), 0.06 + j * 0.012, -0.012), kopfPunkt(s * (0.55 + j * 0.06), 0.18 + j * 0.01, -0.006 + auf * 0.5), kopfPunkt(s * (0.95 + j * 0.05), 0.3, 0.004 + auf),
+          new THREE.Vector3(s * 0.245 + dx, -0.07, 0.085 + dz), new THREE.Vector3(s * 0.25 + dx, -0.2, 0.09 + dz), new THREE.Vector3(s * 0.235 + dx, -0.33, 0.16 + dz),
+          new THREE.Vector3(s * 0.21 + dx, -L, 0.2 + dz), new THREE.Vector3(s * 0.195 + dx * 0.5, -L - 0.035, 0.19 + dz)];   // unten nach innen geschwungen
+        teile.push(haarSchlauch(pkt, (t) => 0.017 * (t < 0.06 ? 0.4 + t * 10 : 1 - 0.6 * Math.pow(Math.max(0, t - 0.75) / 0.25, 1.4)), 70, 7));
+      }
+    });
   }
   // Lose Strähnen, die etwas herausschauen: so sieht es nicht so perfekt aus
   const lose = o.lose ?? 5;
