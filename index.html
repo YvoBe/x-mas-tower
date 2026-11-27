@@ -4296,6 +4296,10 @@ function baueFigur(look, ziel = scene) {
     knie.position.set(0, -OBEN * Math.cos(KNICK), OBEN * Math.sin(KNICK));
     const unter = block(0.25, UNTEN, 0.285, 0, 1 - teilung, unterFarbe, sohlenFarbe(look.schuhTyp || 'turnschuh', look.schuhe));
     unter.geometry.translate(0, -UNTEN / 2, 0);
+    { // Übergang am Knie: oben so dick wie der Oberschenkel, nach unten ganz leicht dünner
+      const p = unter.geometry.attributes.position, ow = ober.geometry.parameters.width / 0.25, od = ober.geometry.parameters.depth / 0.285;
+      for (let k = 0; k < p.count; k++) { const t = 1 + p.getY(k) / UNTEN; p.setX(k, p.getX(k) * (1 + (ow - 1) * t)); p.setZ(k, p.getZ(k) * (1 + (od - 1) * t)); }
+      unter.geometry.computeVertexNormals(); }
     unter.rotation.x = KNICK;                         // Unterschenkel wieder zurück: das Knie zeigt leicht nach vorne
     // Schuh: ein bisschen größer als das Bein, so sitzt er über Strümpfen und Hose (Bild wie unten am Bein)
     const schuhV = 1 - schuhAnfang(look.schuhTyp || 'turnschuh');   // so viel vom Bild ist Schuh
