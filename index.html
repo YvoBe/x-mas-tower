@@ -969,7 +969,7 @@ function bewegePlatten(dt) {
           const quer = dx * Math.sin(a) + dz * Math.cos(a), laengs = dx * Math.cos(a) - dz * Math.sin(a);
           const hoehe = spieler.pos.y - b.oben0;
           if (!(spieler.stossUhr > 0) && Math.abs(laengs) < b.laenge / 2 + 0.2 && Math.abs(quer) < 0.3 && hoehe < 0.2 && hoehe > -1.6) {
-            const seite = Math.sign(quer) || 1, st = 5;
+            const seite = Math.sign(quer) || 1, st = 3.5;
             spieler.stoss = { x: Math.sin(a) * seite * st, z: Math.cos(a) * seite * st };
             spieler.stossUhr = 0.6; spieler.ignorier = p;
             spieler.vel.y = 4.5; spieler.amBoden = false; spieler.boden = null; spieler.coyote = 0;
@@ -1814,7 +1814,8 @@ function baueInnen(T) {
     } else if (art === 'rund') {
       rundPlatte(platten, g, x, h, z, groesse * 1.05, farbe, { turm: T });
     } else if (art === 'dreh') {        // runde Scheibe, die sich dreht, mit einem gelben Balken, der darüber fegt
-      const d = groesse * 1.15;
+      // groß und gemütlich (die Spielerin wollte sie größer und einfacher), aber nie durch die Wand
+      const d = Math.max(groesse * 1.15, Math.min(groesse * 1.5, 2 * (T.innen - 0.2 - Math.max(Math.abs(x - T.cx), Math.abs(z - T.cz)))));
       const k = rundPlatte(platten, g, x, h, z, d, farbe, { turm: T });
       const balken = new THREE.Group();
       const stange = new THREE.Mesh(boxGeo, M(FARBEN.gold, { metalness: 0.3, roughness: 0.4 }));
@@ -1823,7 +1824,7 @@ function baueInnen(T) {
       nabe.scale.set(0.4, 0.3, 0.4); nabe.position.y = 0.15;
       balken.add(stange, nabe); balken.position.set(x, h, z); g.add(balken);
       const richtung = rnd() < 0.5 ? 1 : -1;
-      k.bew = { art: 'dreh', tempo: richtung * (0.9 + nr * 0.02), balken, armTempo: -richtung * 0.55, laenge: d * 0.92, oben0: h };
+      k.bew = { art: 'dreh', tempo: richtung * (0.55 + nr * 0.008), balken, armTempo: -richtung * 0.3, laenge: d * 0.92, oben0: h };
     } else if (SQUISHIES.includes(art)) {   // Squishy: sinkt weich ein, wenn man draufsteht
       const [sb, st] = art === 'butter' ? butterMasse(groesse) : [groesse * 0.95, groesse * 0.95];
       const k = klotz(platten, g, x, h, z, sb, st, 0, { turm: T, unsichtbar: true });
@@ -5047,7 +5048,8 @@ function fortschrittZeigen(T, s) {
 // ---------- Sachen: Belohnungen, die man in der Hand halten kann ----------
 const SACHEN = {
   butter: { emoji: '🧈', name: 'Squishy-Butter' },
-  zuckerstange: { emoji: '🍭', name: 'Zuckerstange' },
+  zuckerstange: { emoji: '', name: 'Zuckerstange',   // es gibt kein Zuckerstangen-Emoji, darum ein eigenes kleines Bild
+    bild: '<svg viewBox="0 0 24 24" width="1.4em" height="1.4em" style="vertical-align:middle" aria-hidden="true"><path d="M9 22 V8 a4 4 0 0 1 8 0 v2" fill="none" stroke="#fbf8f2" stroke-width="4" stroke-linecap="round"/><path d="M9 22 V8 a4 4 0 0 1 8 0 v2" fill="none" stroke="#c9364a" stroke-width="4" stroke-linecap="round" stroke-dasharray="2.5 2.5"/></svg>' },
   lebkuchen: { emoji: '🍪', name: 'Lebkuchenmann' },
   zimtstern: { emoji: '🌟', name: 'Zimtstern' },
   schneekugel: { emoji: '🔮', name: 'Schneekugel' },
@@ -5095,7 +5097,7 @@ const GESCHENKE = {
   19: { sache: 'herz' }, 20: { sache: 'rentier' },
   21: { kleid: 'faeustlinge', name: 'Fäustlinge' },
   22: { sache: 'geschenk', kleid: 'weihnachtsmuetze', name: 'Weihnachtsmütze' }, 23: { sache: 'baeumchen' },
-  24: { sache: 'zauberstab', kleid: 'lebkuchenpyjama', name: 'Lebkuchen-Pyjama' },
+  24: { kleid: 'lebkuchenpyjama', name: 'Lebkuchen-Pyjama' },
 };
 // Für die Umkleide: ist dieses Kleidungsstück schon freigeschaltet?
 function kleidFrei(id) {
@@ -5103,7 +5105,7 @@ function kleidFrei(id) {
   return true;
 }
 let meineSachen = [];
-try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n]); } catch (e) { meineSachen = []; }
+try { meineSachen = JSON.parse(localStorage.getItem('turmparkour-sachen') || '[]').filter((n) => SACHEN[n] && n !== 'zauberstab'); } catch (e) { meineSachen = []; }
 // Sachen aus den Läden (Supermarkt usw.) sind nach dem Verlassen der Seite wieder weg.
 // Was man im Adventskalender gewonnen hat, bleibt aber.
 const LADEN_SACHEN = ['milch', 'apfel', 'mandarine', 'kakao', 'brot', 'lebkuchen', 'muffin', 'buch', 'holzauto', 'hase', 'blume', 'tannentopf', 'tasche'];
@@ -5114,7 +5116,7 @@ const eingekauft = new Set();   // was man bei diesem Besuch schon aus den Läde
   try { localStorage.setItem('turmparkour-sachen', JSON.stringify(meineSachen)); } catch (e) {}
 }
 let inDerHand = null;
-try { inDerHand = localStorage.getItem('turmparkour-hand'); } catch (e) {}
+try { inDerHand = localStorage.getItem('turmparkour-hand'); if (inDerHand === 'zauberstab') inDerHand = null; } catch (e) {}
 if (!meineSachen.includes(inDerHand)) inDerHand = null;
 let handDing = null;
 function handDingBauen(name) {
@@ -5148,7 +5150,7 @@ function handDingBauen(name) {
   const weiss = M(0xfbf8f2), rot = M(0xc0394a), braun = M(0xa8652f), gold = M(0xf2c230, { metalness: 0.5, roughness: 0.3 }), gruen = M(0x5d7a3a), navy = M(0x1f2a4a), rosa = M(0xe7a3b7);
   switch (name) {
     case 'zuckerstange': {
-      const weg = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.12, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.02, 0.4, 0), new THREE.Vector3(0.09, 0.44, 0), new THREE.Vector3(0.15, 0.4, 0), new THREE.Vector3(0.16, 0.33, 0)]);
+      const weg = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.4, 0), new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0.02, 0.12, 0), new THREE.Vector3(0.09, 0.16, 0), new THREE.Vector3(0.15, 0.12, 0), new THREE.Vector3(0.16, 0.05, 0)]);   // man hält sie oben unter dem Haken, damit sie nicht im Arm steckt
       const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
       x.fillStyle = '#fbf8f2'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#c9364a';
       for (let i = -64; i < 128; i += 22) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 10, 0); x.lineTo(i + 10 + 64, 64); x.lineTo(i + 64, 64); x.fill(); }
@@ -5357,7 +5359,7 @@ function leisteZeigen() {
   leiste.replaceChildren();
   for (const name of meineSachen) {
     const k = document.createElement('button');
-    k.type = 'button'; k.textContent = SACHEN[name].emoji;
+    k.type = 'button'; if (SACHEN[name].bild) k.innerHTML = SACHEN[name].bild; else k.textContent = SACHEN[name].emoji;
     k.setAttribute('aria-label', SACHEN[name].name + (inDerHand === name ? ' weglegen' : ' in die Hand nehmen'));
     k.title = SACHEN[name].name;
     k.setAttribute('aria-pressed', String(inDerHand === name));
@@ -5413,11 +5415,12 @@ function turmGeschafft(T) {
   const g = !T.normal && !T.welt ? GESCHENKE[T.nr] : null;
   if (g) {
     const teile = [];
-    if (g.sache) { sacheBekommen(g.sache); teile.push(`${SACHEN[g.sache].name} ${SACHEN[g.sache].emoji}`); }
+    if (g.sache) { sacheBekommen(g.sache); teile.push(`${SACHEN[g.sache].name} ${SACHEN[g.sache].emoji}`.trim()); }
     if (g.kleid) teile.push(`${g.name} (neu in der Umkleide 👗)`);
     text += `\n🎁 Geschenk: ${teile.join(' und ')}`;
   }
-  zeigeBanner(text, g ? 5000 : 3500);
+  if (T.nr === 24 && !T.normal && !T.welt) text = 'Du hast alle Türchen geschafft! ⭐\nFrohe Weihnachten und ein schönes neues Jahr! 🎄';
+  zeigeBanner(text, T.nr === 24 ? 8000 : g ? 5000 : 3500);
   // Nach dem Feiern stehst du wieder vor dem Turm
   setTimeout(() => {
     spieler.pos.set(T.cx, 0, T.cz - T.innen - 4);
@@ -5470,6 +5473,16 @@ function update(dt) {
   // 3) Bewegen und nicht durch Wände laufen
   s.pos.x += s.vel.x * dt; seitlichWegschieben('x');
   s.pos.z += s.vel.z * dt; seitlichWegschieben('z');
+  // Turmwände sind dicht: wer im Turm ist, kommt nur durch die Tür (oder oben) wieder raus.
+  // (Sonst konnte man an den Ecken durch die Wand geschoben werden.)
+  const TT = s.turm;
+  if (TT && s.pos.y < TT.hoehe) {
+    const g = TT.innen - RADIUS;
+    const tuer = Math.abs(s.pos.x - TT.cx) < TUER_BREIT / 2 - RADIUS && s.pos.y < TUER_HOCH;
+    s.pos.x = Math.min(TT.cx + g, Math.max(TT.cx - g, s.pos.x));
+    if (s.pos.z > TT.cz + g) s.pos.z = TT.cz + g;
+    if (!tuer && s.pos.z < TT.cz - g) s.pos.z = TT.cz - g;
+  }
 
   const vorherY = s.pos.y;
   s.pos.y += s.vel.y * dt;
@@ -5500,9 +5513,9 @@ function update(dt) {
   // Runtergefallen? Zurück zum Checkpoint
   // Auch wer im Turm auf eine tiefere Ebene fällt (unter den letzten Checkpoint), kommt zurück zum Checkpoint
   if (s.pos.y < -15 || (T && s.amBoden && s.pos.y < s.checkpoint.y - 1.5)) {
-    // Sicherheitsnetz: Wer kurz nach dem Zurücksetzen gleich wieder fällt, kommt an den Eingang
-    // (so gibt es nie eine Endlosschleife)
-    if (T && zeit - (s.letzterNeustart || -9) < 1.5) s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5);
+    // Nur wenn man mehrmals direkt nach dem Zurücksetzen gleich wieder fällt (Checkpoint ist kaputt), geht es zum Eingang.
+    s.schnellFall = zeit - (s.letzterNeustart || -9) < 0.5 ? (s.schnellFall || 0) + 1 : 0;
+    if (T && s.schnellFall >= 3) { s.checkpoint.set(T.cx, 0.04, T.cz - T.innen + 1.5); s.schnellFall = 0; }
     s.letzterNeustart = zeit;
     s.pos.copy(s.checkpoint); s.pos.y += 0.02; s.vel.set(0, 0, 0); s.boden = null;
     s.respawns = (s.respawns || 0) + 1;
