@@ -4283,7 +4283,13 @@ function baueFigur(look, ziel = scene) {
       1 - teilung, 1, obenFarbe, unterFarbe);
     ober.geometry.translate(0, -OBEN / 2, 0);
     { const p = ober.geometry.attributes.position;     // oben an der Hüfte etwas schmaler, damit nichts aus Rock oder Oberteil schaut
-      for (let k = 0; k < p.count; k++) if (p.getY(k) > -0.01) { p.setX(k, p.getX(k) * 0.82 - seite * 0.012); p.setZ(k, p.getZ(k) * 0.78); }
+      const bx = ober.geometry.parameters.width / 2, luecke = Math.abs(gelenk.position.x) - bx;   // so weit ist es bis zur Mitte
+      for (let k = 0; k < p.count; k++) {
+        const x = p.getX(k), y = p.getY(k), t = Math.max(0, 1 + y / (OBEN * 0.75));   // 1 oben, 0 ab dem unteren Viertel
+        if (x * seite < 0) p.setX(k, x - seite * (luecke + 0.002) * t);      // innen: oben bis zur Mitte, die Beine sind oben zusammen, unten getrennt
+        else if (y > -0.01) p.setX(k, x * 0.9);                              // außen oben etwas schmaler
+        if (y > -0.01) p.setZ(k, p.getZ(k) * 0.85);
+      }
       ober.geometry.computeVertexNormals(); }
     ober.rotation.x = -KNICK;                         // Oberschenkel etwas nach vorne
     gelenk.add(ober);
