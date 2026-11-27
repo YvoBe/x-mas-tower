@@ -6767,6 +6767,7 @@ function baueStadtTeile() {
     const fest = (lx, oben, lz, b, t, dicke) => { const [wx, wz] = P(lx, lz); return klotz(statisch, wonder, wx, oben, wz, b, t, 0, { dicke, unsichtbar: true }); };
     const b = 16, t = 14, F = 0.6, E = 5.0, E2 = 9.4, H = 13.8, D = 0.3, TB = 2.0, TH = 2.9;
     const rz = zufall(nr * 97 + 13), wahl = (a) => a[Math.floor(rz() * a.length)];
+    const pracht = nr === 12;   // die besondere Schneevilla (nach dem Bild der Spielerin)
     const villa = nr % 2 === 0;   // jedes zweite Haus ist eine weiße Villa (wie auf dem Bild), die anderen bleiben Holzhäuser
     const wand = villa ? putzMat : HOLZ[nr % HOLZ.length], vz = -t / 2;
     // Außenwände (mit Türöffnung vorne) + Kollision
@@ -6780,9 +6781,39 @@ function baueStadtTeile() {
     fest(0, F, 0, b, t, F);
     // Zwischenleisten außen zwischen den Stockwerken
     for (const ey of [E, E2]) { deko(g, 0, ey, vz - 0.05, b + 0.1, 0.18, 0.12, C.creme); deko(g, 0, ey, t / 2 + 0.05, b + 0.1, 0.18, 0.12, C.creme); for (const sx of [-1, 1]) deko(g, sx * (b / 2 + 0.05), ey, 0, 0.12, 0.18, t + 0.1, C.creme); }
-    dach(g, b, t, H, 4.6, villa ? C.dunkelgrau : DAECHER[nr % DAECHER.length], 0.55);
-    kasten(g, 2.6, H + 2.3, 1.8, 0.9, 2.8, 0.9, ziegelMat); deko(g, 2.6, H + 3.75, 1.8, 1.05, 0.15, 1.05, 0xfbfcff);
-    if (villa) {   // Villa: zweiter Kamin, weiße Ecksäulen, Gesims, Giebel mit rundem Fenster
+    const RH = 5.2;   // Dachhöhe der Schneevilla
+    if (pracht) {   // Schneevilla: First quer, Schieferdach, zwei hohe Ziegelkamine an den Enden
+      { // Walmdach mit flacher Spitze (wie auf dem Bild), oben das Ziergitter
+        const a = b / 2 + 0.55, c = t / 2 + 0.55, k = 5, P = [[-a, -c], [a, -c], [a, c], [-a, c]], T = P.map(([px, pz]) => [px - Math.sign(px) * k, pz - Math.sign(pz) * k]), pos = [];
+        for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; pos.push(P[i][0], H, P[i][1], P[j][0], H, P[j][1], T[j][0], H + RH, T[j][1], P[i][0], H, P[i][1], T[j][0], H + RH, T[j][1], T[i][0], H + RH, T[i][1]); }
+        const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+        const dm = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x3d3f44, roughness: 0.85, side: THREE.DoubleSide })); dm.castShadow = true; g.add(dm);
+        deko(g, 0, H + RH + 0.04, 0, 2 * (a - k) + 0.1, 0.12, 2 * (c - k) + 0.1, 0xfbfcff);
+        for (const [ax, az, lx, lz] of [[0, -(c - k), 2 * (a - k), 0], [0, c - k, 2 * (a - k), 0], [-(a - k), 0, 0, 2 * (c - k)], [a - k, 0, 0, 2 * (c - k)]]) {
+          deko(g, ax, H + RH + 0.75, az, lx + 0.05, 0.05, lz + 0.05, C.schwarz); deko(g, ax, H + RH + 0.4, az, lx + 0.04, 0.04, lz + 0.04, C.schwarz);
+          const n = Math.round((lx + lz) / 0.35); for (let i = 0; i <= n; i++) { const f = i / n - 0.5; deko(g, ax + f * lx, H + RH + 0.45, az + f * lz, 0.04, 0.7, 0.04, C.schwarz); if (i % 2 === 0) kugelW(g, ax + f * lx, H + RH + 0.83, az + f * lz, 0.05, C.schwarz); }
+        }
+      }
+      for (const sx of [-1, 1]) { kasten(g, sx * 6.8, H + 1 + (RH + 1.4) / 2, 0.6, 1.2, RH + 1.4, 1.5, M(0x9b5b45)); for (let i = 1; i < 12; i++) deko(g, sx * 6.8, H + 1 + i * (RH + 1.4) / 12, 0.6, 1.22, 0.03, 1.52, 0xc9b8a8); deko(g, sx * 6.8, H + RH + 2.45, 0.6, 1.4, 0.18, 1.7, 0xfbfaf6); deko(g, sx * 6.8, H + RH + 2.6, 0.6, 1.25, 0.12, 1.55, 0xfbfcff);
+        for (const ox of [-0.3, 0.3]) zyl(g, sx * 6.8 + ox, H + RH + 2.85, 0.6, 0.13, 0.13, 0.4, 0xa0522d, 8); }
+      // Gauben mit Rundbogenfenstern
+      for (const gx of [5.0, -3.9, -6.3]) {
+        const zf = -6.6, gy = H + 0.9;
+        kasten(g, gx, gy + 1.2, -5.1, 1.6, 2.4, 3.0, putzMat);
+        const gd = new THREE.Mesh(dachGeo, M(0x3d3f44)); gd.scale.set(2.0, 0.95, 3.2); gd.position.set(gx, gy + 2.4, -5.0); g.add(gd);
+        const gw = new THREE.Mesh(dachGeo, M(0xfbfaf6)); gw.scale.set(1.85, 0.85, 0.2); gw.position.set(gx, gy + 2.4, zf - 0.12); g.add(gw);
+        deko(g, gx, gy + 2.42, zf - 0.12, 1.95, 0.12, 0.28, 0xfbfaf6);
+        const gl = new THREE.Mesh(boxGeo, fensterMat); gl.scale.set(0.8, 1.1, 0.04); gl.position.set(gx, gy + 1.05, zf - 0.02); g.add(gl);
+        const bo = new THREE.Mesh(new THREE.CircleGeometry(0.4, 14, 0, Math.PI), fensterMat); bo.rotation.y = Math.PI; bo.position.set(gx, gy + 1.6, zf - 0.04); g.add(bo);
+        const br = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.07, 6, 14, Math.PI), M(0xfbfaf6)); br.position.set(gx, gy + 1.6, zf - 0.06); g.add(br);
+        for (const ox of [-0.44, 0.44]) deko(g, gx + ox, gy + 1.05, zf - 0.06, 0.1, 1.1, 0.1, 0xfbfaf6);
+        deko(g, gx, gy + 1.05, zf - 0.07, 0.05, 1.1, 0.06, 0xfbfaf6); deko(g, gx, gy + 0.45, zf - 0.12, 1.1, 0.1, 0.25, 0xfbfaf6);
+        for (const ox of [-0.72, 0.72]) deko(g, gx + ox, gy + 1.2, zf - 0.05, 0.2, 2.4, 0.15, 0xfbfaf6);
+        deko(g, gx, gy + 3.0, -5.0, 1.3, 0.12, 3.0, 0xfbfcff);   // Schnee auf der Gaube
+      }
+    } else { dach(g, b, t, H, 4.6, villa ? C.dunkelgrau : DAECHER[nr % DAECHER.length], 0.55);
+    kasten(g, 2.6, H + 2.3, 1.8, 0.9, 2.8, 0.9, ziegelMat); deko(g, 2.6, H + 3.75, 1.8, 1.05, 0.15, 1.05, 0xfbfcff); }
+    if (villa && !pracht) {   // Villa: zweiter Kamin, weiße Ecksäulen, Gesims, Giebel mit rundem Fenster
       kasten(g, -2.6, H + 2.3, -1.8, 0.9, 2.8, 0.9, ziegelMat); deko(g, -2.6, H + 3.75, -1.8, 1.05, 0.15, 1.05, 0xfbfcff);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) deko(g, sx * (b / 2 - 0.15), H / 2, sz * (t / 2 - 0.15), 0.5, H, 0.5, 0xfbfaf6);
       deko(g, 0, H - 0.15, vz - 0.12, b + 0.4, 0.3, 0.3, 0xfbfaf6); deko(g, 0, H - 0.15, t / 2 + 0.12, b + 0.4, 0.3, 0.3, 0xfbfaf6);
@@ -6793,6 +6824,8 @@ function baueStadtTeile() {
       const augeR = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.07, 6, 20), M(0xfbfaf6)); augeR.position.set(0, H + 0.95, vz - 1.16); g.add(augeR);
       for (let i = 0; i < 4; i++) { const sp = deko(g, 0, H + 0.95, vz - 1.17, 0.04, 1.0, 0.03, 0xfbfaf6); sp.rotation.z = i * Math.PI / 4; }
     }
+    if (pracht) for (const sx of [-1, 1]) for (const sz of [-1, 1]) deko(g, sx * (b / 2 - 0.15), H / 2, sz * (t / 2 - 0.15), 0.5, H, 0.5, 0xfbfaf6);
+    if (pracht) { deko(g, 0, H - 0.15, vz - 0.12, b + 0.4, 0.3, 0.3, 0xfbfaf6); for (const ey of [E, E2]) deko(g, 0, ey, vz - 0.1, b + 0.2, 0.26, 0.24, 0xfbfaf6); }
     // Fenster (3 Reihen), außen leuchtend, mit Läden
     const fensterW = (lx, ly, lz, fb, fh, quer = false) => {
       const f = new THREE.Mesh(boxGeo, fensterMat); f.scale.set(quer ? 0.06 : fb, fh, quer ? fb : 0.06); f.position.set(lx, ly, lz); g.add(f);
@@ -6803,11 +6836,12 @@ function baueStadtTeile() {
     for (const [ly, fh] of REIHEN) {
       for (const sx of [-1, 1]) { fensterW(sx * 4.6, ly, vz - 0.01, 1.8, fh); fensterW(sx * 4.2, ly, t / 2 + 0.01, 1.6, fh); for (const fz of [-3.2, 3.2]) fensterW(sx * (b / 2 + 0.01), ly, fz, 1.6, fh, true); }
       for (const sx of [-1, 1]) for (const ox of [-1.18, 1.18]) deko(g, sx * 4.6 + ox, ly, vz - 0.08, 0.5, fh + 0.1, 0.06, villa ? C.schwarz : C.dunkelgrau);
+      if (pracht) for (const sx of [-1, 1]) { deko(g, sx * 4.6, ly + fh / 2 + 0.25, vz - 0.12, 2.5, 0.14, 0.32, 0xfbfaf6); deko(g, sx * 4.6, ly + fh / 2 + 0.12, vz - 0.08, 2.1, 0.12, 0.18, 0xfbfaf6); }   // Gesims über den Fenstern
       if (villa) for (const sx of [-1, 1]) for (const fz of [-3.2, 3.2]) for (const oz of [-1.08, 1.08]) deko(g, sx * (b / 2 + 0.08), ly, fz + oz, 0.06, fh + 0.1, 0.45, C.schwarz);   // schwarze Läden auch an den Seiten
     }
     // --- Anbauten: jedes Haus bekommt eine Garage und dazu andere Anbauten (Seitenflügel, Erker, Wintergarten) ---
     const ANBAU_ARTEN = [['garageL', 'fluegelR'], ['erker', 'garageL'], ['fluegelL', 'garageR'], ['wintergarten', 'erker', 'garageR'], ['fluegelR', 'garageL'], ['fluegelR', 'erker', 'garageL'], ['garageL', 'wintergarten'], ['garageR', 'fluegelL'], ['erker', 'garageR'], ['fluegelL', 'wintergarten', 'garageR'], ['fluegelL', 'garageR'], ['fluegelR', 'garageL']];
-    for (const art of ANBAU_ARTEN[nr % ANBAU_ARTEN.length]) {
+    for (const art of pracht ? [] : ANBAU_ARTEN[nr % ANBAU_ARTEN.length]) {
       if (art === 'fluegelL' || art === 'fluegelR') {   // Seitenflügel mit eigenem Dach
         const sx = art === 'fluegelL' ? -1 : 1, fb = 3.2, ft = 8, fh = 6.2, fx = sx * (b / 2 + fb / 2 - 0.1), fz = 1.5;
         kasten(g, fx, fh / 2, fz, fb, fh, ft, wand); fest(fx, fh, fz, fb, ft, fh);
@@ -6840,8 +6874,9 @@ function baueStadtTeile() {
     }
     // --- Vorne: Veranda mit Treppe, Geländer, Tür, Girlanden, Kranz, Laternen, Steinweg ---
     const VT = 2.6, VB = 6.0;
-    kasten(g, 0, F / 2, vz - VT / 2, VB, F, VT, M(C.braun)); fest(0, F, vz - VT / 2, VB, VT, F);
-    for (let i = 0; i < 3; i++) { const h = (i + 1) * 0.15, tz = vz - VT - 0.35 * (3 - i) + 0.175; kasten(g, 0, h / 2, tz, 3.0, h, 0.35, M(C.braun)); deko(g, 0, h + 0.02, tz, 3.0, 0.04, 0.35, 0xfbfcff); fest(0, h, tz, 3.0, 0.35, h); }
+    const vFarbe = pracht ? 0xdedbd4 : C.braun;
+    kasten(g, 0, F / 2, vz - VT / 2, VB, F, VT, M(vFarbe)); fest(0, F, vz - VT / 2, VB, VT, F);
+    for (let i = 0; i < 3; i++) { const h = (i + 1) * 0.15, tz = vz - VT - 0.35 * (3 - i) + 0.175; kasten(g, 0, h / 2, tz, pracht ? VB : 3.0, h, 0.35, M(vFarbe)); deko(g, 0, h + 0.02, tz, 3.0, 0.04, 0.35, 0xfbfcff); fest(0, h, tz, 3.0, 0.35, h); }
     for (const sx of [-1, 1]) {
       for (let k = 0; k < 4; k++) deko(g, sx * (VB / 2 - 0.08), F + 0.45, vz - 0.1 - k * 0.68, 0.08, 0.9, 0.08, C.creme);
       deko(g, sx * (VB / 2 - 0.08), F + 0.92, vz - VT / 2, 0.1, 0.08, VT, C.creme);
@@ -6864,6 +6899,18 @@ function baueStadtTeile() {
       for (const sx of [-1, 1]) for (let i = 0; i < 7; i++) zyl(g, sx * VB / 2, bY + 0.5, vz - VT + 0.05 + i * (VT - 0.1) / 7, 0.035, 0.05, 0.65, 0xfbfaf6, 6);
       deko(g, 0, bY + 0.86, vz - VT + 0.05, VB + 0.1, 0.08, 0.14, 0xfbfaf6); for (const sx of [-1, 1]) deko(g, sx * VB / 2, bY + 0.86, vz - VT / 2, 0.14, 0.08, VT, 0xfbfaf6);
       fensterW(0, bY + 1.5, vz - 0.01, 1.5, 2.6); for (const sx of [-1, 1]) deko(g, sx * 1.05, bY + 1.5, vz - 0.08, 0.45, 2.7, 0.06, C.schwarz);
+      if (pracht) {   // Säulen gehen bis unters Dach, oben ein großer Giebel mit rundem Fenster
+        for (const sx of [-2.55, -0.95, 0.95, 2.55]) { zyl(g, sx, (bY + 0.95 + H - 0.4) / 2, sz, 0.17, 0.2, H - 0.4 - bY - 0.95, 0xfbfaf6, 14); deko(g, sx, H - 0.5, sz, 0.5, 0.2, 0.5, 0xfbfaf6); deko(g, sx, bY + 1.0, sz, 0.45, 0.14, 0.45, 0xfbfaf6); }
+        const z0 = vz + 0.2, z1 = sz - 0.45, zm = (z0 + z1) / 2, zd = z0 - z1;
+        deko(g, 0, H - 0.2, zm, VB + 0.9, 0.45, zd, 0xfbfaf6); deko(g, 0, H + 0.06, zm - 0.05, VB + 1.1, 0.12, zd + 0.1, 0xfbfaf6);
+        const pw = new THREE.Mesh(dachGeo, M(0xfbfaf6)); pw.scale.set(VB + 1.0, 2.4, zd); pw.position.set(0, H + 0.1, zm); g.add(pw);
+        const pd = new THREE.Mesh(dachGeo, M(0x3d3f44)); pd.scale.set(VB + 1.5, 2.7, zd - 0.3); pd.position.set(0, H + 0.12, zm + 0.3); g.add(pd);
+        const ps = new THREE.Mesh(dachGeo, M(0xfbfcff)); ps.scale.set(VB + 1.2, 2.6, zd - 0.4); ps.position.set(0, H + 0.32, zm + 0.35); g.add(ps);
+        const fz = z1 - 0.01, auge = new THREE.Mesh(new THREE.CircleGeometry(0.55, 22), fensterMat); auge.rotation.y = Math.PI; auge.position.set(0, H + 0.95, fz); g.add(auge);
+        const ar = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.1, 6, 22), M(0xfbfaf6)); ar.position.set(0, H + 0.95, fz - 0.02); g.add(ar);
+        for (let i = 0; i < 4; i++) { const sp = deko(g, 0, H + 0.95, fz - 0.03, 0.05, 1.1, 0.03, 0xfbfaf6); sp.rotation.z = i * Math.PI / 4; }
+        for (const sx of [-1, 1]) { const ro = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.06, 6, 12), M(0xfbfaf6)); ro.position.set(sx * 1.6, H + 0.6, fz - 0.02); g.add(ro); }
+      }
       for (const sx of [-1, 1]) { zyl(g, sx * 1.45, F + 2.2, vz - 0.12, 0.08, 0.08, 0.3, C.schwarz, 8); const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.2, 0.32, 0.2); l.position.set(sx * 1.45, F + 2.0, vz - 0.22); g.add(l); deko(g, sx * 1.45, F + 2.2, vz - 0.22, 0.26, 0.05, 0.26, C.schwarz); }
     }
     for (const sx of [-1, 1]) deko(g, sx * (TB / 2 + 0.08), F + TH / 2, vz - 0.04, 0.16, TH, 0.12, C.creme);
@@ -6887,8 +6934,51 @@ function baueStadtTeile() {
     }
     for (const sx of [-1, 1]) {
       laterneW(g, sx * 1.6, wegAnfang - 1.2, 1.4);
+      if (pracht) continue;
       tanneW(g, sx * 3.6, wegAnfang - 0.5, 0.5);
       for (let k = 0; k < 3; k++) kugelW(g, sx * (2.3 + k * 0.5), 0.25, wegAnfang - 2.2 - k * 0.6, 0.28, C.salbei);
+    }
+    if (pracht) {   // Seitenflügel, Garten mit Pool, Liegen, Sonnenschirm, Vase, Laternen
+      const wb = 7, wt = 14, wh = 6.0, wx = b / 2 + wb / 2 - 0.1, wz = -5, wv = wz - wt / 2, wi = wx - wb / 2;
+      kasten(g, wx, wh / 2, wz, wb, wh, wt, putzMat); fest(wx, wh, wz, wb, wt, wh);
+      kasten(g, wx, 0.3, wz, wb + 0.2, 0.6, wt + 0.2, M(0xdedbd4));
+      const wg = new THREE.Group(); wg.position.set(wx, 0, wz); g.add(wg); dach(wg, wb, wt, wh, 3.0, 0x3d3f44, 0.45);
+      const wgw = new THREE.Mesh(dachGeo, M(0xfbfaf6)); wgw.scale.set(wb + 0.3, 2.75, 0.14); wgw.position.set(wx, wh, wv - 0.5); g.add(wgw);
+      deko(g, wx, wh, wv - 0.3, wb + 0.9, 0.28, 0.5, 0xfbfaf6); deko(g, wx, wh - 0.3, wz, 0.1, 0.25, wt + 0.2, 0xfbfaf6);
+      for (const sx of [-1, 1]) deko(g, wx + sx * (wb / 2 - 0.1), wh / 2, wv - 0.1, 0.45, wh, 0.35, 0xfbfaf6);
+      const bogenFenster = (x0, z0, quer, fb, fh, y0) => {   // hohes Fenster mit rundem Bogen und schwarzen Läden
+        fensterW(x0, y0, z0, fb, fh, quer);
+        const bo = new THREE.Mesh(new THREE.CircleGeometry(fb / 2, 14, 0, Math.PI), fensterMat); bo.position.set(x0 + (quer ? -0.02 : 0), y0 + fh / 2, z0 + (quer ? 0 : -0.02)); bo.rotation.y = quer ? -Math.PI / 2 : Math.PI; g.add(bo);
+        const br = new THREE.Mesh(new THREE.TorusGeometry(fb / 2 + 0.05, 0.07, 6, 14, Math.PI), M(0xfbfaf6)); br.position.set(x0 + (quer ? -0.05 : 0), y0 + fh / 2, z0 + (quer ? 0 : -0.05)); br.rotation.y = quer ? -Math.PI / 2 : Math.PI; g.add(br);
+        for (const o of [-1, 1]) quer ? deko(g, x0 - 0.07, y0 + 0.2, z0 + o * (fb / 2 + 0.32), 0.06, fh + fb / 2, 0.5, C.schwarz) : deko(g, x0 + o * (fb / 2 + 0.32), y0 + 0.2, z0 - 0.07, 0.5, fh + fb / 2, 0.06, C.schwarz);
+      };
+      bogenFenster(wx, wv - 0.01, false, 1.5, 2.2, 2.4);
+      for (const fz of [wv + 1.6, wv + 4.2]) bogenFenster(wi - 0.01, fz, true, 1.2, 2.0, 2.3);
+      for (const o of [-1, 1]) { const lx = wx + o * 1.65, lz = wv - 0.15; deko(g, lx, 2.7, lz, 0.08, 0.08, 0.3, C.schwarz); deko(g, lx, 2.55, lz - 0.25, 0.34, 0.5, 0.34, C.schwarz); const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.26, 0.4, 0.38); l.position.set(lx, 2.55, lz - 0.25); g.add(l); const k = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 4), M(C.schwarz)); k.position.set(lx, 2.9, lz - 0.25); k.rotation.y = Math.PI / 4; g.add(k); }
+      { const lz = wv + 2.9; deko(g, wi - 0.15, 2.7, lz, 0.3, 0.08, 0.08, C.schwarz); deko(g, wi - 0.35, 2.55, lz, 0.34, 0.5, 0.34, C.schwarz); const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.38, 0.4, 0.26); l.position.set(wi - 0.35, 2.55, lz); g.add(l); }
+      kranz(g, wx, wh - 0.9, wv - 0.12, 0.4);
+      // Pool vorne links (vom Haus aus gesehen)
+      const px = 4.4, pz = -16.4, pb = 6.4, pt = 4.0;
+      kasten(g, px, 0.18, pz, pb + 0.9, 0.36, pt + 0.9, M(0xe4e2dc)); deko(g, px, 0.375, pz, pb + 0.9, 0.03, pt + 0.9, 0xfbfcff);
+      const wasser = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x56788c, roughness: 0.08, metalness: 0.1 }));
+      wasser.scale.set(pb, 0.04, pt); wasser.position.set(px, 0.38, pz); g.add(wasser); fest(px, 0.4, pz, pb + 0.9, pt + 0.9, 0.4);
+      // zwei Liegen mit weißen Kissen, Sonnenschirm und Tischchen
+      for (const lx of [-3.9, -7.1]) {
+        deko(g, lx, 0.2, -13.4, 1.3, 0.4, 2.5, 0x6b4a32); deko(g, lx, 0.5, -13.4, 1.2, 0.2, 2.4, 0xf3f1ec); deko(g, lx, 0.8, -12.35, 1.2, 0.5, 0.25, 0xf3f1ec);
+        for (const ox of [-0.3, 0.3]) deko(g, lx + ox, 0.75, -12.6, 0.42, 0.32, 0.14, ox < 0 ? 0xd9cbb5 : 0xe8e2d6).rotation.x = -0.25;
+        deko(g, lx, 0.62, -14.2, 1.1, 0.1, 0.6, 0x8a7a68); fest(lx, 0.6, -13.4, 1.3, 2.5, 0.6);
+      }
+      zyl(g, -5.5, 1.45, -14.3, 0.05, 0.05, 2.9, 0x6b4a32, 8); const schirm = new THREE.Mesh(new THREE.ConeGeometry(1.9, 0.6, 12), M(0xcbbca6)); schirm.position.set(-5.5, 3.05, -14.3); g.add(schirm);
+      const schirmS = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.5, 12), M(0xfbfcff)); schirmS.position.set(-5.5, 3.14, -14.3); g.add(schirmS); fest(-5.5, 2.9, -14.3, 0.3, 0.3, 2.9);
+      deko(g, -5.5, 0.3, -12.2, 0.7, 0.6, 0.7, 0x8a6446); laterneW(g, -5.5, -12.2, 0.6);
+      // Vase auf einem Sockel, verschneiter weißer Strauch, kleiner Weihnachtsbaum, Hecke im Kasten
+      zyl(g, 3.0, 0.45, -12.4, 0.28, 0.32, 0.9, 0xe4e2dc, 12); zyl(g, 3.0, 1.15, -12.4, 0.5, 0.25, 0.55, 0xe4e2dc, 14); kugelW(g, 3.0, 1.45, -12.4, 0.35, C.tanne); kugelW(g, 3.0, 1.62, -12.4, 0.3, 0xfbfcff); fest(3.0, 1.4, -12.4, 0.7, 0.7, 1.4);
+      for (let i = 0; i < 9; i++) { const w = i * 2.4; kugelW(g, 1.2 + Math.cos(w) * 0.55, 0.35 + (i % 3) * 0.28, -14.0 + Math.sin(w) * 0.45, 0.32 - (i % 3) * 0.06, 0xfbfcff); }
+      tanneW(g, 6.6, -11.2, 0.5);
+      for (const hz of [-8.4, -10.2]) { deko(g, 4.7, 0.35, hz, 1.2, 0.7, 1.2, 0x9a9894); kugelW(g, 4.7, 0.95, hz, 0.65, C.tanne); kugelW(g, 4.7, 1.2, hz, 0.5, 0xfbfcff); fest(4.7, 1.3, hz, 1.2, 1.2, 1.3); }
+      for (const sx of [-1, 1]) { const lz = vz - VT - 0.2; deko(g, sx * 3.3, 0.3, lz, 0.34, 0.5, 0.34, C.schwarz); const l = new THREE.Mesh(boxGeo, lampenMat); l.scale.set(0.26, 0.38, 0.38); l.position.set(sx * 3.3, 0.3, lz); g.add(l); }
+      for (const sx of [-1, 1]) pflanze(g, sx * 2.6, F, vz - 2.2, 1.2);
+      weisseLichter(g, kette(V(wx - wb / 2, wh + 0.05, wv - 0.5), V(wx + wb / 2, wh + 0.05, wv - 0.5), 0.35, 0.25), 0.9);
     }
     const nrSchild = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.45), schild(String(nr + 1), 128, 80));
     nrSchild.rotation.y = Math.PI; nrSchild.position.set(1.6, F + 2.1, vz - 0.02); nrSchild.userData.eigen = true; g.add(nrSchild);
@@ -7292,7 +7382,7 @@ function baueStadtTeile() {
       g.matrixWorld.copy(mw); g.updateMatrixWorld(true);
     }
     // Für die Kamera merken
-    W_HAEUSER.push({ nr, x, z, s, scharnier, tuer, tuerKlotz, offen: false, tuerPos: P(0, vz - 1.2), name: villa ? 'Weiße Villa' : HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: aussen, vz, F, TH });
+    W_HAEUSER.push({ nr, x, z, s, scharnier, tuer, tuerKlotz, offen: false, tuerPos: P(0, vz - 1.2), name: pracht ? 'Schneevilla ✨' : villa ? 'Weiße Villa' : HOLZ_NAMEN[nr % HOLZ_NAMEN.length], gruppe: aussen, vz, F, TH });
     const [ax, az] = P(-b / 2, -t / 2), [bx2, bz2] = P(b / 2, t / 2);
     HAEUSER.push({ minX: Math.min(ax, bx2), maxX: Math.max(ax, bx2), minZ: Math.min(az, bz2), maxZ: Math.max(az, bz2), h: H, etage: E, etagen: [F, E, E2], unten: F, waende: innenK,
       innen: { x, z, s, hb: b / 2 - D, ht: t / 2 - D, tb: TB, th: F + TH } });   // für dichte Wände: drinnen bleibt man drin (außer durch die Tür)
@@ -7537,6 +7627,7 @@ function baueStadtTeile() {
     wohnhaus(nr++, W.x + hx, W.z + 25, 1);
     wohnhaus(nr++, W.x + hx, W.z - 25, -1);
   }
+  wohnhaus(nr++, W.x - 118, W.z - 33, -1);   // Haus 13: die große Schneevilla mit Pool
   const ladenZ = (art, sx) => sx * (9 + LADEN_ARTEN[art].t / 2);
   for (const [art, lx, sx] of [['cafe', 0, 1], ['baeckerei', 0, -1], ['super', 106, 1], ['buch', 101, -1], ['spielzeug', 122, -1], ['kleider', -101, 1], ['blumen', -123, 1]]) laden(art, W.x + lx, W.z + ladenZ(art, sx), sx);
   // --- Bushaltestelle (wie im Weihnachtsdorf) mit Ziegeln, und Autos + Bus auf der Straße ---
@@ -7993,7 +8084,7 @@ function mitStadt(weiter) {
 const hausKnopf = document.getElementById('hausKnopf'), hausPanel = document.getElementById('hausPanel'), aktionKnopf = document.getElementById('aktionKnopf');
 let meinHaus = -1, hausZu = false;
 try { meinHaus = Number(localStorage.getItem('wonderland-haus') ?? -1); hausZu = localStorage.getItem('wonderland-zu') === '1'; } catch (e) {}
-if (!(meinHaus >= 0 && meinHaus < 12)) meinHaus = -1;   // 12 Häuser (die Stadt wird erst später gebaut)
+if (!(meinHaus >= 0 && meinHaus < 13)) meinHaus = -1;   // 13 Häuser (die Stadt wird erst später gebaut)
 const deinSchild = (() => {   // schwebendes Schild "Dein Haus" über deiner Tür
   const c = document.createElement('canvas'); c.width = 256; c.height = 80; const x = c.getContext('2d');
   x.fillStyle = '#4a3326'; x.beginPath(); x.moveTo(24, 4); x.arcTo(252, 4, 252, 76, 20); x.arcTo(252, 76, 4, 76, 20); x.arcTo(4, 76, 4, 4, 20); x.arcTo(4, 4, 252, 4, 20); x.closePath(); x.fill();   // runde Ecken (ohne roundRect, das kennen ältere iPads nicht)
