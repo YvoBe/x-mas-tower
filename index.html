@@ -5894,7 +5894,7 @@ function leuteUpdate(dt) {
   for (const l of LEUTE) {
     const f = l.f;
     // Nur Leute in der Nähe zeigen (spart viel Arbeit fürs Handy)
-    const sicht = l.welt === zeigeWelt && Math.hypot(f.figur.position.x - c.x, f.figur.position.z - c.z) < 60;
+    const sicht = l.welt === zeigeWelt && Math.hypot(f.figur.position.x - c.x, f.figur.position.z - c.z) < (HANDY ? 28 : 45);
     f.figur.visible = sicht;
     if (!sicht) continue;
     l.phase += dt;
