@@ -605,7 +605,7 @@ const AUSSEHEN = {
 // So sieht die Figur am Anfang aus (und Vorlage für Mitspieler)
 const STANDARD_AUSSEHEN = { ...AUSSEHEN, figurTyp: 'maedchen', sommersprossen: false, pony: false, frisur: 'glatt', sternAn: true, oberteilTyp: 'pulli', jacke: '#7a8450', hoseTyp: 'jeans', augen: 'rund', augenfarbe: '#4a3326', mund: 'laecheln', kopf: 'ohne', schal: 'ohne', haende: 'ohne', ohren: 'normal', kopfart: 'normal', struempfe: 'kurz', schuhTyp: 'turnschuh', koerperForm: 'normal', armForm: 'normal', handForm: 'lego', kette: 'ohne' };
 for (const [k, v] of Object.entries(STANDARD_AUSSEHEN)) if (!(k in AUSSEHEN)) AUSSEHEN[k] = v;
-const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'wimpern', 'schoen', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
+const WAHL_WORTE = { figurTyp: ['maedchen', 'junge'], frisur: ['glatt', 'wellen', 'langlocken', 'stufen', 'bob', 'zoepfe', 'pferd', 'hochsteck', 'flechtzoepfe', 'grosslocken', 'dutt', 'wuschel', 'wuschelkopf', 'jlocken', 'afro'], koerperForm: ['normal', 'eckig', 'gerade'], armForm: ['normal', 'rund', 'eckig', 'dick'], kette: ['ohne', 'gold', 'perlen', 'herz'], handForm: ['lego', 'normal'], oberteilTyp: ['pulli', 'top', 'spitzentop', 'tshirt', 'ringelshirt', 'bananenshirt', 'jacke', 'kapuzenjacke', 'strickpulli', 'weihnachtspulli', 'lebkuchenpyjama'], struempfe: ['ohne', 'kurz', 'lang'], schuhTyp: ['turnschuh', 'ballerina', 'stoeckel', 'puschel', 'uggs'], haende: ['ohne', 'faeustlinge'], ohren: ['normal', 'spitz'], kopfart: ['normal', 'unsichtbar'], kopf: ['ohne', 'ohrwaermer', 'weihnachtsmuetze', 'rentierreif', 'ohrenschuetzer', 'haarreif', 'klappmuetze'], schal: ['ohne', 'karo', 'schal'], hoseTyp: ['jeans', 'jogging', 'kurz', 'jeansshorts', 'rock'], augen: ['rund', 'wimpern', 'schoen', 'klein', 'mandel', 'sanft', 'punkt', 'zu'], blush: ['ohne', 'zart', 'stark'], mund: ['laecheln', 'linie', 'grinsen', 'staunen', 'frech'], lipliner: ['ohne', '#8e3c4a', '#6b3a2e', '#5a2630'] };
 let spielerName = 'Spieler';
 try { spielerName = localStorage.getItem('turmparkour-name') || 'Spieler'; } catch (e) {}
 const meinName = () => spielerName.trim().slice(0, 16) || 'Spieler';
@@ -3145,10 +3145,18 @@ function gesichtTextur(look, mass) {
   });
   // Augen
   const schoen = augen === 'schoen';   // große schöne Augen mit Lidschatten, Lidstrich und vielen Wimpern
-  const rx = schoen ? 0.052 : 0.046, ry = schoen ? 0.035 : 0.03;
+  // Kleinere, offene Augen: klein (rund), mandel (schmal), sanft (klein mit zarten Wimpern), punkt (ganz einfach)
+  const KLEIN = { klein: 0.7, mandel: 0.78, sanft: 0.72, punkt: 0.6 }[augen] || 1;
+  const rx = schoen ? 0.052 : 0.046, ry = (schoen ? 0.035 : 0.03) * (augen === 'mandel' ? 0.72 : 1);
   for (const s of [-1, 1]) bei(s * 0.085, 0.015, () => {
     g.rotate(s * -0.06);              // außen etwas höher
     if (schoen) g.scale(0.78, 0.78);   // schöne Augen nicht so groß (Wunsch)
+    if (KLEIN !== 1) g.scale(KLEIN, KLEIN);
+    if (augen === 'punkt') {          // ganz einfache Augen: dunkles Oval mit Glanzpunkt
+      g.fillStyle = '#1d1612'; g.beginPath(); g.ellipse(0, 0, 0.026, 0.034, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(0.008, -0.012, 0.008, 0, Math.PI * 2); g.fill();
+      return;
+    }
     if (augen === 'zu') {             // fröhlich zugekniffen
       g.beginPath(); g.moveTo(-rx * 0.9, 0.006); g.quadraticCurveTo(0, -0.03, rx * 0.9, 0.006);
       linie('#1d1612', 0.009);
@@ -3187,8 +3195,8 @@ function gesichtTextur(look, mass) {
     linie('rgba(170,110,90,0.45)', 0.003);
     // Wimpern wie auf der Zeichnung: von der Mitte bis außen immer länger, nach oben-außen geschwungen,
     // dazu ein paar kleine Wimpern unten am äußeren Augenwinkel (bei "Wimpern" mehr und länger, beim Jungen keine)
-    const viele = augen === 'wimpern' || schoen;
-    const zahl = schoen ? 10 : viele ? 7 : junge ? 0 : 4;
+    const viele = augen === 'wimpern' || schoen || augen === 'sanft';
+    const zahl = schoen ? 10 : augen === 'sanft' ? 5 : viele ? 7 : junge ? 0 : 4;
     for (let k = 0; k < zahl; k++) {
       const t = (viele ? 0.05 : 0.35) + (viele ? 0.95 : 0.65) * k / Math.max(1, zahl - 1);   // 0 = Mitte, 1 = außen
       const x = s * rx * t, y = -ry * 1.05 * Math.sqrt(Math.max(0, 1 - t * t)) * (1 - 0.15 * t) - 0.001;
@@ -7179,7 +7187,7 @@ const AUSWAHL = [
   { titel: 'Arme', key: 'armForm', worte: [['normal', 'Normal'], ['rund', 'Rund und dick'], ['eckig', 'Eckig'], ['dick', 'Dick und eckig']] },
   { titel: 'Hände', key: 'handForm', worte: [['lego', 'Lego-Hände'], ['normal', 'Mit Fingern']] },
   { titel: 'Hautfarbe', key: 'haut', farben: ['#f6d7bd', '#f1c9a5', '#e0ac85', '#c68b5e', '#9a6440', '#6b4329'] },
-  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['schoen', 'Schöne Augen'], ['zu', 'Fröhlich zu']] },
+  { titel: 'Augen', key: 'augen', worte: [['rund', 'Normal'], ['wimpern', 'Wimpern'], ['schoen', 'Schöne Augen'], ['klein', 'Klein'], ['mandel', 'Mandelform'], ['sanft', 'Klein mit Wimpern'], ['punkt', 'Einfach'], ['zu', 'Fröhlich zu']] },
   { titel: 'Blush', key: 'blush', worte: [['ohne', 'Ohne'], ['zart', 'Zart'], ['stark', 'Kräftig']] },
   { titel: 'Augenfarbe', key: 'augenfarbe', nur: ['augen', '!zu'], farben: ['#4a3326', '#7a5230', '#3f7cc4', '#5b8a4a', '#8c8f96', '#1d2236'] },
   { titel: 'Augenbrauen', key: 'brauen', worte: [['bogen', 'Geschwungen'], ['gerade', 'Gerade'], ['hoch', 'Hoher Bogen'], ['buschig', 'Buschig'], ['fein', 'Fein']] },
