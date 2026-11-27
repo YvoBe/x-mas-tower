@@ -4554,24 +4554,24 @@ function baueFigur(look, ziel = scene) {
   const huefte = teil(hGeo, look.hose, hoseM(10, 2));
   huefte.position.y = 0.84;
   figur.add(huefte);
-  if (hoseTyp === 'rock') {        // Faltenrock: echtes Teil, wird nach unten weiter, ringsum Falten
-    const hoehe = 0.27, oben = rumpfBreite(-0.44) - 0.025, unten = 0.32, falten = 18;   // kurzer Rock, steht nicht so weit raus   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
+  if (hoseTyp === 'rock' || miniKleid) {        // Faltenrock: echtes Teil, wird nach unten weiter, ringsum Falten (beim Minikleid: von unter der Brust bis über die Knie)
+    const kl = miniKleid, hoehe = kl ? 0.74 : 0.27, oben = kl ? rumpfBreite(0.05) + 0.012 : rumpfBreite(-0.44) - 0.025, unten = kl ? 0.37 : 0.32, falten = kl ? 26 : 18;   // kurzer Rock, steht nicht so weit raus   // oben etwas schmaler als das Oberteil, damit es drunter verschwindet
     const geo = new THREE.CylinderGeometry(oben, unten, hoehe, falten * 4, 6, true);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const w = Math.atan2(z, x), t = 0.5 - y / hoehe;            // t: 0 oben, 1 unten
       const zack = Math.abs(((w / (Math.PI * 2)) * falten % 1 + 1) % 1 - 0.5) * 2;   // Zickzack 0..1
-      const f = 1 + (zack - 0.5) * 0.11 * Math.min(1, t * 1.3);               // Falten werden nach unten tiefer
+      const f = 1 + (zack - 0.5) * (kl ? 0.08 : 0.11) * Math.min(1, t * 1.3);               // Falten werden nach unten tiefer
       // oben gleiche Form wie der Körper (kissenförmig, flach), nach unten runder und weiter
       const kissen = 1 / Math.pow(Math.pow(Math.abs(Math.cos(w)), RUMPF_EXP) + Math.pow(Math.abs(Math.sin(w)), RUMPF_EXP), 1 / RUMPF_EXP);
       const k = kissen + (1 - kissen) * Math.min(1, t * 1.5);
-      const tief = 0.56 + (0.74 - 0.56) * Math.min(1, t * 1.2);
+      const tief = kl ? 0.62 + (0.8 - 0.62) * Math.min(1, t * 1.2) : 0.56 + (0.74 - 0.56) * Math.min(1, t * 1.2);
       pos.setX(i, x * f * k); pos.setZ(i, z * f * k * tief);
     }
     geo.computeVertexNormals();
-    const rock = teil(geo, look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
-    rock.position.y = 0.9 - hoehe / 2;   // oben unter dem Oberteil versteckt, damit keine Falten durchschauen
+    const rock = teil(geo, kl ? look.pulli : look.hose, { side: THREE.DoubleSide, map: stoff('weich', 8, 4) });
+    rock.position.y = (kl ? 1.34 : 0.9) - hoehe / 2;   // oben unter dem Oberteil versteckt, damit keine Falten durchschauen
     figur.add(rock);
   } else if (false) {     // Kordel ist jetzt aufgemalt
     for (const sx of [-1, 1]) {
@@ -8059,7 +8059,7 @@ const AUSWAHL = [
   { titel: 'Lip Liner', key: 'lipliner', nur: ['mund', 'laecheln'], worte: [['ohne', 'Ohne'], ['#8e3c4a', 'Dunkel-Rosa'], ['#6b3a2e', 'Braun'], ['#5a2630', 'Beere']] },
   { titel: 'Frisur', key: 'frisur', worte: Object.entries(HAAR_STUECKE).map(([k, f]) => [k, f.name]) },
   { titel: 'Haarfarbe', key: 'haare', farben: ['#2b1d14', '#5b3a24', '#8a5a33', '#c48a4a', '#e6c27a', '#b5462f', '#e7a3b7', '#1f2a4a'] },
-  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['spitzentop', 'Top mit Spitze'], ['weste', 'Weste mit Bluse'], ['minikleid', 'Minikleid (oben, dazu Rock wählen)'], ['tshirt', 'T-Shirt'], ['ringelshirt', 'Gestreiftes T-Shirt'], ['bananenshirt', 'Bananen-T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['strickpulli', 'Dicker Strickpulli'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
+  { titel: 'Oberteil', key: 'oberteilTyp', worte: [['top', 'Top'], ['spitzentop', 'Top mit Spitze'], ['weste', 'Weste mit Bluse'], ['minikleid', 'Minikleid'], ['tshirt', 'T-Shirt'], ['ringelshirt', 'Gestreiftes T-Shirt'], ['bananenshirt', 'Bananen-T-Shirt'], ['pulli', 'Pulli'], ['jacke', 'Jacke mit T-Shirt'], ['kapuzenjacke', 'Winterjacke mit Kapuze'], ['strickpulli', 'Dicker Strickpulli'], ['weihnachtspulli', 'Weihnachtspulli'], ['lebkuchenpyjama', 'Lebkuchen-Pyjama']] },
   { titel: 'Farbe Oberteil', key: 'pulli', farben: ['#f5f3ee', '#d6d4cf', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#7a8450', '#dcb8bd', '#6e2a35'] },
   { titel: 'Streifen und Muster', key: 'streifen', nur: ['oberteilTyp', 'strickpulli'], farben: ['#4a3326', '#8a5a33', '#b08a64', '#1f2a4a', '#3b5b8c', '#7a8450'] },
   { titel: 'Streifen', key: 'streifen', nur: ['oberteilTyp', 'ringelshirt'], farben: ['#d6d4cf', '#f5f3ee', '#d9cbb5', '#a9c4dc', '#3b5b8c', '#1f2a4a', '#b08a64', '#8a5a33', '#4a3326', '#dcb8bd', '#6e2a35'] },
