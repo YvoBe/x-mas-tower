@@ -3260,10 +3260,12 @@ function gesichtTextur(look, mass) {
     }
     form(); g.fillStyle = '#fbf7f2'; g.fill();
     g.save(); form(); g.clip();
-    g.fillStyle = look.augenfarbe || '#4a3326'; g.beginPath(); g.arc(0, 0.001, 0.024, 0, Math.PI * 2); g.fill();
-    const tiefe = g.createRadialGradient(0, 0.001, 0.008, 0, 0.001, 0.024);
+    const iR = katze ? 0.03 : 0.024;   // Katzenaugen: große Iris wie auf der Vorlage
+    g.fillStyle = look.augenfarbe || '#4a3326'; g.beginPath(); g.arc(0, 0.001, iR, 0, Math.PI * 2); g.fill();
+    const tiefe = g.createRadialGradient(0, 0.001, 0.008, 0, 0.001, iR);
     tiefe.addColorStop(0, 'rgba(255,255,255,0.15)'); tiefe.addColorStop(1, 'rgba(0,0,0,0.35)');
     g.fillStyle = tiefe; g.fill();
+    if (katze) { g.strokeStyle = 'rgba(30,18,12,0.7)'; g.lineWidth = 0.003; g.beginPath(); g.arc(0, 0.001, iR - 0.0015, 0, Math.PI * 2); g.stroke(); }   // dunkler Ring um die Iris
     if (schoen) { g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 0.0015; for (let k = 0; k < 12; k++) { const w = k / 12 * Math.PI * 2; g.beginPath(); g.moveTo(Math.cos(w) * 0.012, Math.sin(w) * 0.012); g.lineTo(Math.cos(w) * 0.022, Math.sin(w) * 0.022); g.stroke(); } }   // Muster in der Iris
     g.fillStyle = '#0d0d0d'; g.beginPath(); g.arc(0, 0.001, 0.0105, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#ffffff'; g.beginPath(); g.arc(0.008, -0.008, 0.0055, 0, Math.PI * 2); g.fill();
@@ -3281,6 +3283,9 @@ function gesichtTextur(look, mass) {
     linie('rgba(170,110,90,0.45)', 0.003);
     // Wimpern wie auf der Zeichnung: von der Mitte bis außen immer länger, nach oben-außen geschwungen,
     // dazu ein paar kleine Wimpern unten am äußeren Augenwinkel (bei "Wimpern" mehr und länger, beim Jungen keine)
+    if (katze) {   // weicher brauner Schatten unter dem Auge und feiner dunkler Strich am unteren Lid außen
+      g.beginPath(); g.moveTo(-rx * 0.2, ry * 0.85); g.bezierCurveTo(rx * 0.3, ry * 0.95, rx * 0.8, ry * 0.6, rx * 1.02, 0.0); linie('rgba(60,35,25,0.55)', 0.004);
+    }
     const viele = augen === 'wimpern' || schoen || augen === 'sanft';
     const zahl = katze ? 26 : schoen ? 10 : augen === 'sanft' ? 5 : viele ? 7 : junge ? 0 : 4;
     if (katze) for (let k = 0; k < 22; k++) {   // Katzenaugen: feine einzelne Wimpern über das ganze Lid, außen länger
@@ -3534,7 +3539,7 @@ function kopfFormen(geo, mitteY = 0) {   // alle Punkte nach der Kopfform weiten
 // und je nach Frisur nach unten fällt. u = rundherum (0 = vorne), v = vom Scheitel bis zur Spitze.
 const HAAR_STUECKE = {
   glatt:      { name: 'Lang glatt', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.78, seiteLang: 0.66, dicke: 0.035, flare: 0.05, scheitel: 0, rillen: 0.005 },
-  schichten:  { name: 'Lang mit Stufen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.8, seiteLang: 0.7, dicke: 0.035, flare: 0.04, scheitel: 0, rillen: 0.006, volumen: 0.004, einrollen: 0.02, stufen: [[0.5, 0.42], [0.3, 0.24]], vorneStufen: [0.42, 0.56, 0.72], lose: 0 },   // Mittelscheitel, vorne gestufte Strähnen, die nach innen fallen
+  schichten:  { name: 'Lang mit Stufen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.8, seiteLang: 0.7, dicke: 0.035, flare: 0.04, scheitel: 0, rillen: 0.006, volumen: 0.004, einrollen: 0.02, stufen: [[0.6, 0.5], [0.5, 0.38], [0.42, 0.27], [0.36, 0.17]], vorneStufen: [0.4, 0.54, 0.68], lose: 0 },   // Mittelscheitel, vorne gestufte Strähnen, die nach innen fallen
   wellen:     { name: 'Lange Wellen', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.72, seiteLang: 0.6, dicke: 0.04, flare: 0.07, scheitel: 0.38, welle: 0.018, rillen: 0.006, volumen: 0.006 },
   langlocken: { name: 'Lange Locken', thF: 0.29, thS: 0.5, thB: 0.62, lang: 0.68, seiteLang: 0.56, dicke: 0.05, flare: 0.09, locken: 0.022, lockenGross: true, scheitel: 0, volumen: 0.01 },
   stufen:     { name: 'Schulterlang', thF: 0.29, thS: 0.5, thB: 0.6, lang: 0.4, seiteLang: 0.32, dicke: 0.035, flare: 0.05, scheitel: 0.38, rillen: 0.007, volumen: 0.005 },
@@ -3812,12 +3817,12 @@ function haarStueck(o, seed = 1) {
   if (o.vorneStufen) for (const s of [-1, 1]) {     // gestufte Strähnen vorne: vom Mittelscheitel zur Seite, dann über die Schultern nach vorne
     o.vorneStufen.forEach((L, i) => {
       const auf = (2 - i) * 0.006;                    // kürzere Stufen liegen außen drauf
-      for (let j = 0; j < 4; j++) {
-        const q = (j - 1.5) / 1.5, dz = q * 0.02, dx = s * (Math.abs(q) * 0.006 + auf);
-        const pkt = [kopfPunkt(s * (0.12 + j * 0.05), 0.06 + j * 0.012, -0.012), kopfPunkt(s * (0.55 + j * 0.06), 0.18 + j * 0.01, -0.006 + auf * 0.5), kopfPunkt(s * (0.95 + j * 0.05), 0.3, 0.004 + auf),
+      for (let j = 0; j < 6; j++) {
+        const q = (j - 2.5) / 2.5, dz = q * 0.024, dx = s * (Math.abs(q) * 0.006 + auf);
+        const pkt = [kopfPunkt(s * (0.75 + j * 0.04), 0.24, -0.01), kopfPunkt(s * (0.95 + j * 0.04), 0.3, 0.002 + auf),
           new THREE.Vector3(s * 0.245 + dx, -0.07, 0.085 + dz), new THREE.Vector3(s * 0.25 + dx, -0.2, 0.09 + dz), new THREE.Vector3(s * 0.235 + dx, -0.33, 0.16 + dz),
           new THREE.Vector3(s * 0.21 + dx, -L, 0.2 + dz), new THREE.Vector3(s * 0.195 + dx * 0.5, -L - 0.035, 0.19 + dz)];   // unten nach innen geschwungen
-        teile.push(haarSchlauch(pkt, (t) => 0.017 * (t < 0.06 ? 0.4 + t * 10 : 1 - 0.6 * Math.pow(Math.max(0, t - 0.75) / 0.25, 1.4)), 70, 7));
+        teile.push(haarSchlauch(pkt, (t) => 0.011 * (t < 0.06 ? 0.4 + t * 10 : 1 - 0.6 * Math.pow(Math.max(0, t - 0.75) / 0.25, 1.4)), 70, 7));
       }
     });
   }
@@ -4822,8 +4827,8 @@ function baueFigur(look, ziel = scene) {
     }
   } else kopf.add(teil(haarFaerben(haarStueck(look.kopf === 'klappmuetze' || look.kopf === 'weihnachtsmuetze' || look.kopf === 'karomuetze' ? { ...stueck, buschel: 0 } : stueck, Object.keys(HAAR_STUECKE).indexOf(frisur) + 1), look.haare), '#ffffff', { ...haarMat, vertexColors: true }));   // die ganze Frisur ist EIN Teil, in mehreren Haarfarben
   if (stueck.stufen) stueck.stufen.forEach(([lg, sl], i) => {   // Stufen: kürzere Haarschichten darüber, die unten nach innen fallen
-    const geo = haarStueck({ ...stueck, lang: stueck.lang - 0.02 * (i + 1), seiteLang: sl, einrollen: 0.055, flare: 0.06, stufen: null }, 40 + i);
-    const g = 1.02 + i * 0.016; geo.scale(g, 1 + i * 0.006, g);
+    const geo = haarStueck({ ...stueck, lang: stueck.lang - 0.02 * (i + 1), seiteLang: sl, einrollen: 0.045, flare: 0.055, dicke: 0.012, stufen: null }, 40 + i);
+    const g = 1.012 + i * 0.009; geo.scale(g, 1 + i * 0.003, g);
     kopf.add(teil(haarFaerben(geo, look.haare), '#ffffff', { ...haarMat, vertexColors: true }));
   });
   if (stueck.flecht) for (const s of [-1, 1]) {      // Haargummis unten an den Flechtzöpfen
